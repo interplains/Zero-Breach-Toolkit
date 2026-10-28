@@ -106,6 +106,15 @@ def _parse(argv: List[str]) -> argparse.Namespace:
     p.add_argument("--share-json", metavar="PATH",
                    help="write a minimal sharing summary without paths, profiles, "
                         "message contents, timestamps or indicator values")
+    p.add_argument("--export-blocklist", metavar="PATH",
+                   help="write the network indicators this scan MATCHED as a DNS "
+                        "blocklist for Pi-hole, NextDNS, AdGuard or /etc/hosts. "
+                        "Only matched indicators are written, and reference-only "
+                        "matches (a saved page ABOUT the indicator) are excluded.")
+    p.add_argument("--blocklist-format", choices=["hosts", "pihole", "plain"],
+                   help="format for --export-blocklist: hosts (default), pihole "
+                        "(domain per line with provenance), plain (indicator per "
+                        "line, no comments)")
     p.add_argument("--iocs", metavar="PATH", action="append", default=None,
                    help="indicator file; repeat --iocs to combine several. Accepts the "
                         "curated tab-separated file and STIX 2 bundles "
@@ -166,6 +175,10 @@ def _parse(argv: List[str]) -> argparse.Namespace:
         p.error("--share-json is for scan summaries, not --update")
     if args.share_json and args.json and os.path.normcase(os.path.abspath(args.share_json)) == os.path.normcase(os.path.abspath(args.json)):
         p.error("--share-json and --json must name different files")
+    if args.blocklist_format and not args.export_blocklist:
+        p.error("--blocklist-format requires --export-blocklist")
+    if args.export_blocklist and not args.blocklist_format:
+        args.blocklist_format = "hosts"
     return args
 
 

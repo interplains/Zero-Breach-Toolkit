@@ -1669,6 +1669,14 @@ def render_summary(document: Dict[str, Any]) -> str:
     # Every report, not only one with findings. A clean or reference-only result
     # is the one people are most relaxed about posting publicly to say "I'm
     # fine" - and it carries the same usernames, profile names and paths.
+    be = document.get("blocklist_export") or {}
+    if be.get("written"):
+        w("")
+        w("  A {} blocklist of the {} matched network indicator{} was written.".format(
+            be.get("format", "hosts"), be["written"],
+            "" if be["written"] == 1 else "s"))
+        w("  Load it into a DNS filter (Pi-hole, AdGuard, NextDNS) so these")
+        w("  addresses are blocked in future.")
     w("")
     for line in _wrap_t(_PRIVACY_NOTE if sys.platform == "win32" else _PRIVACY_NOTE_OTHER, 68):
         w("  " + line)
