@@ -248,6 +248,21 @@ def _an_getprop(path):
 _AN_SECTION = re.compile(r"^DUMP OF SERVICE ([^:\n]+):\n", re.M)
 _AN_SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _AN_SHA1_RE = re.compile(r"[0-9a-f]{40}")
+# Server-pushed feature flags: dumpsys device_config, and the same flags again as
+# the CONFIG table of dumpsys settings. Google ships flags whose values list
+# hundreds of package names (on Pixel, apps the notification features must skip,
+# among them most family-safety apps), so searching them names monitoring apps
+# that were never installed. Writing a flag needs WRITE_DEVICE_CONFIG, which no
+# store or sideloaded app can hold, so the flags are never a trace of an app.
+# A flag value can span lines, so the whole region is skipped up to the next
+# settings table or service.
+_AN_CONFIG_REGIONS = (
+    re.compile(rb"^DUMP OF SERVICE device_config:\r?\n.*?(?=^DUMP OF SERVICE |\Z)",
+               re.M | re.S),
+    re.compile(rb"^CONFIG SETTINGS \(user \d+\)\r?\n.*?"
+               rb"(?=^(?:GLOBAL|SECURE|SYSTEM) SETTINGS \(user \d+\)|^DUMP OF SERVICE |\Z)",
+               re.M | re.S),
+)
 
 
 def _an_sections(text):
@@ -880,6 +895,9 @@ def _an_device_logs(r, ctx, folder, already):
                            "bytes were not checked".format(name))
             data = data[:_AN_MAX_LOG_BYTES]
         read += len(data)
+        if name == "dumpsys.txt":
+            for region in _AN_CONFIG_REGIONS:
+                data = region.sub(b"\n", data)
         low = data.lower()
         for ind in ctx.iocs.search_bytes(low):
             _an_hit(r, ind, "phone log " + name,

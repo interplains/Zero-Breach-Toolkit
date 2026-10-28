@@ -313,3 +313,44 @@ class TestFamilySafetyAppIsNotSpywareAlarm(unittest.TestCase):
         s = feeds._load_source_file(src, path)
         self.assertEqual({i.tier for i in s.indicators}, {"stalkerware"})
         self.assertEqual(len(s.indicators), 2)
+
+
+class TestServerPushedFlagsAreNotTraces(unittest.TestCase):
+    """Pixel phones carry a Google flag whose value lists hundreds of apps the
+    notification features must skip, family-safety apps among them. It appears in
+    dumpsys device_config and again in the CONFIG table of dumpsys settings. A name
+    in a flag value is not a trace of the app; a name in the same dump's other
+    tables still is."""
+
+    FLAG = "device_personalization_services/SmartNotification__excluded_packages"
+
+    def hits_for(self, **sections):
+        d = collection(spy=False)
+        add_dumpsys(d, **sections)
+        return [h for h in check(d).hits if h.indicator == SPY]
+
+    def test_device_config_flag_is_not_a_trace(self):
+        flag = "DeviceConfig flags:\n{}=android,com.Slack,{},com.nest.android\n".format(
+            self.FLAG, SPY)
+        self.assertEqual(self.hits_for(device_config=flag), [])
+
+    def test_settings_config_table_is_not_a_trace(self):
+        config = ("CONFIG SETTINGS (user 0)\n"
+                  "_id:11818 name:{} pkg:com.google.android.gms value:android,{}\n"
+                  "_id:11819 name:x/prompt pkg:com.google.android.gms value:first line\n"
+                  "RULES FOR REPLYING:\n  mention {} here\n").format(self.FLAG, SPY, SPY)
+        self.assertEqual(self.hits_for(settings=config), [])
+
+    def test_settings_tables_after_the_config_table_are_still_searched(self):
+        settings = ("CONFIG SETTINGS (user 0)\n"
+                    "_id:1 name:{} pkg:com.google.android.gms value:android\n"
+                    "SECURE SETTINGS (user 0)\n"
+                    "_id:2 name:enabled_notification_listeners pkg:android "
+                    "value:{}/.Listener\n").format(self.FLAG, SPY)
+        self.assertEqual([h.evidence for h in self.hits_for(settings=settings)],
+                         [EV_DEVICE_LOG])
+
+    def test_service_after_device_config_is_still_searched(self):
+        hits = self.hits_for(device_config="DeviceConfig flags:\na/b=android\n",
+                             usagestats="  package={} totalTime=5\n".format(SPY))
+        self.assertEqual([h.evidence for h in hits], [EV_DEVICE_LOG])
