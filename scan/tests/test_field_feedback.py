@@ -1,5 +1,6 @@
 """Fixes from field reports and review: macOS privacy refusals are not called
-locks, hash gaps say why, aliases are not gaps, Opera bookmark roots are read,
+locks, hash gaps say why, aliases are not gaps, folders the hash check could
+not open are not counted as files, Opera bookmark roots are read,
 reports never replace fingerprinted files, unreadable download-origin records
 and Android files without fingerprints are gaps."""
 import argparse
@@ -65,6 +66,72 @@ def test_hash_gap_names_reasons_and_skips_links(tmp_path, monkeypatch):
     assert "2 candidate" in gap  # the alias is not counted as a missed file
     if has_link:
         assert r.submetrics.get("links_not_followed") == 1
+
+
+def _walk_refusing(names, real_walk):
+    """walk_local that first reports each named folder as refused by macOS."""
+    def walk(root, onerror=None):
+        for name in names:
+            onerror(PermissionError(1, "Operation not permitted", os.path.join(root, name)))
+        yield from real_walk(root, onerror=onerror)
+    return walk
+
+
+def _hash_gap(tmp_path):
+    ctx = ScanContext(IocSet([Indicator(DIGEST, "s", "primary", "sha256", "t")], "t", None),
+                      targets=[str(tmp_path)], emit=lambda _: None)
+    r = hashscan.run(ctx)
+    return r, [c.reason for c in r.checks if not c.ran]
+
+
+def test_unopened_folders_are_not_counted_as_candidate_files(tmp_path, monkeypatch):
+    # A refused folder is not a candidate file. Adding it to the file tally made
+    # one readable file and three refused folders report "3 of 1 candidate file(s)".
+    (tmp_path / "ok.bin").write_bytes(b"y")
+    monkeypatch.setattr(hashscan, "walk_local",
+                        _walk_refusing(("Photos", "Mail", "Music"), hashscan.walk_local))
+    r, gaps = _hash_gap(tmp_path)
+    assert r.checked == 1 and len(gaps) == 1
+    assert "candidate file(s)" not in gaps[0]
+    assert "3 folder(s) or item(s)" in gaps[0]
+
+
+def test_unopened_folders_and_unread_files_are_counted_apart(tmp_path, monkeypatch):
+    (tmp_path / "ok.bin").write_bytes(b"y")
+    (tmp_path / "locked.bin").write_bytes(b"z")
+    real_hash = hashscan._sha256
+    def locked(full):
+        if full.endswith("locked.bin"):
+            raise PermissionError(13, "locked")
+        return real_hash(full)
+    monkeypatch.setattr(hashscan, "_sha256", locked)
+    monkeypatch.setattr(hashscan, "walk_local",
+                        _walk_refusing(("Photos", "Mail"), hashscan.walk_local))
+    r, gaps = _hash_gap(tmp_path)
+    assert len(gaps) == 1
+    assert "1 of 2 candidate file(s)" in gaps[0] and "2 folder(s) or item(s)" in gaps[0]
+
+
+def test_root_of_only_unopened_folders_does_not_claim_candidate_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(hashscan, "walk_local",
+                        _walk_refusing(("Photos", "Mail"), hashscan.walk_local))
+    r, gaps = _hash_gap(tmp_path)
+    assert r.checked == 0 and len(gaps) == 1
+    assert "candidate file(s)" not in gaps[0] and "2 folder(s) or item(s)" in gaps[0]
+
+
+def test_summary_counts_unopened_folders_apart_from_program_files():
+    from zbtriage.report import _gap_lines
+    lines = _gap_lines([
+        "hash/root:/Users/x/Downloads (partial): 1 of 47 candidate file(s) under this root were "
+        "not compared against the known hashes (1 over 120 MB); 12 folder(s) or item(s) under "
+        "this root could not be opened, so nothing in them was compared (12 permission denied)",
+        "hash/root:/Users/x/Documents: 3 folder(s) or item(s) under this root could not be "
+        "opened, so nothing in them was compared (3 permission denied)",
+    ])
+    assert any(line.startswith("1 program file(s)") for line in lines), lines
+    assert any(line.startswith("15 folder(s)") for line in lines), lines
+    assert not any("13 program" in line or "16 folder" in line for line in lines), lines
 
 
 def test_permission_denied_is_named_with_the_macos_fix(monkeypatch):

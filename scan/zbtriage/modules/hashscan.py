@@ -178,8 +178,10 @@ def _hash_one(full):
         return full, None, 0, "unreadable"
 
 
-def _hs_reasons(reasons):
-    """Why files were not compared, in words, with the fix where there is one."""
+def _hs_reasons(reasons, fix=True):
+    """Why files were not compared, in words, with the fix where there is one.
+    fix=False leaves out the Full Disk Access advice when another part of the
+    same gap already gives it."""
     parts = []
     if reasons["denied"]:
         parts.append("{} permission denied".format(reasons["denied"]))
@@ -190,7 +192,7 @@ def _hs_reasons(reasons):
     if reasons.get("cloud"):
         parts.append("{} stored only in iCloud or OneDrive and not downloaded".format(reasons["cloud"]))
     text = ", ".join(parts) or "could not be read"
-    if reasons["denied"] and sys.platform == "darwin":
+    if fix and reasons["denied"] and sys.platform == "darwin":
         text += ("; macOS privacy protection blocks some folders: give Terminal Full Disk Access "
                  "(System Settings > Privacy & Security > Full Disk Access) and run again")
     return text
@@ -284,16 +286,21 @@ def run(ctx) -> ModuleResult:
         # said CLEAN with no gap. A file that could not be read has not been
         # cleared of anything (D3).
         ctx.emit("[hash] scanning {} ...".format(root))
-        tally = {"hashed": 0, "candidates": 0, "unreadable": 0}
+        # Files that were found but not compared, and folders or items the walk
+        # could not open, are counted apart. A refused folder is not a candidate
+        # file: adding it to the file tally made a root holding one readable
+        # file and three refused folders report "3 of 1 candidate file(s)".
+        tally = {"hashed": 0, "candidates": 0, "unreadable": 0, "unopened": 0}
         reasons = {"large": 0, "denied": 0, "unreadable": 0, "cloud": 0}
+        walk_reasons = {"large": 0, "denied": 0, "unreadable": 0, "cloud": 0}
 
-        def _walk_err(exc, _r=r, _t=tally, _w=reasons):
+        def _walk_err(exc, _r=r, _t=tally, _w=walk_reasons):
             # Links and special entries are refused by the walker on purpose:
             # not files that were missed (a link's target is fingerprinted where
             # it lies inside a scanned folder), so they are counted, not gaps.
             if getattr(exc, "strerror", None) == WALK_CLOUD_SKIPPED:
                 _r.skipped += 1
-                _t["unreadable"] += 1
+                _t["unopened"] += 1
                 _w["cloud"] += 1
                 return
             if getattr(exc, "strerror", None) in (WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED):
@@ -302,7 +309,7 @@ def run(ctx) -> ModuleResult:
                 return
             # An unreadable subtree would otherwise vanish silently from os.walk.
             _r.skipped += 1
-            _t["unreadable"] += 1
+            _t["unopened"] += 1
             _w["denied" if isinstance(exc, PermissionError) else "unreadable"] += 1
 
         candidates = [root] if selected_file else []
@@ -360,21 +367,30 @@ def run(ctx) -> ModuleResult:
 
         # Now say honestly what this root amounted to.
         name = "root:" + root
+        missed = []
+        if tally["unreadable"]:
+            file_reasons = _hs_reasons(reasons, fix=not walk_reasons["denied"])
+            if tally["hashed"]:
+                missed.append("{} of {} candidate file(s) under this root were not compared "
+                              "against the known hashes ({})".format(
+                                  tally["unreadable"], tally["candidates"], file_reasons))
+            else:
+                # Candidates existed but not one could be fingerprinted: this
+                # root was not searched at all, however many files it holds.
+                missed.append("no file under this root could be fingerprinted "
+                              "({} candidate file(s): {})".format(tally["unreadable"], file_reasons))
+        if tally["unopened"]:
+            # How many files a refused folder holds is unknown, so it is
+            # counted as a folder, never as a number of files.
+            missed.append("{} folder(s) or item(s) under this root could not be opened, so "
+                          "nothing in them was compared ({})".format(
+                              tally["unopened"], _hs_reasons(walk_reasons)))
         if tally["hashed"]:
             r.ran(name)
-            if tally["unreadable"]:
-                r.could_not_run(
-                    name + " (partial)",
-                    "{} of {} candidate file(s) under this root were not compared "
-                    "against the known hashes ({})".format(
-                        tally["unreadable"], tally["candidates"], _hs_reasons(reasons)))
-        elif tally["candidates"] or tally["unreadable"]:
-            # Candidates existed but not one could be fingerprinted: this root
-            # was not searched at all, however many files it holds.
-            r.could_not_run(
-                name,
-                "no file under this root could be fingerprinted ({} candidate file(s): {})".format(
-                    tally["unreadable"], _hs_reasons(reasons)))
+            if missed:
+                r.could_not_run(name + " (partial)", "; ".join(missed))
+        elif missed:
+            r.could_not_run(name, "; ".join(missed))
         else:
             # Walked cleanly, held nothing to fingerprint. Genuinely covered.
             r.ran(name)
