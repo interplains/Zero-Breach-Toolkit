@@ -7,6 +7,7 @@ is used for iOS and larger Android payloads; never installed automatically.
 import hashlib
 import hmac
 import struct
+import sys
 
 from .aes import aes_cbc_decrypt
 
@@ -67,7 +68,14 @@ def backup_ios_keys(blob, password):
     try:
         from cryptography.hazmat.primitives.keywrap import aes_key_unwrap
     except ImportError:
-        raise ValueError("encrypted iPhone backups require optional cryptography")
+        # Most often it is installed, but for a different Python from the one
+        # running the check: say which one, and give the command that fixes it.
+        raise ValueError(
+            "encrypted iPhone backups require optional cryptography, which is not installed for "
+            "the Python running this check (Python {}.{}). Install it with the same command you "
+            "start the check with, from the toolkit folder: python3 -m pip install "
+            "--require-hashes -r requirements-backups.txt (on Windows: python -m pip ...)".format(
+                sys.version_info[0], sys.version_info[1]))
     if not password:
         raise ValueError("encrypted iPhone backup needs --backup-password")
     if not isinstance(blob, bytes) or len(blob) > 1024 * 1024:

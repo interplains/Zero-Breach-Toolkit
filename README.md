@@ -179,7 +179,9 @@ First do the **Set up** steps for [Windows](#windows) or [Mac](#mac) above.
 | What you see | What to do |
 |---|---|
 | `'python' is not recognized` or nothing happens on Windows | Run the Python installer again, choose **Modify**, and make sure **Add Python to environment variables** is ticked. Restart the computer. |
-| `No such file or directory` on a Mac | The folder has a different name. In Terminal type `cd ` (with a space), drag the Zero-Breach-Toolkit-main folder into Terminal, press Enter, then run `python3 -X utf8 scan/zero-breach-toolkit.py`. |
+| `No such file or directory` on a Mac | Type `python3 -X utf8 ` (with a space at the end) in Terminal, then drag the file `zero-breach-toolkit.py` from the toolkit's `scan` folder into Terminal and press Enter. This works from any folder. |
+| A folder named `candiru` in the download | That is part of the toolkit: `third_party/candiru` holds the published detection rules for Candiru's spyware, not the spyware. Leave it in place; if it was deleted, download the toolkit again. |
+| "encrypted iPhone backups require optional cryptography" after installing it | It went into a different Python. Install it with the same command you start the check with (`python3 -m pip install --require-hashes -r requirements-backups.txt` on a Mac), from the toolkit folder. |
 | `command not found: python3` | Install Python from python.org (step 1), then close and reopen Terminal. |
 | Updating the indicator lists fails on a Mac (`CERTIFICATE_VERIFY_FAILED`) | Open **Finder → Applications → Python 3** and double-click **Install Certificates.command**, then update again. Full Disk Access does not affect updating. |
 | Android: the collector finds no phone | Unlock the phone, use a different cable or USB port, and check **Allow USB debugging** was accepted. Unplug and plug in again. |
@@ -363,13 +365,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v0.1.12
+git checkout v0.1.13
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v0.1.12 the file is 971,462 bytes, SHA-256
-`67fc3aa3c4a93cb2dc865d909eae4c6d84178d6485809a5b6e90396b354ebbe5`. The size and SHA-256
+For v0.1.13 the file is 973,579 bytes, SHA-256
+`bb0e6a7a36ee659c0494d02e9f7495d5fd4701f1ab7e57529e79925cb581ae15`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
@@ -459,9 +461,11 @@ reported folder: original or partial records are kept and may be unencrypted.
 `--phone-guide ios` and `--phone-guide android` print these steps in the terminal.
 
 Encrypted backups need the optional `cryptography` package already installed in your Python
-environment; nothing is installed automatically. Install it with
-`python -m pip install --require-hashes -r requirements-backups.txt` (every package pinned by
-version and hash). The supported version is cryptography 50.0.2, which needs Python 3.9 or
+environment; nothing is installed automatically. Install it from the toolkit folder with the
+same command you start the check with: `python3 -m pip install --require-hashes -r
+requirements-backups.txt` on a Mac or Linux, `python -m pip ...` on Windows (every package
+pinned by version and hash). If the check still says it needs cryptography, it was installed
+for a different Python on the same computer. The supported version is cryptography 50.0.2, which needs Python 3.9 or
 later. Intel Macs get 48.0.1, the last release published for them; its remaining advisories
 concern certificate checking, which this tool does not use.
 

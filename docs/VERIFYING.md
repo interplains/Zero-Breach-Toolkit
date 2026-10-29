@@ -30,7 +30,7 @@ verification.
 This check does not depend on us at all. The single-file scanner is generated from the
 repository source, so you can regenerate it from the release's tag and compare:
 
-    git checkout v0.1.12
+    git checkout v0.1.13
     python build/bundle.py
     sha256sum dist/zero-breach-toolkit.py
 

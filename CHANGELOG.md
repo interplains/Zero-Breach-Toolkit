@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.13 (2026-10-29)
+
+- iPhone: when an encrypted backup cannot be read because `cryptography` is missing, the
+  message names the Python running the check and gives the command that installs it there.
+  The usual cause is that it was installed for a different Python on the same computer.
+- The program-file check counts folders it could not open separately from files it could not
+  read, so a gap no longer says impossible things like "3 of 1 candidate file(s)", and the
+  summary names them as folders (contributed in #19).
+- Help: a simpler fix for "No such file or directory" on a Mac (drag the script into
+  Terminal, from any folder), the install command for encrypted backups now says `python3` on
+  a Mac, and the `third_party/candiru` folder is explained: it holds the published detection
+  rules, not spyware.
+
 ## 0.1.12 (2026-10-29)
 
 - iPhone: a full backup of a current phone is checked again. A 512 GB phone with a large photo
