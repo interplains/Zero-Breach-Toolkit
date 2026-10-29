@@ -1546,6 +1546,7 @@ _GAP_APP = re.compile(r"^browser/(?:app:)?([^:/]+):")
 _GAP_LOCKED = ("was running", "permission denied", "locked")
 _GAP_COUNT = re.compile(r"(\d+) of (\d+) candidate file")
 _GAP_NONE = re.compile(r"\((\d+) candidate file\(s\)")
+_GAP_FOLDERS = re.compile(r"(\d+) folder\(s\) or item\(s\)")
 _APP_NAMES = {"edge": "Edge", "chrome": "Chrome", "brave": "Brave", "vivaldi": "Vivaldi",
               "chromium": "Chromium", "firefox": "Firefox", "safari": "Safari",
               "selected": "the selected browser folder"}
@@ -1558,7 +1559,7 @@ def _gap_lines(gaps: List[str]) -> List[str]:
     open app locking its files - with raw error text pasted in. The
     full list stays in the JSON and at the end of the report; here, one line
     per kind of gap."""
-    locked, files_missed, rest = [], 0, {}
+    locked, files_missed, folders_missed, rest = [], 0, 0, {}
     private, full_disk = [], False
     missing_sources = False
     for g in gaps:
@@ -1583,8 +1584,10 @@ def _gap_lines(gaps: List[str]) -> List[str]:
             continue
         if low.startswith("hash/root:"):
             m = _GAP_COUNT.search(g) or _GAP_NONE.search(g)
-            if m:
-                files_missed += int(m.group(1))
+            folders = _GAP_FOLDERS.search(g)
+            if m or folders:
+                files_missed += int(m.group(1)) if m else 0
+                folders_missed += int(folders.group(1)) if folders else 0
                 continue
         rest[g] = rest.get(g, 0) + 1
     lines = []
@@ -1598,11 +1601,15 @@ def _gap_lines(gaps: List[str]) -> List[str]:
         lines.append("macOS privacy protection kept some records from being read: {}. Give "
                      "Terminal Full Disk Access (System Settings > Privacy & Security > Full Disk "
                      "Access), then run the check again.".format(", ".join(sorted(private))))
+    fda = (" Full Disk Access for Terminal lets macOS-protected folders be included."
+           if full_disk and not private else "")
     if files_missed:
         lines.append("{:,} program file(s) could not be fingerprinted (in use, protected, "
                      "or over 120 MB).".format(files_missed)
-                     + (" Full Disk Access for Terminal lets macOS-protected folders be included."
-                        if full_disk and not private else ""))
+                     + ("" if folders_missed else fda))
+    if folders_missed:
+        lines.append("{:,} folder(s) could not be opened, so the program files inside them "
+                     "were not fingerprinted.".format(folders_missed) + fda)
     for reason, count in rest.items():
         line = reason if len(reason) <= 240 else reason[:237] + "..."
         if count > 1:
