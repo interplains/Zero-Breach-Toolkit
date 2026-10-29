@@ -21,12 +21,30 @@ import time
 from .backupcrypto import backup_cbc, backup_ios_keys, backup_ios_file_key
 from .localpaths import local_temp_dir, open_evidence_db, path_problem
 
-_IS_FILE_LIMIT = 256 * 1024 * 1024
-_IS_TOTAL_LIMIT = 1024 * 1024 * 1024
-_IS_ENTRIES = 200000
+# Sized for a full backup of a current phone: a 512 GB phone with a large photo
+# library has a Manifest.db over 300 MB with 240,000 or more rows, and an
+# Info.plist over 16 MiB. The limits still bound what a crafted input can make
+# the check hold in memory, but they no longer stop it on ordinary phones.
+_IS_FILE_LIMIT = 1024 * 1024 * 1024
+_IS_TOTAL_LIMIT = 8 * 1024 * 1024 * 1024
+_IS_ENTRIES = 1000000
 _IS_WALK_ENTRIES = 5000000
 _IS_ARCHIVE_LIMIT = 4 * 1024 * 1024 * 1024
-_IS_PLIST_LIMIT = 16 * 1024 * 1024
+_IS_PLIST_LIMIT = 64 * 1024 * 1024
+
+
+def _is_size_text(size):
+    """A byte count as people say it: '312 MB', '1.5 GB'."""
+    if size >= 1024 * 1024 * 1024:
+        return "{:.1f} GB".format(size / (1024.0 * 1024 * 1024))
+    if size >= 1024 * 1024:
+        return "{:.0f} MB".format(size / (1024.0 * 1024))
+    return "{:,} bytes".format(size)
+
+
+def _is_over_limit(name, size, limit):
+    """Gap text that names the file, its size and the limit it went over."""
+    return "{} is {}, over the {} limit for one file".format(name, _is_size_text(size), _is_size_text(limit))
 
 
 def _is_safe_parts(value):
@@ -41,8 +59,11 @@ def _is_safe_parts(value):
 def _is_plist(raw):
     # plistlib rejects XML external entities; no object classes are instantiated.
     from xml.parsers.expat import ExpatError
-    if not isinstance(raw, bytes) or len(raw) > _IS_PLIST_LIMIT:
+    if not isinstance(raw, bytes):
         raise ValueError("property-list byte limit reached")
+    if len(raw) > _IS_PLIST_LIMIT:
+        raise ValueError("property list is {}, over the {} limit (property-list byte limit reached)".format(
+            _is_size_text(len(raw)), _is_size_text(_IS_PLIST_LIMIT)))
     try:
         doc = plistlib.loads(raw)
     except (ExpatError, RecursionError) as exc:
@@ -204,7 +225,8 @@ class IosEvidenceSource:
                 with self.query(self.index, "SELECT fileID,domain,relativePath,flags FROM Files") as rows:
                     for n, row in enumerate(rows):
                         if n >= self.inventory_limit:
-                            raise ValueError("manifest row limit reached")
+                            raise ValueError("Manifest.db lists more than {:,} files, the most this "
+                                             "check reads (manifest row limit reached)".format(self.inventory_limit))
                         fid, domain, relative, flags = row
                         if flags != 1:
                             continue
@@ -240,7 +262,7 @@ class IosEvidenceSource:
         data = self.read_file(path, limit)
         self.total += len(data)
         if self.total > _IS_TOTAL_LIMIT:
-            raise ValueError("iPhone total read budget reached")
+            raise ValueError("iPhone total read budget reached ({} read)".format(_is_size_text(self.total)))
         return data
 
     def _remember(self, key, path, raw, member=""):

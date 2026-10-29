@@ -38,9 +38,10 @@ def test_other_links_are_not_aliases(monkeypatch, tmp_path):
     assert not browser._browser_same_store_alias(alias, direct)
 
 
-def _wal_fixture():
-    """A database header and a WAL whose single committed frame is page 65,537
-    (4,096-byte pages): just past 256 MiB, inside the 1 GiB desktop limit."""
+def _wal_fixture(page_number=65537):
+    """A database header and a WAL whose single committed frame is page
+    page_number (4,096-byte pages). The default is just past 256 MiB, inside the
+    1 GiB desktop limit."""
     def checksum(raw, a=0, b=0):
         for x, y in struct.iter_unpack("<II", raw):
             a = (a + x + b) & 0xffffffff
@@ -52,7 +53,7 @@ def _wal_fixture():
     wh = struct.pack(">6I", 0x377f0682, 3007000, 4096, 0, 11, 12)
     a, b = checksum(wh)
     wh += struct.pack(">2I", a, b)
-    first = struct.pack(">2I", 65537, 65537)
+    first = struct.pack(">2I", page_number, page_number)
     payload = bytes(4096)
     a, b = checksum(first, a, b)
     a, b = checksum(payload, a, b)
@@ -72,8 +73,12 @@ def test_desktop_wal_uses_the_desktop_limit():
             browser._discard_snapshot(os.path.dirname(copied))
 
 
-def test_phone_reader_keeps_its_smaller_limit():
-    from zbtriage.ios_sources import _is_wal_prefix
-    header, wal = _wal_fixture()
+def test_phone_reader_keeps_its_own_limit():
+    # The phone reader's WAL limit never exceeds the desktop one, and a WAL
+    # reaching past the phone limit is refused.
+    from zbtriage.ios_sources import _is_wal_prefix, _IS_FILE_LIMIT
+    from zbtriage.modules.browser import _MAX_SNAPSHOT_BYTES
+    assert _IS_FILE_LIMIT <= _MAX_SNAPSHOT_BYTES
+    header, wal = _wal_fixture(_IS_FILE_LIMIT // 4096 + 1)
     _prefix, issues = _is_wal_prefix(wal, header)
     assert issues and "limit" in issues[0]

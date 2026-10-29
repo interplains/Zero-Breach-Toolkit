@@ -19,16 +19,18 @@ from ..backupcrypto import backup_cbc, backup_ios_keys, backup_ios_file_key
 from ..localpaths import path_problem, local_temp_dir
 from ..result import Hit, ModuleResult, EV_RECEIVED, EV_REFERENCED, EV_CONTACTED, EV_DEVICE_LOG
 from ..iocs import TYPE_PROCESS, TYPE_FILE_NAME, TYPE_APP_ID
-from ..ios_sources import IosEvidenceSource, _is_plist
+from ..ios_sources import IosEvidenceSource, _is_plist, _is_over_limit
 from ..ios_messages import ios_message_text
 from ..ios_artifacts import ios_additional_artifacts, ios_history_specs, ios_exact_identity, ios_identity_values
 
 NAME = "ios"
-_IOS_LIMIT = 256 * 1024 * 1024
-_IOS_ROWS = 200000
+# Sized for a full backup of a current phone (see ios_sources): large message
+# histories need more rows, text and time than older phones did.
+_IOS_LIMIT = 1024 * 1024 * 1024
+_IOS_ROWS = 1000000
 _IOS_TEXT_LIMIT = 64 * 1024
-_IOS_TEXT_TOTAL = 8 * 1024 * 1024
-_IOS_QUERY_SECONDS = 10
+_IOS_TEXT_TOTAL = 256 * 1024 * 1024
+_IOS_QUERY_SECONDS = 120
 _IOS_QUERY_STEPS = 20000  # Progress callbacks, each after 1,000 VM operations.
 
 
@@ -83,8 +85,10 @@ def _ios_read(path, limit=_IOS_LIMIT):
     if problem:
         raise ValueError("refused backup path: " + problem)
     st = os.stat(path, follow_symlinks=False)
-    if not stat.S_ISREG(st.st_mode) or st.st_size > limit:
-        raise ValueError("backup artifact is not a regular file or exceeds the read limit")
+    if not stat.S_ISREG(st.st_mode):
+        raise ValueError("backup artifact is not a regular file")
+    if st.st_size > limit:
+        raise ValueError(_is_over_limit(os.path.basename(path), st.st_size, limit))
     with open(path, "rb") as fh:
         raw = fh.read(min(limit, st.st_size) + 1)
     if len(raw) != st.st_size or len(raw) > limit:
@@ -460,8 +464,8 @@ def run(ctx) -> ModuleResult:
                     _ios_hit(r, ind, "Info.plist", "application identifier recorded in backup metadata", EV_DEVICE_LOG,
                              artifact=os.path.join(folder, "Info.plist"))
             r.ran("ios:applications")
-        except (ValueError, OSError, AttributeError, plistlib.InvalidFileException):
-            gap("ios:applications", "installed-application list missing or unreadable")
+        except (ValueError, OSError, AttributeError, plistlib.InvalidFileException) as exc:
+            gap("ios:applications", "installed-application list missing or unreadable: {}".format(exc))
     except (ValueError, OSError, TypeError, KeyError, sqlite3.Error, plistlib.InvalidFileException) as exc:
         gap("ios:manifest" if getattr(ctx, "ios_input", "") in ("", "backup") else "ios:input",
             "evidence unavailable: " + str(exc))

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.12 (2026-10-29)
+
+- iPhone: a full backup of a current phone is checked again. A 512 GB phone with a large photo
+  library has a `Manifest.db` over 300 MB and an `Info.plist` over 16 MiB, which were over the
+  check's limits, so the report said "exceeds the read limit" and nothing on the phone was
+  checked. The limits are now sized for current phones (1 GiB per file, 1,000,000 manifest
+  rows, 8 GiB in total, 64 MiB property lists, more time and text for long message
+  histories) and still bound what a crafted backup can make the check load.
+- When a file is over a limit, the report names it with its size, for example
+  "Manifest.db is 1.2 GB, over the 1.0 GB limit for one file".
+
 ## 0.1.11 (2026-10-29)
 
 - Saving a report, summary or evidence bundle to a folder now saves inside that folder under
