@@ -153,6 +153,10 @@ First do the **Set up** steps for [Windows](#windows) or [Mac](#mac) above.
 
 First do the **Set up** steps for [Windows](#windows) or [Mac](#mac) above.
 
+These steps work the same way for an **iPad**. The check runs on a computer, not on the iPhone
+or iPad itself: iOS and iPadOS do not let any app read other apps' data, so the device is backed
+up to a computer and the backup is checked there.
+
 1. **Make a backup on the computer.** Connect the iPhone with a cable and tap **Trust** on the
    phone.
    - Windows: install **Apple Devices** from the Microsoft Store, open it and select the iPhone.
@@ -180,6 +184,7 @@ First do the **Set up** steps for [Windows](#windows) or [Mac](#mac) above.
 |---|---|
 | `'python' is not recognized` or nothing happens on Windows | Run the Python installer again, choose **Modify**, and make sure **Add Python to environment variables** is ticked. Restart the computer. |
 | `No such file or directory` on a Mac | Type `python3 -X utf8 ` (with a space at the end) in Terminal, then drag the file `zero-breach-toolkit.py` from the toolkit's `scan` folder into Terminal and press Enter. This works from any folder. |
+| `Bad CPU type in executable`, or trying to run it on an iPad or iPhone | The check cannot run on an iPad or iPhone. Back the device up to a Windows PC or Mac (the iPhone steps above work for an iPad too) and check the backup on that computer. |
 | A folder named `candiru` in the download | That is part of the toolkit: `third_party/candiru` holds the published detection rules for Candiru's spyware, not the spyware. Leave it in place; if it was deleted, download the toolkit again. |
 | "encrypted iPhone backups require optional cryptography" after installing it | It went into a different Python. Install it with the same command you start the check with (`python3 -m pip install --require-hashes -r requirements-backups.txt` on a Mac), from the toolkit folder. |
 | `command not found: python3` | Install Python from python.org (step 1), then close and reopen Terminal. |
