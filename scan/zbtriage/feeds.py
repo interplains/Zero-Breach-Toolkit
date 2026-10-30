@@ -435,15 +435,26 @@ def _certificate_problem(exc) -> bool:
             or "CERTIFICATE_VERIFY_FAILED" in str(exc))
 
 
-def _certificate_help() -> str:
-    if sys.platform == "darwin":
-        return ("this Python cannot check website certificates, so nothing was downloaded "
-                "and the previous indicator lists were kept. To fix it once: open Finder, go to "
-                "Applications, open the Python 3 folder and double-click Install "
-                "Certificates.command, then run the update again.")
-    return ("this Python cannot check website certificates, so nothing was downloaded and "
-            "the previous indicator lists were kept. Install or update the system's root "
-            "certificates (on Linux the ca-certificates package), then run the update again.")
+def _certificate_help(outcome="nothing was downloaded and the previous indicator lists were kept",
+                      platform=None) -> str:
+    """What to do when HTTPS certificates cannot be checked, for this system.
+    `outcome` says what the failure left unchanged."""
+    platform = sys.platform if platform is None else platform
+    start = "this Python cannot check website certificates, so " + outcome + ". "
+    if platform == "darwin":
+        return (start + "To fix it once: open Finder, go to Applications, open the Python 3 folder "
+                "and double-click Install Certificates.command, then try again.")
+    if platform == "win32":
+        # Windows fetches some root certificates only when a Windows program first
+        # needs them, which Python cannot trigger; and antivirus HTTPS scanning
+        # replaces sites' certificates with its own.
+        return (start + "On Windows this usually means a certificate Windows downloads only when "
+                "needed is missing, or an antivirus is inspecting secure connections. Open "
+                "PowerShell, run: Invoke-WebRequest https://github.com -UseBasicParsing | Out-Null "
+                "then try again. If it still fails, pause your antivirus's HTTPS scanning "
+                "('web shield') for a moment and try again.")
+    return (start + "Install or update the system's root certificates (on Linux the "
+            "ca-certificates package), then try again.")
 
 
 def _looks_like_html(data: bytes) -> bool:

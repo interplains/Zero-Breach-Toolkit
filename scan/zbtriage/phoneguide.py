@@ -20,6 +20,7 @@ import zipfile
 import base64
 import zlib
 
+from .feeds import _certificate_help, _certificate_problem
 from .localpaths import path_problem, local_temp_dir, walk_local
 from .contract import sanitize_untrusted
 
@@ -260,7 +261,9 @@ def collect_android(destination, recipient_file=None):
     asset, digest = _PHONE_ASSETS[key]
     print("This downloads and verifies official AndroidQF v1.8.3, then launches it to collect from a USB-connected Android device.")
     print("Acquisition changes device state and saves private records under: " + destination)
-    print("The Windows collector is unsigned. Its bytes are checked against the pinned publisher SHA-256.")
+    if sys.platform == "win32":
+        print("AndroidQF for Windows is not code-signed by its publisher, so this tool checks the downloaded "
+              "file against its published fingerprint before running it. This is a notice, not an error.")
     print("Enable USB debugging, approve this computer on the phone, and follow AndroidQF's prompts.")
     try:
         consent = input("Do you own this device or have the data owner's explicit consent? Type YES to continue: ").strip()
@@ -269,6 +272,7 @@ def collect_android(destination, recipient_file=None):
     if consent != "YES":
         return None, 1
     work = extracted = None
+    collecting = False
     try:
         recipient = None
         if recipient_file:
@@ -301,6 +305,7 @@ def collect_android(destination, recipient_file=None):
             environment["PATH"] = (work + os.pathsep +
                                    os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
                                    if sys.platform == "win32" else os.defpath)
+            collecting = True
             try:
                 completed = subprocess.run([exe, "-output", work], cwd=work, env=environment, shell=False)
             finally:
@@ -340,7 +345,19 @@ def collect_android(destination, recipient_file=None):
                     shutil.rmtree(target)
                 except OSError:
                     print("Partial analysis files could not be removed: " + target, file=sys.stderr)
-        print("Acquisition stopped: " + str(exc), file=sys.stderr)
-        if work:
+        if _certificate_problem(exc):
+            print("Acquisition stopped: " + _certificate_help(
+                "the collector was not downloaded and nothing was collected from the phone"), file=sys.stderr)
+        else:
+            print("Acquisition stopped: " + str(exc), file=sys.stderr)
+        if work and not collecting:
+            # The collector never ran: the folder holds at most the public
+            # recipient key this run wrote, never anything from the phone.
+            target, parent = os.path.abspath(work), os.path.abspath(destination)
+            if (target != parent and os.path.commonpath((parent, target)) == parent
+                    and set(os.listdir(target)) <= {"key.txt"} and not path_problem(target)):
+                shutil.rmtree(target, ignore_errors=True)
+            print("Nothing was collected from the phone.", file=sys.stderr)
+        elif work:
             print("Original or partial acquisition retained; it may contain unencrypted private records: " + work, file=sys.stderr)
         return None, 1

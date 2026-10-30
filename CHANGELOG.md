@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.14 (2026-10-31)
+
+- Windows: when a download fails because certificates cannot be checked, the message now gives
+  the Windows fix (let Windows fetch the missing certificate with one PowerShell command, or pause
+  an antivirus's HTTPS scanning). It used to suggest a Linux package, and the Android collector
+  showed only the raw error.
+- Android collection: if the collector could not be downloaded, the tool now says nothing was
+  collected from the phone and removes the empty folder, instead of warning that private
+  records may remain.
+- Android collection on Windows: the note that AndroidQF is not code-signed now says plainly
+  that it is a notice, not an error.
+
 ## 0.1.13 (2026-10-29)
 
 - iPhone: when an encrypted backup cannot be read because `cryptography` is missing, the
