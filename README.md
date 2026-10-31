@@ -566,6 +566,31 @@ time and may differ from what was scanned; live databases may need their sidecar
 selected too. Use the minimal summary for first contact, and share the full archive only
 through a secure route agreed with the recipient.
 
+### Practising with a training example
+
+Trainers need a result to show, and real spyware cannot be used for that. `--training`
+checks a made-up Android phone against made-up indicators, so people can learn to read a
+report before they need to. It is also in the start menu as **Practise with a training
+example**.
+
+```text
+python scan/zero-breach-toolkit.py --training spyware        # findings and evidence grades
+python scan/zero-breach-toolkit.py --training worth-a-look   # leads, but no findings
+python scan/zero-breach-toolkit.py --training clean          # what "nothing found" means
+```
+
+The report is the ordinary report, so what people learn carries over to a real check. It
+opens with **TRAINING EXAMPLE - NOT A REAL CHECK** and ends with notes for the trainer; the
+JSON report has a `training` field and its first `must_relay` rule says it is an example.
+
+- Nothing on the computer, a real phone or a downloaded indicator list is read. Options
+  that point a check at real evidence or real indicators are refused with `--training`.
+- Every indicator is invented: the domain uses the reserved `.invalid` ending, which can
+  never exist, and the family is named "Training example (not real spyware)".
+- A sharing summary or evidence bundle cannot be made from it, because both are meant to
+  be sent to someone.
+- The example is built in the temporary folder and deleted when the tool exits.
+
 ---
 
 ## Reading the result

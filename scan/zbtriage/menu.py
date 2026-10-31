@@ -32,7 +32,8 @@ import sys
 # script) has chosen, so the menu stays out of the way.
 _MN_CHOSEN = ("--scan-type", "--target", "--phone", "--collect-android", "--update",
               "--quick", "--deep", "--patterns", "--pattern-path", "--backup-password",
-              "--extended-windows", "--ios-input", "--no-menu", "--preview", "--describe", "--phone-guide")
+              "--extended-windows", "--ios-input", "--no-menu", "--preview", "--describe", "--phone-guide",
+              "--training")
 
 _MN_SECTIONS = ("Check for spyware traces", "Look closer", "Help and settings")
 
@@ -305,6 +306,22 @@ def _mn_guide(s):
     return "back"
 
 
+def _mn_training(s):
+    s.say("\n  Practise reading a report on a made-up phone. Nothing on this computer"
+          "\n  or any real phone is read, and the example is deleted afterwards. Useful"
+          "\n  for trainers and for anyone who wants to see a result before a real check."
+          "\n"
+          "\n  1  A phone with spyware traces (findings and their evidence grades)"
+          "\n  2  A phone with things 'worth a look' but no findings"
+          "\n  3  A phone where nothing is found (what 'clean' does and does not mean)")
+    which = s.ask("  Choose, or press Enter to go back: ")
+    scenario = {"1": "spyware", "2": "worth-a-look", "3": "clean"}.get(which)
+    if not scenario:
+        return "back"
+    s.args.training = scenario
+    return "scan"
+
+
 def _mn_update(s):
     s.say("\n  This downloads the published indicator lists (Amnesty, the MVT project,"
           "\n  Echap and others). This uses the internet, as does guided Android"
@@ -332,6 +349,8 @@ _MN_ITEMS = [
             "step by step; nothing is run", _mn_guide),
     _MnItem(_MN_SECTIONS[2], "Update the indicator lists",
             "uses the internet; the checks never do", _mn_update),
+    _MnItem(_MN_SECTIONS[2], "Practise with a training example",
+            "a made-up phone; reads nothing real", _mn_training),
 ]
 
 

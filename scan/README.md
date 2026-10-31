@@ -61,6 +61,7 @@ python zero-breach-toolkit.py [--quick] [--phone FOLDER] [--json PATH] [--share-
 | `--update` | refresh published sources in the local cache (separate network step) |
 | `--phone FOLDER` | read an AndroidQF folder or a local iPhone backup |
 | `--phone-guide android\|ios` | print preparation steps |
+| `--training [spyware\|worth-a-look\|clean]` | practise on a made-up phone with made-up indicators; reads nothing real, labels every output as training, deletes the example afterwards |
 | `--backup-password` | prompt privately for an encrypted phone backup's password |
 | `--patterns` | opt-in, bounded check against two published Candiru file rules; needs Python 3.9+ and the pinned optional YARA-X wheel |
 | `--pattern-path ABSOLUTE_PATH` | file or folder for the pattern check; repeatable, requires `--patterns` |

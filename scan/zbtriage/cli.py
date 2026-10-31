@@ -43,6 +43,8 @@ from .menu import menu_wanted, choose_scan
 from .scope import scope_arguments, scope_validate, scope_preview, scope_guide
 from .workflow import (WorkflowParser, workflow_arguments, workflow_validate,
                        workflow_check_outputs, workflow_before_scan)
+from .training import (training_arguments, training_validate, training_prepare,
+                       training_cleanup)
 
 
 def _force_utf8_io() -> None:
@@ -142,9 +144,11 @@ def _parse(argv: List[str]) -> argparse.Namespace:
                    version="Zero Breach Toolkit {}".format(__version__))
     scope_arguments(p)
     workflow_arguments(p)
+    training_arguments(p)
     args = p.parse_args(argv)
     scope_validate(p, args)
     workflow_validate(p, args)
+    training_validate(p, args)
     args.iocs_explicit = bool(args.iocs)
     if not args.iocs:
         args.iocs = _default_ioc_paths()
@@ -214,6 +218,9 @@ def _main(argv: List[str] = None) -> int:
     if menu_wanted(raw, args) and not choose_scan(
             args, lambda: feeds.update_command(args.indicator_cache, None)):
         return EXIT_NOT_SCANNED
+    # --training (or the menu's practice entry) swaps in a made-up phone and
+    # made-up indicators; main() deletes them when the tool exits.
+    training_prepare(args)
     try:
         workflow_check_outputs(args)
     except (OSError, ValueError) as exc:
@@ -294,6 +301,8 @@ def main(argv: List[str] = None) -> int:
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1
+    finally:
+        training_cleanup()
 
 
 if __name__ == "__main__":

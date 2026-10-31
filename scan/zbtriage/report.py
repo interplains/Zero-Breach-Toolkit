@@ -378,6 +378,7 @@ def finalize_report(iocs, results, started, args, cancelled=False):
     """Save independent outputs before rendering; retry one interrupted operation."""
     import sys
     from .scope import scope_record
+    from .training import training_marker
     from .workflow import (workflow_write_text, workflow_fingerprints,
                            workflow_interactive, workflow_menu, workflow_output_guard)
     def attempt(operation):
@@ -389,6 +390,9 @@ def finalize_report(iocs, results, started, args, cancelled=False):
     document = attempt(lambda: build_document(iocs, results, started))
     document["scope"] = scope_record(args)
     document["scope"].update(scanned=True, cancelled=cancelled)
+    training = training_marker(args)
+    if training:
+        document["training"] = training
     document["scan_state"] = "partial" if cancelled or document["verdict"]["gaps"] else "completed"
     document["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     document["indicator_fingerprints"] = workflow_fingerprints(iocs)
@@ -537,9 +541,12 @@ def _describe_metrics(metrics: Dict[str, int]) -> List[str]:
 
 
 def render_human(document: Dict[str, Any]) -> str:
+    from .training import training_banner
     document = _human_document(document)
     out: List[str] = []
     w = out.append
+    training_top, training_bottom = training_banner(document)
+    out.extend(training_top)
 
     w(_RULE)
     w("  Zero Breach Toolkit {} - spyware indicator check".format(
@@ -734,6 +741,7 @@ def render_human(document: Dict[str, Any]) -> str:
     w("")
     _support_options(w)
     w(_RULE)
+    out.extend(training_bottom)
     return _defang_report("\n".join(out), document)
 
 

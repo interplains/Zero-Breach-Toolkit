@@ -273,6 +273,7 @@ for label, fname in (("result", "result.py"),
                      ("candiru_rules", "candiru_rules.py"),
                      ("banner", "banner.py"),
                      ("menu", "menu.py"),
+                     ("training", "training.py"),
                      ("readers", "readers.py"),
                      ("contract", "contract.py"),
                      ("evidence", "evidence.py"),
@@ -419,10 +420,12 @@ def _bundle_main(argv=None):
                         "who has not chosen a check on the command line)")
     scope_arguments(p)
     workflow_arguments(p)
+    training_arguments(p)
     raw = sys.argv[1:] if argv is None else argv
     args = p.parse_args(raw)
     scope_validate(p, args)
     workflow_validate(p, args)
+    training_validate(p, args)
     if args.pattern_path and not args.patterns:
         p.error("--pattern-path requires --patterns")
     if args.share_json and args.update:
@@ -453,6 +456,9 @@ def _bundle_main(argv=None):
     if menu_wanted(raw, args) and not choose_scan(
             args, lambda: update_command(args.indicator_cache, None)):
         return EXIT_NOT_SCANNED
+    # --training (or the menu's practice entry): a made-up phone and made-up
+    # indicators, deleted by main() when the tool exits.
+    training_prepare(args)
     try:
         workflow_check_outputs(args)
     except (OSError, ValueError) as exc:
@@ -550,6 +556,8 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1
+    finally:
+        training_cleanup()
 
 
 if __name__ == "__main__":

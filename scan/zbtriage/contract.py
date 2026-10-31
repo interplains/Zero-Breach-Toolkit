@@ -91,6 +91,10 @@ MUST_RELAY = {
                      "spyware on their own. They are things this scan cannot judge, and "
                      "each one comes with its usual, ordinary explanation. Someone who "
                      "knows the device can rule them in or out."),
+    "training": ("TRAINING EXAMPLE. This report is about a made-up phone checked against "
+                 "made-up indicators, produced by --training for practice. It says nothing "
+                 "about any real device. Say so first, and do not give advice about a real "
+                 "device from it."),
     "known-only": ("This tool only looks for publicly documented indicators of known "
                    "spyware. It cannot detect new or unpublished spyware, and the "
                    "traces this spyware leaves usually expire within weeks."),
@@ -124,7 +128,8 @@ def _feeds_incomplete(document: Dict[str, Any]) -> bool:
 
 def contract_must_relay(document: Dict[str, Any]) -> List[Dict[str, str]]:
     verdict = document.get("verdict") or {}
-    ids = ["known-only"]
+    ids = ["training"] if (document.get("training") or {}).get("synthetic") is True else []
+    ids.append("known-only")
     if document.get("scope", {}).get("scan_type") == "targeted":
         ids.append("targeted")
     if document.get("scope", {}).get("scan_type") == "browser":

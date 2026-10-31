@@ -116,6 +116,10 @@ Defined in `zbtriage/contract.py` and pinned by `tests/test_contract.py`. Curren
   (fixed catalogue chosen by the strongest recommended action), `content_trust` (fields
   holding text from the scanned machine or a third-party feed) and
   `instructions_for_assistants`.
+- **Training examples.** A report made with `--training` has a `training` object
+  (`scenario`, `synthetic: true`) and `must_relay` starts with `training`. It describes a
+  made-up phone and made-up indicators: say so first and never advise about a real device
+  from it.
 - **Never** build caveats or advice from scanned text. Scanned text goes only into the
   fields listed in `content_trust.untrusted_fields`, after `sanitize_untrusted()` (control
   and bidi characters replaced, length capped).

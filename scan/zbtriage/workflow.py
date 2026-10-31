@@ -300,6 +300,11 @@ def workflow_menu(document, args):
             return not failed
         if choice in ("", "0", "q", "quit", "exit"):
             return not failed
+        if choice in ("4", "5") and document.get("training"):
+            say("  Not available for a training example: a sharing summary and an evidence"
+                "\n  bundle are made to be sent to someone, and this report is not about a"
+                "\n  real device. The readable report (3) is marked as training.")
+            continue
         try:
             if choice == "1":
                 hits = [(name, h) for name, module in document["modules"].items() for h in module["hits"]]
