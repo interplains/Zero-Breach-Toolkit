@@ -1,8 +1,8 @@
 ZERO BREACH TOOLKIT - HOW TO OPEN IT ON A MAC
 
 The program is not signed by Apple (signing needs a paid account in a real
-person's name, and this project is anonymous), so the first time macOS will
-stop it. That is expected. You only need to do this once.
+person's name, and this project is anonymous), so macOS will stop it the first
+time you open it. That is expected. You only need to do this once.
 
 1. Double-click "Zero Breach Toolkit". macOS says it cannot verify it.
    Click "Done" (or "OK").
