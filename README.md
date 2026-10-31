@@ -236,7 +236,7 @@ exists. Locked or unsupported records are gaps.
 Antivirus status comes from Windows Security Center, including third-party products such
 as Bitdefender that register there. An active registered product puts an old Defender-off
 event in context; it does not mean protection is off now. Registration is not a health
-test, some enterprise products do not register, and unavailable status is a gap. A desktop
+test; some enterprise products do not register, and unavailable status is a gap. A desktop
 app such as Slack is listed because its web records were checked, not because it is
 suspicious.
 
