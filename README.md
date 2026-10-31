@@ -110,7 +110,7 @@ computer and about 20 minutes. Phones are checked by connecting them to the comp
 7. To keep a copy of the result, type `3` and press Enter, type `report.txt` and press Enter.
    It is saved in the Zero-Breach-Toolkit-main folder. Type `0` to finish.
 
-You do not need `sudo` to run the check. It reads your own account's records; run with
+You do not need `sudo` to run the check. It reads your own account's records; if you run with
 `sudo`, it may look at the root account's browsers instead of yours.
 
 ### Android phone
