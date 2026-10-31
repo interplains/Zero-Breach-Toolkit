@@ -188,6 +188,7 @@ up to a computer and the backup is checked there.
 | A folder named `candiru` in the download | That is part of the toolkit: `third_party/candiru` holds the published detection rules for Candiru's spyware, not the spyware. Leave it in place; if it was deleted, download the toolkit again. |
 | "encrypted iPhone backups require optional cryptography" after installing it | It went into a different Python. Install it with the same command you start the check with (`python3 -m pip install --require-hashes -r requirements-backups.txt` on a Mac), from the toolkit folder. |
 | `command not found: python3` | Install Python from python.org (step 1), then close and reopen Terminal. |
+| A match inside an ad blocker such as uBlock Origin | Fixed in 0.1.15: ad-blocker filter lists contain these domains in order to block them, so a match in the browser's copy of a list is now a note, not a finding. Update to the latest download. |
 | `CERTIFICATE_VERIFY_FAILED` on Windows (updating the lists or collecting from an Android phone) | Open **PowerShell** and run `Invoke-WebRequest https://github.com -UseBasicParsing \| Out-Null`, then try again: Windows downloads some certificates only when first needed. If it still fails, pause your antivirus's HTTPS scanning ("web shield") for a moment. |
 | Updating the indicator lists fails on a Mac (`CERTIFICATE_VERIFY_FAILED`) | Open **Finder → Applications → Python 3** and double-click **Install Certificates.command**, then update again. Full Disk Access does not affect updating. |
 | Android: the collector finds no phone | Unlock the phone, use a different cable or USB port, and check **Allow USB debugging** was accepted. Unplug and plug in again. |
@@ -371,13 +372,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v0.1.14
+git checkout v0.1.15
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v0.1.14 the file is 975,368 bytes, SHA-256
-`ac78fdae2699ea74df984ecc789660c2a3b73b824fd31bf5f65d774a0c34f307`. The size and SHA-256
+For v0.1.15 the file is 986,053 bytes, SHA-256
+`4ebe1f3043e5efd056e201143bed8d4a44c3b937afde19f7b89e240cbf4a32f9`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).

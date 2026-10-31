@@ -1095,6 +1095,203 @@ def _host_of(origin):
         return ""
 
 
+# Ad-blocker filter lists. Some indicators are advertising domains used to deliver
+# spyware through ads, and ad-blocker lists (uBlock Origin, AdGuard, EasyList, the
+# lists this project publishes) contain exactly those domains in order to block
+# them. A browser keeps its copy of those lists in the HTTP cache and in the
+# extension's own storage, so a raw byte search finds the indicators there. That
+# is protection, not contact: it is counted and noted, never reported as a finding.
+# Recognition uses the address a cache entry was downloaded from, or the extension
+# that owns the storage, never the file's content, which anyone can write.
+_FILTER_LIST_HOSTS = frozenset((
+    "ublockorigin.github.io", "ublockorigin.pages.dev", "filters.adtidy.org",
+    "adguardteam.github.io", "easylist.to", "easylist-downloads.adblockplus.org",
+    "secure.fanboy.co.nz", "fanboy.co.nz", "pgl.yoyo.org", "malware-filter.gitlab.io",
+    "curbengh.github.io", "malware-filter.pages.dev", "urlhaus-filter.pages.dev",
+    "phishing-filter.pages.dev", "someonewhocares.org", "adaway.org", "oisd.nl",
+    "big.oisd.nl", "small.oisd.nl", "abp.oisd.nl", "nsfw.oisd.nl",
+))
+# Shared hosts where only some repositories are filter lists: (host, path prefix).
+_FILTER_LIST_PATHS = tuple((h, p.lower()) for h, p in (
+    ("raw.githubusercontent.com", "/ublockorigin/"), ("raw.githubusercontent.com", "/uBlockOrigin/"),
+    ("raw.githubusercontent.com", "/adguardteam/"), ("raw.githubusercontent.com", "/easylist/"),
+    ("raw.githubusercontent.com", "/stevenblack/hosts/"), ("raw.githubusercontent.com", "/hagezi/"),
+    ("raw.githubusercontent.com", "/dandelionsprout/"), ("raw.githubusercontent.com", "/interplains/"),
+    ("cdn.jsdelivr.net", "/gh/ublockorigin/"), ("cdn.jsdelivr.net", "/gh/easylist/"),
+    ("cdn.jsdelivr.net", "/gh/hagezi/"), ("cdn.statically.io", "/gh/ublockorigin/"),
+    ("gitlab.com", "/hagezi/"), ("codeberg.org", "/hagezi/"),
+    ("archivegenocide.com", "/scan/"), ("archivegenocide.org", "/scan/"),
+    ("archivegenocide.is", "/scan/"),
+))
+# Chrome Web Store / Edge Add-ons ids of content blockers that keep filter lists.
+_FILTER_LIST_EXTENSIONS = {
+    "cjpalhdlnbpafiamejdnhcphjbkeiagm": "uBlock Origin",
+    "odfafepnkmbhccpbejgmiehpchacaeak": "uBlock Origin",
+    "ddkjiahejlhfcafbddmgiahcphecmpfh": "uBlock Origin Lite",
+    "bgnkhhnnamicmpeenaelnjfhikgbkllg": "AdGuard",
+    "gighmmpiobklfepjocnamgkkbiglidom": "AdBlock",
+    "cfhdojbkjhnklbpkdaibdccddilifddb": "Adblock Plus",
+    "mlomiejdfkolichcflejclcbmpeaniij": "Ghostery",
+    "pkehgijcmpdhfbdbbnkijodmdjhbjlgp": "Privacy Badger",
+}
+_SIMPLE_CACHE_MAGIC = struct.pack("<Q", 0xfcfb6d1ba7725c30)
+_FF_CACHE_KEY = re.compile(rb"(?:^|[,\x00]):(https?://[\x21-\x7e]+?)\x00")
+
+
+def _filter_list_url(url):
+    """True when a request URL is a known filter-list download."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    path = (parts.path or "").lower()
+    if host in _FILTER_LIST_HOSTS:
+        return True
+    return any(host == h and path.startswith(p) for h, p in _FILTER_LIST_PATHS)
+
+
+def _filter_list_extension(text):
+    """The content blocker named by a chrome-extension:// origin in `text`, or None."""
+    for ext_id, name in _FILTER_LIST_EXTENSIONS.items():
+        if "chrome-extension://" + ext_id in text:
+            return name
+    return None
+
+
+def _cache_entry_urls(data, firefox=False):
+    """The request key of one HTTP cache entry, as its space-separated parts.
+
+    Chromium's simple cache starts each entry with a fixed header followed by the
+    key ("1/0/_dk_<site> <frame> <url>" or just the url). Firefox's cache2 keeps the
+    body first and its metadata, including the key (",:<url>"), after the offset
+    stored in the last four bytes. Anything else returns []."""
+    if data[:8] == _SIMPLE_CACHE_MAGIC and len(data) >= 24:
+        size = struct.unpack_from("<I", data, 12)[0]
+        if 0 < size <= 8192:
+            for start in (24, 20):
+                key = data[start:start + size]
+                if key[:4] == b"1/0/" or key[:4] == b"http" or key[:4] == b"chro":
+                    return key.decode("latin-1").split()
+        return []
+    if firefox and len(data) > 8:
+        offset = struct.unpack(">I", data[-4:])[0]
+        if 0 < offset < len(data) - 4:
+            found = _FF_CACHE_KEY.search(data[offset:])
+            if found:
+                return [found.group(1).decode("latin-1")]
+    return []
+
+
+_BLOCKFILE_HEADER = 8192
+_BLOCKFILE_SIZES = {2: 256, 3: 1024, 4: 4096}
+_BLOCKFILE_EXTERNAL = re.compile(r"^f_[0-9a-f]{6}$")
+_BLOCKFILE_INDEX_LIMIT = 64 * 1024 * 1024
+
+
+def _blockfile_read(cache_dir, name, files):
+    if name not in files:
+        full = os.path.join(cache_dir, name)
+        data = b""
+        if not path_problem(full):
+            try:
+                if os.path.getsize(full) <= _BLOCKFILE_INDEX_LIMIT:
+                    with io.open(full, "rb") as fh:
+                        data = fh.read()
+            except OSError:
+                data = b""   # a running browser holds these files exclusively
+        files[name] = data
+    return files[name]
+
+
+def _blockfile_external_keys(cache_dir):
+    """Map each large-body file (f_xxxxxx) of a Chromium block-file cache, the
+    layout Chromium uses on Windows, to the request key its index entry holds.
+
+    Index entries are 256-byte records in data_1; a key longer than the record
+    lives in another block file. Returns {} when the index cannot be read, which
+    is normal while the browser is running."""
+    files = {}
+    index = _blockfile_read(cache_dir, "data_1", files)
+    keys = {}
+    for off in range(_BLOCKFILE_HEADER, len(index) - 255, 256):
+        key_len, long_key = struct.unpack_from("<iI", index, off + 32)
+        body = struct.unpack_from("<I", index, off + 60)[0]
+        if not (0 < key_len <= 8192) or not body & 0x80000000 or (body >> 28) & 7:
+            continue
+        if long_key:
+            kind = (long_key >> 28) & 7
+            if not long_key & 0x80000000 or kind not in _BLOCKFILE_SIZES:
+                continue
+            data = _blockfile_read(cache_dir, "data_%d" % ((long_key >> 16) & 0xff), files)
+            start = _BLOCKFILE_HEADER + (long_key & 0xffff) * _BLOCKFILE_SIZES[kind]
+            key = data[start:start + key_len]
+        else:
+            key = index[off + 96:off + 96 + key_len]
+        if len(key) == key_len:
+            keys["f_%06x" % (body & 0x0fffffff)] = key.decode("latin-1").split()
+    return keys
+
+
+def _looks_like_filter_list(data):
+    """True for a body that is plainly an ad-blocker filter list: a list header
+    and rule lines throughout. Used only for Windows cache bodies whose index
+    could not be read; a script or page does not have this shape."""
+    text = data[:16384].decode("utf-8", "replace").lstrip("\ufeff")
+    lines = [line.strip() for line in text.splitlines() if line.strip()][:40]
+    if len(lines) < 3:
+        return False
+    first = lines[0].lower()
+    if not (first.startswith(("[adblock", "[adguard", "[ublock")) or first.startswith("! ")):
+        return False
+    rules = sum(1 for line in lines
+                if line.startswith(("!", "||", "@@", "##", "[", "0.0.0.0 ", "127.0.0.1 ")))
+    return rules * 5 >= len(lines) * 4
+
+
+def _filter_list_source(path, data, index_cache=None):
+    """Describe the ad-blocker filter list this cache/storage file holds, or None.
+
+    A cache entry counts when it was downloaded from a filter-list address or by a
+    content-blocker extension; a Service Worker cache counts when its index names a
+    content-blocker extension as the owner."""
+    parts = os.path.normpath(path).split(os.sep)
+    lowered = [p.lower() for p in parts]
+    cache = index_cache if index_cache is not None else {}
+    key = _cache_entry_urls(data, firefox="cache2" in lowered)
+    blockfile = bool(_BLOCKFILE_EXTERNAL.match(parts[-1]))
+    if blockfile and not key:
+        folder = os.path.dirname(os.path.normpath(path))
+        if ("blockfile", folder) not in cache:
+            cache[("blockfile", folder)] = _blockfile_external_keys(folder)
+        key = cache[("blockfile", folder)].get(parts[-1], [])
+    # Only the requested address itself decides; the site that asked for it
+    # (the other parts of the key) must not, or any page on a list site, and
+    # every ad it loaded, would be passed over.
+    if key and _filter_list_url(key[-1]):
+        return "a filter list downloaded from " + (_host_of(key[-1]) or key[-1])
+    name = _filter_list_extension(" ".join(key[:-1])) if len(key) > 1 else None
+    if name:
+        return "data downloaded by the " + name + " extension"
+    if blockfile and not key and _looks_like_filter_list(data):
+        return "a cached ad-blocker filter list"
+    if "cachestorage" in lowered:
+        at = lowered.index("cachestorage")
+        if at + 1 < len(parts) - 1:
+            owner_dir = os.sep.join(parts[:at + 2])
+            if owner_dir not in cache:
+                text = ""
+                try:
+                    with io.open(os.path.join(owner_dir, "index.txt"), "rb") as fh:
+                        text = fh.read(65536).decode("latin-1")
+                except OSError:
+                    pass
+                cache[owner_dir] = _filter_list_extension(text)
+            if cache[owner_dir]:
+                return "the " + cache[owner_dir] + " extension's own storage"
+    return None
+
+
 def _host_matches(host, ioc_set):
     """Exact host match, or a subdomain of an indicator. Not a substring test:
     these artifacts give us a real hostname, so we can compare properly."""
@@ -1248,6 +1445,7 @@ def run(ctx) -> ModuleResult:
     # Modification times of every cache/LevelDB file searched, used at the end to
     # report the actual age of the oldest surviving artifact.
     seen_mtimes = []
+    filter_lists = {"indicators": 0, "files": 0, "examples": []}
     # Creation times of the oldest cookie in each cookie store. Cookies outlive the
     # cache by a long way, so leaving them out would understate the window.
     cookie_times = []
@@ -2049,6 +2247,7 @@ def run(ctx) -> ModuleResult:
                 getattr(exc, "filename", root), exc))
 
         read_any = False
+        owner_index = {}
         for dirpath, _dirs, files in walk_local(root, onerror=onerror):
             for fn in files:
                 heartbeat(label)
@@ -2097,7 +2296,17 @@ def run(ctx) -> ModuleResult:
                 r.submetrics["blob"] += 1
                 r.checked += 1
                 read_any = True
-                for ind in ctx.iocs.search_bytes(lowered):
+                matched = list(ctx.iocs.search_bytes(lowered))
+                source = _filter_list_source(full, data, owner_index) if matched else None
+                if source:
+                    # An ad-blocker's own copy of a filter list: protection, not
+                    # contact. Counted and noted once, never a finding.
+                    filter_lists["indicators"] += len(matched)
+                    filter_lists["files"] += 1
+                    if len(filter_lists["examples"]) < 3:
+                        filter_lists["examples"].append("{} ({})".format(full, source))
+                    continue
+                for ind in matched:
                     # Local Storage / Session Storage / Service Worker entries
                     # are KEYED BY ORIGIN, which is why a match there was graded
                     # as contact. But this is a raw byte search over the whole
@@ -2550,6 +2759,15 @@ def run(ctx) -> ModuleResult:
         else:
             # Nothing anywhere read this kind: the kind itself is the gap.
             r.could_not_run(check_name, state["reason"] or "could not be read")
+
+    if filter_lists["files"]:
+        r.submetrics["filter_list_indicators"] = filter_lists["indicators"]
+        r.note("{} indicator match(es) in {} file(s) are inside an ad-blocker's filter "
+               "list, which contains these addresses in order to block them. This is "
+               "expected and is not a sign of contact or infection, so they are not "
+               "findings. For example: {}".format(
+                   filter_lists["indicators"], filter_lists["files"],
+                   "; ".join(filter_lists["examples"])))
 
     # Report the measured window. Without this, "browser: CLEAN" invites the reader
     # to assume it means "clean for as long as I have owned this computer", which is

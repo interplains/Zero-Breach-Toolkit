@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.15 (2026-10-31)
+
+- Browsers: an ad-blocker's own copy of a filter list is no longer reported. Lists such as
+  uBlock Origin's, AdGuard's, EasyList and this project's blocklists contain the advertising
+  domains used to deliver spyware, in order to block them, and the browser keeps a copy in its
+  cache. Those matches are now counted and explained in a note instead of appearing as
+  findings. A list is recognised by the address it was downloaded from or by the extension
+  that stores it (Chrome, Edge, Brave and other Chromium browsers on Windows, macOS and Linux,
+  and Firefox); ordinary cached pages that mention an indicator are still reported.
+
 ## 0.1.14 (2026-10-31)
 
 - Windows: when a download fails because certificates cannot be checked, the message now gives
