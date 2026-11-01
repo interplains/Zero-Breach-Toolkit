@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Android: an app's manifest declarations in `dumpsys package` (`queriesPackages`,
+  `queriesProviders`, `queriesIntents` and the `uses...Libraries` lines) no longer make the
+  phone's system records "name" a monitoring app. They list what an app wants to see, not what
+  is installed: Microsoft Office apps list `com.microsoft.familysafety`, so a phone that never
+  had that app was reported. A real `Package [...]` record is still reported, and domains on
+  those lines are still checked.
+
 ## 0.1.15 (2026-10-31)
 
 - Browsers: an ad-blocker's own copy of a filter list is no longer reported. Lists such as

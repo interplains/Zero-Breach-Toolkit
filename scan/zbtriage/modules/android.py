@@ -264,6 +264,14 @@ _AN_CONFIG_REGIONS = (
                re.M | re.S),
 )
 
+# Per-app declaration lines of dumpsys package: the package names an app asks to
+# see in its manifest <queries> (Microsoft apps list com.microsoft.familysafety),
+# and the libraries it asks to use. They say what the app wants to find, not what
+# is installed, so app ids are not searched in them. Domains and paths still are.
+_AN_DECLARATION_LINES = re.compile(
+    rb"^[ \t]*(?:queries(?:Packages|Providers|Intents)|uses(?:Optional|Static|Sdk)?Libraries)="
+    rb"[^\n]*", re.M)
+
 
 def _an_sections(text):
     """dumpsys output split into {service name: body}."""
@@ -911,7 +919,8 @@ def _an_device_logs(r, ctx, folder, already):
             _an_hit(r, ind, "phone log " + name,
                     "the phone's own system log names it", evidence=EV_DEVICE_LOG)
         if app_set is not None:
-            for shadow in app_set.search_bytes(low):
+            app_low = _AN_DECLARATION_LINES.sub(b"", data).lower() if name == "dumpsys.txt" else low
+            for shadow in app_set.search_bytes(app_low):
                 if shadow.value in already:
                     continue
                 already.add(shadow.value)
