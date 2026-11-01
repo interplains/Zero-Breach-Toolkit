@@ -23,8 +23,8 @@ from .iocs import IocError
 from .netconns import nc_is_remote, nc_list, nc_match
 from .scope import scope_guide
 from .training import TRAINING_SCENARIOS, training_cleanup, training_prepare
-from .report import (V_HITS, V_NONE, V_NONE_WITH_GAPS, _defang_report, prepare_document,
-                     render_human, render_summary, share_summary, write_json)
+from .report import (V_HITS, V_NONE, V_NONE_WITH_GAPS, _defang_report, phone_source_unread,
+                     prepare_document, render_human, render_summary, share_summary, write_json)
 from .workflow import workflow_before_scan, workflow_output_guard, workflow_write_text
 
 GUI_RED = "#c4161c"
@@ -152,6 +152,10 @@ def gui_next_steps(document):
         steps.append(T("Get expert help. Journalists, activists and other civil society members can "
                        "contact Access Now's free Digital Security Helpline: {url}", url=HELPLINE))
         steps.append(T("Do not open or look up the addresses in the report."))
+    elif status in (V_NONE, V_NONE_WITH_GAPS) and phone_source_unread(document):
+        steps.append(T("The phone's backup or collection could not be opened, so nothing in it was "
+                       "checked. Check the folder you chose. For an encrypted iPhone backup, enter its "
+                       "backup password and run the check again."))
     elif status in (V_NONE, V_NONE_WITH_GAPS):
         steps.append(T("Nothing matched known spyware. Keep your system and apps updated, and run the "
                        "check again now and then."))
@@ -304,6 +308,11 @@ def gui_headline(document):
         return (GUI_RED, T("Something needs a closer look"),
                 T("Traces matching known spyware were found. Read the summary below before acting, "
                   "and keep this device as it is.") + gap_note)
+    if status in (V_NONE, V_NONE_WITH_GAPS) and phone_source_unread(document):
+        # Never green: a phone that could not be opened was not checked at all.
+        return (GUI_WARN, T("This phone could not be checked"),
+                T("Its backup or collection could not be opened, so nothing in it was checked. "
+                  "This is not a clean result.") + gap_note)
     if status in (V_NONE, V_NONE_WITH_GAPS):
         return (GUI_GOOD, T("No known spyware traces found"),
                 T("Nothing matched the indicators in what could be checked. That is not a guarantee.")

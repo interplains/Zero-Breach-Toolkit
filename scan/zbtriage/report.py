@@ -1457,6 +1457,22 @@ def _support_options(w):
              "to assume spyware infection. No result from this tool rules it out."])
 
 
+def phone_source_unread(document: Dict[str, Any]) -> bool:
+    """True when a phone was checked but its backup or collection could not be
+    opened at all (for example an encrypted iPhone backup that could not be
+    decrypted). Then nothing in that phone was checked, so the result must not
+    read as clean. Only phone scans count; a platform that did run is not unread."""
+    if not document.get("scope", {}).get("phone"):
+        return False
+    checks = [c for m in document.get("modules", {}).values() for c in m.get("checks", [])]
+    def failed(names):
+        return any(c.get("name") in names and not c.get("ran") for c in checks)
+    def read(prefix):
+        return any(str(c.get("name", "")).startswith(prefix) and c.get("ran") for c in checks)
+    return ((failed(("android",)) and not read("android:"))
+            or (failed(("ios:manifest", "ios:input")) and not read("ios:")))
+
+
 def render_summary(document: Dict[str, Any]) -> str:
     """The part a person actually reads. Answers, in order: what was found, what
     it means, what to do, and what this scan could not check.
@@ -1480,7 +1496,13 @@ def render_summary(document: Dict[str, Any]) -> str:
         _say(w, ["  TRAINING EXAMPLE: a made-up phone and made-up indicators, not a real check."])
     w(_RULE)
 
-    if not all_hits:
+    if not all_hits and phone_source_unread(document):
+        _say(w, ["  RESULT: the phone could not be checked. Its backup or collection could",
+                 "          not be opened, so nothing in it was checked."])
+        w("")
+        _say(w, ["  This is NOT a clean result. See the two sections below for the reason",
+                 "  and for what could not be checked."])
+    elif not all_hits:
         _say(w, ["  RESULT: no known indicator was found in anything that could be",
                  "          checked."])
         w("")

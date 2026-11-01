@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 (unreleased)
+
+- The programs now include the library needed to open encrypted iPhone backups; before, an
+  encrypted backup could not be read and the result could wrongly look clean. A phone backup
+  that cannot be read now shows as not checked, never as clean.
+
 ## 2.0.0 (unreleased)
 
 Languages
