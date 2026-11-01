@@ -219,7 +219,11 @@ def check():
             name[:-5], len(catalog) - len(stale), len(missing), len(damaged), len(stale)))
         for k in damaged[:3]:
             print("    damaged:", repr(k[:70]))
-        bad += len(damaged)
+        for k in missing[:3]:
+            print("    missing:", repr(k[:70]))
+        # A missing or damaged translation fails the check; a stale key (a
+        # sentence the code no longer has) only warns, `build` drops it.
+        bad += len(damaged) + len(missing)
     return 1 if bad else 0
 
 

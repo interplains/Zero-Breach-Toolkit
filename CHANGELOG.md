@@ -1,5 +1,68 @@
 # Changelog
 
+## 2.0.3 (unreleased)
+
+**If you checked a phone with 2.0.0 to 2.0.2 and got green, please check it again.** Some results said
+more than the check had done.
+
+Results that said too much, found by a code review and fixed:
+
+- A phone nothing could be read from showed green "No known spyware traces found" in the window: an
+  empty folder with a phone type chosen, a damaged sysdiagnose, an Android collection with an empty app
+  list. It now says "This phone could not be checked". Whether anything was read is now decided by
+  records actually read, not by the name of a check.
+- In the window, green now means nothing matched and every check ran. When some checks could not
+  run, the window shows "Nothing found in what could be checked" in a neutral colour, as the
+  terminal summary already did. A match to a withdrawn indicator has its own wording.
+- Android crash records: `tombstone_NN.pb` files and the older `>>> name <<<` layout are now read, and a
+  record that cannot be read is listed as not checked. Removed apps are now recognised in real battery
+  history, which has no version on those lines.
+- A file in a layout the tool does not recognise is listed as not checked instead of being counted as
+  read: browser HSTS and network state, Safari lists, iPhone records and crash reports, and Windows
+  program records. The same applies to a source that holds no usable records.
+- The report says which file types the Standard check did not fingerprint in each folder, and a
+  match in a phone log carries its line number and says that a mention is not proof of contact.
+- A summary with a finding now lists the checks that could not run.
+
+Other fixes from the same review:
+
+- A folder pasted into the window is checked before it is opened, so a network path is refused
+  without contacting that server. Browser profile discovery checks a path before following it.
+- A named pipe planted in a browser folder can no longer hang the check on Linux or macOS, and the
+  browser state files read this way have a size limit.
+- Very long crafted text uses about a sixth of the memory it did. An address followed by an escaped dot
+  (`example.test%2eevil`) no longer matches `example.test`.
+- Indicator-file names and paths in the report are cleaned like other outside text, and a damaged
+  language file falls back to English instead of crashing.
+- Corrected file limits in the documentation (512 MiB for the hash check) and noted that the window
+  always exits with 0, so scripts should use the terminal commands.
+
+Window fixes found when the Windows program was tested by hand:
+
+- "Update indicator lists" in the programs and the single file reported "name 'feeds' is not defined" after
+  the update had run. The lists were downloaded; the error message was wrong. Thanks to the testers who reported it.
+- The phone guides in the program describe the window's own steps ("A phone", then "Find iPhone
+  backups" or "Choose...", the backup password, "Start check") instead of terminal commands, using the
+  button names as written in the chosen language. Running the script keeps the command-line form. The
+  Android answers are a plain list instead of columns lined up with spaces, and the guide window
+  scrolls and keeps its Close button.
+- Saving a report opens in Downloads, not Documents. When writing fails (Windows ransomware
+  protection blocks an unsigned program from Documents, Desktop and Pictures) the message says what
+  happened and what to do, with the system's own wording after it.
+- Help names the buttons and result headlines exactly as they appear in the chosen language; it was
+  one translated block that quoted them in English or by old names.
+- Right-to-left text: lines are kept under 180 bytes in the Windows and macOS layout, where Tk drew
+  longer lines in two swapped pieces; on Linux a full stop, comma or colon after a Latin word at the
+  end of an Arabic sentence now sits on the reading side.
+- The descriptions beside the check choices no longer move right when "A phone" or "Practise" is chosen.
+- Updating the indicator lists shows plain lines ("Name: already up to date") instead of hashes and
+  counts.
+- A computer with no downloaded indicator lists says so on the Check tab: only the built-in
+  indicators are in use until "Update indicator lists" is pressed.
+- The report's sharing note says "your username" outside Windows.
+- Not changed: the Windows terminal entry that stays in the taskbar, the Help tab having no
+  scrollbar, and the right-to-left lines cut at the smallest window size.
+
 ## 2.0.2 (2026-11-01)
 
 - On a Mac, opening the window can abort the whole program ("Python quit unexpectedly"): with no

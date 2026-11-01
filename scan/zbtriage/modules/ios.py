@@ -276,7 +276,15 @@ def run(ctx) -> ModuleResult:
                                    keep_names=frozenset(v.lower() for ind in ctx.iocs.of_type(TYPE_FILE_NAME)
                                                         for v in ios_identity_values(ind)))
         source.start()
-        r.ran("ios:manifest" if source.kind == "backup" else "ios:input")
+        # Opening the source is not proof that anything was read: an empty folder,
+        # a corrupt archive and a manifest that lists no files all open without
+        # error. The input is "ran" only when it listed at least one file.
+        frame = "ios:manifest" if source.kind == "backup" else "ios:input"
+        if source.entries:
+            r.ran(frame)
+        elif not any(key[0] == frame for key in gaps):
+            gap(frame, "no files were listed in this backup, so nothing was read" if source.kind == "backup"
+                else "no supported iPhone files were found in this input, so nothing was read")
         r.submetrics["ios_inventory_files"] = len(source.entries)
         for domain, relative in source.entries:
             for ind in ctx.iocs.of_type(TYPE_FILE_NAME):
@@ -470,6 +478,9 @@ def run(ctx) -> ModuleResult:
         gap("ios:manifest" if getattr(ctx, "ios_input", "") in ("", "backup") else "ios:input",
             "evidence unavailable: " + str(exc))
     finally:
+        # What was actually read: files listed plus records searched. Zero means
+        # nothing usable came out of this input, whatever opened without error.
+        r.submetrics["phone_records_read"] = (len(source.entries) if source else 0) + r.checked
         if source:
             source.close()
         for (check, reason), count in gaps.items():

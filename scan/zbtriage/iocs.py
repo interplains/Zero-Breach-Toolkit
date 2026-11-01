@@ -26,11 +26,13 @@ from __future__ import annotations
 
 import bisect
 import io
+import itertools
 import json
 import os
 import ipaddress
 import re
 import datetime
+from array import array
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -220,6 +222,9 @@ def _char_at16(hay: bytes, pos: int):
     return chr(lo) if hi == 0 and lo < 0x80 else "￿"
 
 
+_DOT = re.compile(r"\.")
+
+
 def _bad_sets(needle: str, ind_type: str):
     """(left_bad, right_bad, continues) for one indicator. `continues` is what
     may not follow a trailing dot - see the comment on _LABEL."""
@@ -268,6 +273,13 @@ def _valid_at(hay, idx: int, nlen: int, ind_type: str, display: str,
     if ok and after is not None:
         if after in right_bad:
             ok = False
+        elif after == "%" and ind_type != TYPE_IP:
+            # An escaped "." "-" or "_" continues the name (example.test%2eevil is
+            # example.test.evil). Any other escape ends it: %2f, %26 and %3a are how
+            # a link is normally written. Non-ASCII text ends a name as before.
+            tail = "".join(c or "" for c in (at(hay, idx + nlen + unit * k) for k in range(1, 6)))
+            if tail.startswith(("2e", "2d", "5f", "252e", "252d", "255f")):
+                ok = False
         elif after == ".":
             nxt = at(hay, idx + nlen + unit)
             ok = nxt is None or nxt not in cont
@@ -637,8 +649,16 @@ class IocSet:
         tlds = self._tlds
         unit = 2 if wide else 1
         n = len(token)
-        dots = [i for i, c in enumerate(token) if c == "."]
-        ends = [n] + [d for d in dots if d + 1 == n or token[d + 1] in "._"]
+        if n <= 4096:
+            dots = [i for i, c in enumerate(token) if c == "."]
+            ends = [n] + [d for d in dots if d + 1 == n or token[d + 1] in "._"]
+        else:
+            # One enormous run of name characters and dots ("a.a.a.a..." for megabytes) needs
+            # one position per dot; as Python ints that was ~19x the input in memory (60 MB ->
+            # 1.1 GB). Four bytes each, and no second list for the ends.
+            dots = array("I")
+            dots.extend(m.start() for m in _DOT.finditer(token))
+            ends = itertools.chain((n,), (d for d in dots if d + 1 == n or token[d + 1] in "._"))
         for end in ends:
             last = token.rfind(".", 0, end)
             if last < 0 or token[last + 1:end] not in tlds:

@@ -66,6 +66,9 @@ _IA_KIND_ORDER = {"url-cache": 3, "crashes": 2, "app-metadata": 1, "webkit-stati
 # Per-report caps; reaching one is always a reported gap, never a silent cut.
 _IA_RECORD_LIMIT = 5000
 _IA_LINE_LIMIT = 200000
+# Report types that always name the processes they describe: crash (109 legacy,
+# 309), Jetsam memory-pressure event (298) and stackshot (288).
+_IA_IDENTITY_REPORTS = ("109", "309", "298", "288")
 
 
 def ios_exact_identity(indicator, value):
@@ -189,6 +192,8 @@ def _ia_webkit_origin_hosts(raw):
     each a scheme string, a host string and a port flag (plus a 16-bit port).
     A string is a 32-bit length, a byte saying 8-bit (1) or UTF-16 (0), then text."""
     hosts, pos = [], 0
+    if not raw:
+        raise ValueError("empty web view origin record")
 
     def text():
         nonlocal pos
@@ -456,7 +461,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
             try:
                 with query(con, "SELECT 1 FROM sqlite_master WHERE type='table' AND name LIKE 'cfurl_cache_%'") as cur:
                     if cur.fetchone() is None:
-                        return
+                        # Not a CFNetwork cache, so nothing of this artifact was read:
+                        # neither "ran" nor a gap (backups carry other Cache.db files).
+                        return False
             finally:
                 con.close()
         actions_table = False
@@ -594,7 +601,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         finally:
             con.close()
         if not event_tables:
-            return  # an analytics file without event records holds nothing to match
+            # No event records: some other store with this name. Nothing was read,
+            # so the check is neither "ran" nor a gap.
+            return False
         unreadable = 0
         for table in event_tables:
             for row_id, row in sql_rows(key, check, table, ("data",), ("timestamp",)):
@@ -784,7 +793,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         empty_cache = (kind == "id-status-cache" and isinstance(doc, dict)
                        and not any(isinstance(v, dict) for v in doc.values()))
         if not recognized and not empty_cache and kind not in ("profile-settings", "preferences"):
-            gap(check, "unrecognized typed property-list schema; only literal references were searched")
+            # Raised, not recorded beside a "ran": a layout nobody documented was
+            # not read as this artifact. The literal text was still searched above.
+            raise ValueError("unrecognized typed property-list schema; only literal references were searched")
 
     def forensic_strings(text, key, check, where):
         for ind, what in dt_ios_strings_in(text):
@@ -796,6 +807,10 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         raw = source.artifact(*key)
         if len(raw) > 8 * 1024 * 1024:
             raise ValueError("lockdown record byte limit reached")
+        # A pair record is a property list. Empty or damaged bytes searched as
+        # text would read as "looked and found nothing".
+        if not isinstance(_is_plist(raw), (dict, list)):
+            raise ValueError("unsupported property-list root")
         # Binary and XML property lists both keep these identifiers as plain text.
         text = raw.decode("latin-1")
         for ind, what in dt_ios_strings_in(text):
@@ -891,11 +906,13 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                     found += 1
                     typed(path, ("file-path",), key, check, line_no, detail, EV_DEVICE_LOG,
                           _ia_iso(when), when)
-        if binary_body and bug_type in ("109", "309"):
+        if binary_body and bug_type in _IA_IDENTITY_REPORTS:
             raise ValueError("crash report body is not text and was not read")
-        # Crash reports (109 legacy, 309) must name the process. Other report
-        # kinds - Siri feedback, update logs - legitimately carry no identity.
-        if not found and bug_type in ("109", "309"):
+        # Crash (109 legacy, 309), memory-pressure (298) and stackshot (288)
+        # reports must name a process. Other report kinds - Siri feedback, update
+        # logs - legitimately carry no identity. A 298 or 288 whose process list
+        # is renamed, empty or a different shape read nothing, so it is a gap.
+        if not found and bug_type in _IA_IDENTITY_REPORTS:
             raise ValueError("unsupported IPS identity schema")
 
     def process_list(text, key, check):
@@ -930,6 +947,8 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         """mobile_installation.log: installd records of installs and containers."""
         developer = set()
         lines = text.splitlines()
+        if not text.strip():
+            raise ValueError("the installation log is empty")
         if len(lines) > _IA_LINE_LIMIT:
             gap(check, "installation log longer than {:,} lines; the rest was not searched".format(_IA_LINE_LIMIT))
         for line_no, line in enumerate(lines[:_IA_LINE_LIMIT], 1):
@@ -1057,12 +1076,14 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
             elif kind == "webkit-origins":
                 webkit_origin(key, check)
             elif kind == "keychain-analytics":
-                keychain_analytics(key, check)
+                if keychain_analytics(key, check) is False:
+                    continue
             elif kind in ("analytics", "profiles", "profile-events", "profile-settings", "location-clients",
                           "preferences", "app-metadata", "webkit-session", "id-status-cache"):
                 plist_artifact(key, kind, check)
             else:
-                sql_artifact(key, kind, check)
+                if sql_artifact(key, kind, check) is False:
+                    continue
             r.ran(check)
         except (ValueError, OSError, sqlite3.Error, TypeError, AttributeError, IndexError,
                 plistlib.InvalidFileException, RecursionError) as exc:

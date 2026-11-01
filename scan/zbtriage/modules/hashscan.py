@@ -146,6 +146,21 @@ def _hs_candidate(path, filename):
         return True
 
 
+def _hs_scope_note(root):
+    """Which file types the Standard check leaves unfingerprinted in a root, so a
+    clean result is not read as covering them."""
+    kinds = ", ".join(EXTS)
+    if sys.platform.startswith("linux") or sys.platform == "darwin":
+        covered = ("files ending in {}, files with no extension, libraries (.so, .dylib), scripts (.sh, "
+                   ".py, .pl) and executable files".format(kinds))
+    else:
+        covered = "files ending in {}".format(kinds)
+    return ("{}: the Standard check fingerprinted only {}. Other file types, for example installers "
+            "(.msi), scripts (.ps1, .vbs, .js, .hta), archives and disk images (.iso, .zip), Java files "
+            "(.jar), shortcuts (.lnk) and Android apps (.apk), were not compared with the known sample "
+            "fingerprints. The Full check fingerprints every file type.".format(root, covered))
+
+
 # Files fingerprinted at once. Reading and hashing release the interpreter lock,
 # so threads give a real speed-up without a second process.
 _WORKERS = max(2, min(8, (os.cpu_count() or 2)))
@@ -378,6 +393,8 @@ def run(ctx) -> ModuleResult:
 
         # Now say honestly what this root amounted to.
         name = "root:" + root
+        if not ctx.full and not ctx.targets:
+            r.note(_hs_scope_note(root))
         missed = []
         if tally["unreadable"]:
             file_reasons = _hs_reasons(reasons, fix=not walk_reasons["denied"])

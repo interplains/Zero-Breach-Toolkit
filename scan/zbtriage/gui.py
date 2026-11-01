@@ -20,11 +20,12 @@ from .bidi import bidi_line, bidi_mode, bidi_wrap
 from .i18n import I18N_LANGUAGES, T, TN, i18n_as, i18n_available, i18n_default, i18n_lang, i18n_rtl, i18n_set
 from .readers import reader_select
 from .iocs import IocError
+from .localpaths import path_problem
 from .netconns import nc_is_remote, nc_list, nc_match
-from .scope import scope_guide
+from .scope import scope_guide, scope_window_guide
 from .training import TRAINING_SCENARIOS, training_cleanup, training_prepare
-from .report import (V_HITS, V_NONE, V_NONE_WITH_GAPS, _defang_report, phone_source_unread,
-                     prepare_document, render_human, render_summary, share_summary, write_json)
+from .report import (V_HITS, _defang_report, prepare_document, render_human, render_summary,
+                     result_kind, share_summary, write_json)
 from .workflow import workflow_before_scan, workflow_output_guard, workflow_write_text
 
 GUI_RED = "#c4161c"
@@ -34,6 +35,9 @@ GUI_BG = "#f6f6f7"
 GUI_CARD = "#ffffff"
 GUI_GOOD = "#1e7e34"
 GUI_WARN = "#9a6700"
+# Nothing found, but not everything could be checked: neither the green of a
+# complete check nor the amber of a warning.
+GUI_NEUTRAL = "#3c4858"
 
 GUI_CHECKS = (
     ("browser", "Quick check", "Browsers only, where ad-delivered spyware leaves its traces. Usually 5 to 10 minutes."),
@@ -113,6 +117,7 @@ def gui_next_steps(document):
     """What the person should do now, in a few plain lines, from the result."""
     verdict = document.get("verdict", {})
     status = verdict.get("status", "")
+    kind = result_kind(document)
     gaps = [str(g).lower() for g in verdict.get("gaps", [])]
     modules = document.get("modules", {})
     steps = []
@@ -152,13 +157,21 @@ def gui_next_steps(document):
         steps.append(T("Get expert help. Journalists, activists and other civil society members can "
                        "contact Access Now's free Digital Security Helpline: {url}", url=HELPLINE))
         steps.append(T("Do not open or look up the addresses in the report."))
-    elif status in (V_NONE, V_NONE_WITH_GAPS) and phone_source_unread(document):
+    elif kind == "unread":
         steps.append(T("The phone's backup or collection could not be opened, so nothing in it was "
                        "checked. Check the folder you chose. For an encrypted iPhone backup, enter its "
                        "backup password and run the check again."))
-    elif status in (V_NONE, V_NONE_WITH_GAPS):
+    elif kind == "none":
         steps.append(T("Nothing matched known spyware. Keep your system and apps updated, and run the "
                        "check again now and then."))
+    elif kind == "none_with_gaps":
+        steps.append(T("Nothing matched known spyware in what could be checked, but some checks could "
+                       "not run, so this is not a full all-clear. They are listed in the summary: fix "
+                       "what you can and run the check again."))
+    elif kind == "withdrawn":
+        steps.append(T("The publisher of the matched indicator has withdrawn it, so this is not an "
+                       "actionable finding on its own. Read the match and the withdrawal note in the "
+                       "summary; it does not clear the device either."))
     else:
         steps.append(T("Usually nothing to do: a name in a page you read or saved is not an infection. "
                        "If you have another reason to worry, a helpline can advise: {url}", url=HELPLINE))
@@ -214,6 +227,81 @@ def gui_backup_folders():
     found.sort(reverse=True)
     return [(datetime.datetime.fromtimestamp(when).strftime("%Y-%m-%d %H:%M") + "  " + path, path)
             for when, path in found]
+
+
+def gui_update_line(line):
+    """One progress line of the indicator update in plain words. The update
+    prints technical lines ("[=] Name: 583 indicators, unchanged (sha256 ...)");
+    people see "Name: already up to date". Lines it does not know are shown as
+    they are."""
+    import re
+    m = re.match(r"\[=\] (.+?): [\d,]+ indicators, unchanged", line)
+    if m:
+        return T("{name}: already up to date", name=m.group(1))
+    m = re.match(r"\[\+\] (.+?): [\d,]+ indicators", line)
+    if m:
+        return T("{name}: updated", name=m.group(1))
+    m = re.match(r"\[!\] (.+?) failed: ", line)
+    if m:
+        return T("{name}: could not be updated", name=m.group(1))
+    m = re.match(r"Indicator sets in .*?: (\d+) up to date, (\d+) failed", line)
+    if m:
+        return T("{ok} lists up to date, {failed} could not be updated", ok=m.group(1), failed=m.group(2))
+    if line.startswith("FAILED "):
+        m = re.match(r"FAILED (.+?): ", line)
+        return T("{name}: could not be updated", name=m.group(1)) if m else line
+    if line.startswith("Exploited-vulnerability list:"):
+        return T("Updating the list of actively exploited software...")
+    if line.startswith("Actively exploited software list not updated"):
+        return T("The list of actively exploited software could not be updated.")
+    if line.startswith("Actively exploited software list"):
+        return T("The list of actively exploited software is up to date.")
+    return line
+
+
+def gui_lists_missing():
+    """True while no indicator list has been downloaded to this computer, so
+    only the lists built into the program are used."""
+    try:
+        from .feeds import default_cache_dir, read_manifest
+        return not read_manifest(default_cache_dir())
+    except Exception:  # noqa: BLE001 - an unreadable cache is not "missing"; say nothing
+        return False
+
+
+def gui_save_folder():
+    """Where the save dialog opens. Downloads, not Documents: Windows ransomware
+    protection (Controlled folder access) blocks an unsigned program from
+    writing to Documents, Desktop and Pictures, and a person who has it turned
+    on - a common setting for exactly this audience - could not save at all."""
+    home = os.path.expanduser("~")
+    for name in ("Downloads", "Documents"):
+        folder = os.path.join(home, name)
+        if os.path.isdir(folder):
+            return folder
+    return home
+
+
+def gui_save_failure(exc):
+    """What to tell the person when a report could not be written: what
+    probably happened, and what to do, before the system's own wording."""
+    if getattr(exc, "errno", None) is None:
+        return str(exc)      # this program's own refusal (for example a network path), already plain
+    detail = getattr(exc, "strerror", None) or str(exc)
+    return (T("The file could not be saved in that folder. Your security software - for example "
+              "Windows ransomware protection (Controlled folder access) - may stop this program "
+              "from writing to folders such as Documents, Desktop and Pictures. Nothing was changed. "
+              "Press Save again and choose your Downloads folder, or another folder you created "
+              "yourself.") + "\n\n" + T("Details: {detail}", detail=detail))
+
+
+def gui_guide_text(platform):
+    """The phone guide for the window. The packaged program has no folder to
+    run a script from and its people are not at a command line, so it gets the
+    window's own steps; someone running the script keeps the command-line form."""
+    if getattr(sys, "frozen", False):
+        return scope_window_guide(platform)
+    return T(scope_guide(platform))
 
 
 def gui_self_command():
@@ -308,14 +396,26 @@ def gui_headline(document):
         return (GUI_RED, T("Something needs a closer look"),
                 T("Traces matching known spyware were found. Read the summary below before acting, "
                   "and keep this device as it is.") + gap_note)
-    if status in (V_NONE, V_NONE_WITH_GAPS) and phone_source_unread(document):
-        # Never green: a phone that could not be opened was not checked at all.
+    kind = result_kind(document)
+    if kind == "unread":
+        # Never green: a phone nothing was read from was not checked at all.
         return (GUI_WARN, T("This phone could not be checked"),
-                T("Its backup or collection could not be opened, so nothing in it was checked. "
+                T("Nothing in its backup or collection could be read, so nothing in it was checked. "
                   "This is not a clean result.") + gap_note)
-    if status in (V_NONE, V_NONE_WITH_GAPS):
+    if kind == "none":
         return (GUI_GOOD, T("No known spyware traces found"),
                 T("Nothing matched the indicators in what could be checked. That is not a guarantee.")
+                + gap_note)
+    if kind == "none_with_gaps":
+        # Green is for a check that ran in full. With gaps the honest headline
+        # is what was searched, in a colour that does not say "all clear".
+        return (GUI_NEUTRAL, T("Nothing found in what could be checked"),
+                T("Nothing matched the indicators in what could be checked, but some checks could not "
+                  "run, so this is not a full all-clear. That is not a guarantee.") + gap_note)
+    if kind == "withdrawn":
+        return (GUI_WARN, T("Only a withdrawn indicator matched"),
+                T("A match was found to an indicator its publisher has withdrawn. That is not an "
+                  "actionable finding on its own; review the source context in the summary.")
                 + gap_note)
     return (GUI_WARN, T("Only references found"),
             T("Indicator names appeared in saved content such as web pages you read. That alone is "
@@ -619,14 +719,18 @@ class GuiApp:
     def _layout_check(self):
         tk, ttk = self.tk, self.ttk
         top = self._card(self.tab_check)
+        # The phone and example rows span both columns. Without a weight on the
+        # notes column, their width was shared out to the column of choices and
+        # pushed every description to the right whenever one of them was shown.
+        top.columnconfigure(1, weight=1)
         ttk.Label(top, text=T("Choose a check"), style="Card.TLabel", font=self.font_head).grid(
             row=0, column=0, sticky="w", columnspan=2)
         justify = self._just()[0]
 
         def beside_choices(top=top):
-            # The note column: the card's width less its padding and the
-            # column of choices.
-            return top.winfo_width() - 32 - top.grid_bbox(0, 1, 0, len(GUI_CHECKS))[2] - 12 - 8
+            # The note column: the card's width less its padding, the
+            # column of choices and the label's padding on both sides.
+            return top.winfo_width() - 32 - top.grid_bbox(0, 1, 0, len(GUI_CHECKS))[2] - 24 - 8
 
         for i, (value, label, note) in enumerate(GUI_CHECKS, 1):
             ttk.Radiobutton(top, text=T(label), value=value, variable=self.check,
@@ -666,6 +770,15 @@ class GuiApp:
         self._fit(self.close_note, T("Close your browsers and chat apps first: open apps lock some "
                                      "of their records. Updating the lists is the only step that "
                                      "uses the internet."), 860, lambda: top.winfo_width() - 32 - 8)
+        # A fresh profile has only the built-in indicators until the lists are
+        # downloaded; say so before a check, not only in its result.
+        self.lists_note = ttk.Label(top, style="Muted.TLabel", justify=justify, foreground=GUI_WARN)
+        self.lists_note.grid(row=self.options_row + 3, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self._fit(self.lists_note,
+                  T("Only the built-in indicators are in use: the full lists have not been downloaded "
+                    "yet. Press \"{update}\" to download them.", update=T("Update indicator lists")),
+                  860, lambda: top.winfo_width() - 32 - 8)
+        self._lists_note_visibility()
         # After a language switch the chosen check is kept, so its phone or
         # example row must be shown again.
         self._phone_visibility()
@@ -748,6 +861,13 @@ class GuiApp:
         ttk.Button(help_row, text=T("Collect from an Android phone..."),
                    command=self.collect_android).pack(side="left")
 
+    def _lists_note_visibility(self):
+        """Show the built-in-indicators note while no list has been downloaded."""
+        if gui_lists_missing():
+            self.lists_note.grid()
+        else:
+            self.lists_note.grid_remove()
+
     def _phone_visibility(self):
         choice = self.check.get()
         self.phone_frame.grid_remove()
@@ -780,21 +900,33 @@ class GuiApp:
         self.phone_kind.set(self.phone_kinds[0])
         self.phone_folder.set(backups[0][1])
         if len(backups) > 1:
-            messagebox.showinfo(T("iPhone backups found"),
-                                T("The newest backup was chosen. All backups found:") + "\n\n" +
-                                "\n".join(label for label, _path in backups[:8]), parent=self.root)
+            listed = backups[:8]
+            if len(backups) > len(listed):
+                text = (T("The newest backup was chosen. The newest backups found:") + "\n\n" +
+                        "\n".join(label for label, _path in listed) + "\n\n" +
+                        T("...and {n} more not shown.", n=len(backups) - len(listed)))
+            else:
+                text = (T("The newest backup was chosen. All backups found:") + "\n\n" +
+                        "\n".join(label for label, _path in listed))
+            messagebox.showinfo(T("iPhone backups found"), text, parent=self.root)
 
     def show_guide(self, platform):
         tk, ttk = self.tk, self.ttk
         win = tk.Toplevel(self.root)
         win.title(T("Checking an iPhone") if platform == "ios" else T("Checking an Android phone"))
         win.geometry("760x560")
-        text = tk.Text(win, wrap="word", font=self.font_body, padx=12, pady=10)
+        # Buttons first, so the text can never push the Close button out of the window.
+        ttk.Button(win, text=T("Close"), command=win.destroy).pack(side="bottom", pady=8)
+        body = ttk.Frame(win)
+        body.pack(fill="both", expand=True)
+        text = tk.Text(body, wrap="word", font=self.font_body, padx=12, pady=10)
+        scroll = ttk.Scrollbar(body, command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        text.pack(side="left", fill="both", expand=True)
         win.update_idletasks()
-        self._fill(text, T(scope_guide(platform)))
+        self._fill(text, gui_guide_text(platform))
         text.configure(state="disabled")
-        text.pack(fill="both", expand=True)
-        ttk.Button(win, text=T("Close"), command=win.destroy).pack(pady=8)
 
     def collect_android(self):
         from tkinter import filedialog, messagebox
@@ -860,7 +992,7 @@ class GuiApp:
         card = self._card(self.tab_help, expand=True)
         text = tk.Text(card, wrap="word", relief="flat", bg=GUI_CARD, fg=GUI_INK, font=self.font_body,
                        padx=4, pady=4, height=24)
-        self._fill(text, T(GUI_HELP))
+        self._fill(text, gui_help_text())
         text.configure(state="disabled")
         text.pack(fill="both", expand=True)
 
@@ -897,6 +1029,7 @@ class GuiApp:
                     self._finish_busy()
                     self.status.set(payload)
                     self.iocs = None
+                    self._lists_note_visibility()
         except queue.Empty:
             pass
         if self.busy and self.started_at is not None:
@@ -941,6 +1074,15 @@ class GuiApp:
             return
         if self.check.get() == "phone":
             folder = self.phone_folder.get().strip()
+            # Ask whether the typed folder is safe to look at BEFORE looking at it:
+            # the box takes pasted text, and asking Windows whether a network path
+            # exists contacts that server.
+            problem = path_problem(os.path.abspath(folder)) if folder else ""
+            if problem:
+                messagebox.showerror(T("Choose the phone folder"),
+                                     T("That folder cannot be used: {problem}. Choose a folder on this "
+                                       "computer's own drive.", problem=problem), parent=self.root)
+                return
             if not folder or not os.path.isdir(folder):
                 messagebox.showerror(T("Choose the phone folder"), T("Choose the folder that holds the iPhone "
                                                                      "backup or the Android collection first."),
@@ -1067,9 +1209,7 @@ class GuiApp:
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         return filedialog.asksaveasfilename(
             parent=self.root, title=title, defaultextension=extension,
-            initialfile="{}-{}{}".format(name, stamp, extension),
-            initialdir=os.path.join(os.path.expanduser("~"), "Documents")
-            if os.path.isdir(os.path.join(os.path.expanduser("~"), "Documents")) else os.path.expanduser("~"))
+            initialfile="{}-{}{}".format(name, stamp, extension), initialdir=gui_save_folder())
 
     def _save(self, writer, title, name, extension):
         from tkinter import messagebox
@@ -1082,10 +1222,10 @@ class GuiApp:
             workflow_output_guard(self.args, path, self.document)
             writer(path)
             self.status.set(T("Saved: {path}", path=path))
-        except PermissionError:
-            messagebox.showerror(T("Not saved"), T("This location cannot be written to. Choose your "
-                                                   "Documents or Desktop folder instead."), parent=self.root)
-        except (OSError, ValueError, TypeError) as exc:
+        except OSError as exc:
+            self.status.set(T("Not saved."))
+            messagebox.showerror(T("Not saved"), gui_save_failure(exc), parent=self.root)
+        except (ValueError, TypeError) as exc:
             messagebox.showerror(T("Not saved"), str(exc), parent=self.root)
 
     def save_report(self):
@@ -1111,12 +1251,16 @@ class GuiApp:
     def _run_update(self):
         import contextlib
         events = self.events
+        details = self.update_details = []
 
         class Lines:
             def write(self, text):
                 for line in text.splitlines():
                     if line.strip():
-                        events.put(("status", line.strip()))
+                        # The window shows plain words; the exact line (hashes,
+                        # counts, error text) is kept in `details`.
+                        details.append(line.strip())
+                        events.put(("status", gui_update_line(line.strip())))
                 return len(text)
 
             def flush(self):
@@ -1124,8 +1268,8 @@ class GuiApp:
         try:
             with contextlib.redirect_stdout(Lines()), contextlib.redirect_stderr(Lines()):
                 code = self.hooks["update"]()
-            from . import feeds
-            note = feeds.LAST_VERSION_NOTICE
+            from .feeds import LAST_VERSION_NOTICE
+            note = LAST_VERSION_NOTICE
             message = (T("Indicator lists updated.") if code == 0 else
                        T("Some indicator lists could not be updated; the others are ready."))
             self.events.put(("updated", message + ("  " + note if note else "")))
@@ -1190,31 +1334,60 @@ class GuiApp:
                                    ips=sum(1 for i in iocs.indicators if i.type == "ip")))
 
 
-GUI_HELP = """What this does
-Zero Breach looks for traces that known mercenary spyware (Pegasus, Predator, Candiru, Paragon Graphite and others) leaves on a device: records in browsers and apps, startup items, and fingerprints of program files. It only reads; it never changes, deletes or uploads anything.
-
-Reading the result
-- "No known spyware traces found" means nothing matched in what could be checked. It is not a guarantee: new spyware is unknown until researchers publish it, and some checks may not have run (they are listed).
-- "Only references found" means an indicator name appeared in saved content, for example an article about Pegasus that you read. That alone is not a sign of infection.
-- "Something needs a closer look" means a trace matched. Do not reset or wipe the device: that destroys the evidence. Save the report and contact one of the helplines below.
-
-Checking a phone
-Choose "A phone", then the folder of an iPhone backup (Finder or Apple Devices / iTunes makes one; "Find iPhone backups" looks in the usual places) or an Android collection. The guides under the folder box explain how to make either. An encrypted iPhone backup needs its password, which is used for that check only.
-
-Practise
-"Practise" checks a made-up phone with made-up spyware, so you can learn to read a report (spyware found, things worth a look, or nothing found). Nothing real is read, and every result is marked as a training example.
-
-Live connections
-Shows what is connected right now and marks addresses on the spyware lists. Servers change hands over time, so a match is a reason to look closer, not proof.
-
-Getting help
-If you might be targeted (for example as a journalist, activist or lawyer), you can ask for help whatever this check says:
-- Access Now Digital Security Helpline: https://www.accessnow.org/help/
-- Amnesty International Security Lab: https://securitylab.amnesty.org/
-- The Citizen Lab: https://citizenlab.ca/
-
-More: https://github.com/interplains/Zero-Breach-Toolkit#readme
-"""
+def gui_help_text():
+    """The Help tab, put together from sentences that quote the window's own
+    words (its buttons, its result headlines) as they are written in the chosen
+    language. One translated block named the buttons in whatever words the
+    translation happened to use, often the English ones."""
+    bullet = "• "
+    names = {"phone": T("A phone"), "find": T("Find iPhone backups"), "practise": T("Practise"),
+             "none": T("No known spyware traces found"), "refs": T("Only references found"),
+             "hit": T("Something needs a closer look"),
+             "partial": T("Nothing found in what could be checked"),
+             "withdrawn": T("Only a withdrawn indicator matched")}
+    sections = [
+        (T("What this does"), [
+            T("Zero Breach looks for traces that known mercenary spyware (Pegasus, Predator, Candiru, "
+              "Paragon Graphite and others) leaves on a device: records in browsers and apps, startup "
+              "items, and fingerprints of program files. It only reads; it never changes, deletes or "
+              "uploads anything.")]),
+        (T("Reading the result"), [
+            bullet + T("\"{none}\" means nothing matched and every check ran. It is not a "
+                       "guarantee: new spyware is unknown until researchers publish it.", **names),
+            bullet + T("\"{partial}\" means nothing matched in what could be checked, but some "
+                       "checks could not run. They are listed; what they cover is not cleared.",
+                       **names),
+            bullet + T("\"{withdrawn}\" means the match is to an indicator its publisher has "
+                       "withdrawn. That is not an actionable finding on its own, and it does not clear "
+                       "the device.", **names),
+            bullet + T("\"{refs}\" means an indicator name appeared in saved content, for example an "
+                       "article about Pegasus that you read. That alone is not a sign of infection.",
+                       **names),
+            bullet + T("\"{hit}\" means a trace matched. Do not reset or wipe the device: that destroys "
+                       "the evidence. Save the report and contact one of the helplines below.",
+                       **names)]),
+        (T("Checking a phone"), [
+            T("Choose \"{phone}\", then the folder of an iPhone backup (Finder or Apple Devices / "
+              "iTunes makes one; \"{find}\" looks in the usual places) or an Android collection. The "
+              "guides under the folder box explain how to make either. An encrypted iPhone backup "
+              "needs its password, which is used for that check only.", **names)]),
+        (T("Practise"), [
+            T("\"{practise}\" checks a made-up phone with made-up spyware, so you can learn to read a "
+              "report (spyware found, things worth a look, or nothing found). Nothing real is read, "
+              "and every result is marked as a training example.", **names)]),
+        (T("Live connections"), [
+            T("Shows what is connected right now and marks addresses on the spyware lists. Servers "
+              "change hands over time, so a match is a reason to look closer, not proof.")]),
+        (T("Getting help"), [
+            T("If you might be targeted (for example as a journalist, activist or lawyer), you can ask "
+              "for help whatever this check says:"),
+            bullet + T("Access Now Digital Security Helpline: {url}", url=HELPLINE),
+            bullet + T("Amnesty International Security Lab: {url}", url="https://securitylab.amnesty.org/"),
+            bullet + T("The Citizen Lab: {url}", url="https://citizenlab.ca/")]),
+    ]
+    parts = [heading + "\n" + "\n".join(lines) for heading, lines in sections]
+    parts.append(T("More: {url}", url="https://github.com/interplains/Zero-Breach-Toolkit#readme"))
+    return "\n\n".join(parts) + "\n"
 
 
 def gui_report_text(document):

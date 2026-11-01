@@ -696,12 +696,10 @@ def _chromium_profile_names(user_data):
     if path_problem(path):
         return out
     try:
-        # Only display names come from here; an implausibly large file falls
-        # back to folder names rather than spending gigabytes of memory.
-        if os.path.getsize(path) > 16 * 1024 * 1024:
-            return out
-        with io.open(path, encoding="utf-8", errors="replace") as fh:
-            data = json.load(fh)
+        # Only display names come from here; an implausibly large file or a
+        # special file (a named pipe would block the scan) falls back to folder
+        # names rather than spending memory or time.
+        data = json.loads(_browser_read_small(path).decode("utf-8", "replace"))
     # RecursionError is not a ValueError. A Local State file of 200,000 nested
     # brackets - about 400 KB, writable without admin - made json.load raise it
     # before a single profile was read, and the whole browser module was lost.
@@ -1202,9 +1200,8 @@ def _blockfile_read(cache_dir, name, files):
         if not path_problem(full):
             try:
                 if os.path.getsize(full) <= _BLOCKFILE_INDEX_LIMIT:
-                    with io.open(full, "rb") as fh:
-                        data = fh.read()
-            except OSError:
+                    data = _browser_read_small(full, _BLOCKFILE_INDEX_LIMIT)
+            except (OSError, ValueError):
                 data = b""   # a running browser holds these files exclusively
         files[name] = data
     return files[name]
@@ -1357,6 +1354,10 @@ def _browser_url_evidence(url, ioc_set, host_grade, reference=""):
             yield ind, EV_REFERENCED
 
 
+# A base64 SHA-256 host hash, the key of the older HSTS layout.
+_HSTS_LEGACY_KEY = re.compile(r"[A-Za-z0-9+/]{43}=")
+
+
 def chromium_profiles(user_data):
     """Every Default / Guest / Profile* directory under a Chromium user-data root.
 
@@ -1373,8 +1374,11 @@ def chromium_profiles(user_data):
         p = os.path.join(user_data, name)
         # Default, Profile N, Guest Profile, System Profile, and any folder
         # named with --profile-directory: a profile always has Preferences.
+        # The path check comes first: os.path.isfile follows a link or junction,
+        # and on Windows asking about a network path is itself a connection.
+        marker = os.path.join(p, "Preferences")
         if (name == "Default" or name == "Guest Profile" or name.startswith("Profile")
-                or os.path.isfile(os.path.join(p, "Preferences"))):
+                or (not path_problem(marker) and os.path.isfile(marker))):
             out.append(p)
     return out
 
@@ -1612,7 +1616,9 @@ def run(ctx) -> ModuleResult:
             if len(raw) > 16 * 1024 * 1024:
                 raise ValueError("bookmark byte limit reached")
             doc = json.loads(raw)
-            if not isinstance(doc, dict) or not isinstance(doc.get("roots"), dict):
+            if not isinstance(doc, dict) or not isinstance(doc.get("roots"), dict) or not doc["roots"]:
+                # Chromium always writes bookmark_bar, other and synced; a file
+                # with no roots holds no bookmarks that could have been read.
                 raise ValueError("unsupported bookmark roots")
         except FileNotFoundError:
             return
@@ -1779,6 +1785,16 @@ def run(ctx) -> ModuleResult:
             doc = plist_at(kind, path)
             if doc is None:
                 continue
+            # An empty property list is not a store this reader read, and a
+            # downloads list without its record list is a layout it does not know:
+            # reading nothing from either is not reading a store that holds
+            # nothing. The addresses in an unknown layout are still compared, as
+            # references, below; only the claim of a complete read is withheld.
+            if not doc:
+                mark_fail(label, kind, "{}: empty property list; nothing was read".format(name))
+                continue
+            layout_unknown = kind == "safari-downloads" and not (
+                isinstance(doc, dict) and isinstance(doc.get("DownloadHistory"), list))
             try:
                 # Download records are graded per record only in the known layout
                 # (a DownloadHistory list of records, each with its own URL).
@@ -1820,6 +1836,9 @@ def run(ctx) -> ModuleResult:
                 if unsupported:
                     mark_fail(label, kind, "{}: {} download record(s) or field(s) in an unsupported "
                               "layout; their addresses were checked as references only".format(name, unsupported))
+                elif layout_unknown:
+                    mark_fail(label, kind, "{}: no download record list in this property list; its "
+                              "addresses were checked as references only".format(name))
                 else:
                     mark_ok(label, kind)
             except (ValueError, RecursionError) as exc:
@@ -1831,8 +1850,8 @@ def run(ctx) -> ModuleResult:
             doc = plist_at(kind, path)
             if doc is None:
                 continue
-            if not isinstance(doc, dict):
-                mark_fail(label, kind, "HSTS.plist: unsupported layout")
+            if not isinstance(doc, dict) or not doc:
+                mark_fail(label, kind, "HSTS.plist: unsupported or empty layout; nothing was read")
                 continue
             for session in doc.values():
                 if not isinstance(session, dict):
@@ -2369,11 +2388,22 @@ def run(ctx) -> ModuleResult:
             ts_present = False
         if ts_present:
             try:
-                with io.open(ts_path, encoding="utf-8", errors="replace") as fh:
-                    data = json.load(fh)
+                # Regular file, bounded size, never blocks on a pipe (see
+                # _browser_read_small).
+                data = json.loads(_browser_read_small(ts_path).decode("utf-8", "replace"))
                 if not isinstance(data, dict):
                     raise ValueError("HSTS state must be an object")
-                entries = data.get("sts", [])
+                if "sts" in data:
+                    entries = data["sts"]
+                else:
+                    # Chromium 80 and older keyed each host hash at the top level,
+                    # and desktop apps built on it still write that; current
+                    # Chromium writes {"version": 2, "sts": [...]}. A file with
+                    # neither layout was not read.
+                    entries = [dict(value, host=key) for key, value in data.items()
+                               if isinstance(value, dict) and _HSTS_LEGACY_KEY.fullmatch(key)]
+                    if not entries:
+                        raise ValueError("unsupported layout: no 'sts' list in the HSTS state")
                 # Shape-check rather than trust: a file whose "sts" is a number
                 # rather than a list made len() raise TypeError, which escaped
                 # the (OSError, ValueError) handler below, propagated out of the
@@ -2431,16 +2461,22 @@ def run(ctx) -> ModuleResult:
             nps_present = False
         if nps_present:
             try:
-                with io.open(nps_path, encoding="utf-8", errors="replace") as fh:
-                    data = json.load(fh)
+                data = json.loads(_browser_read_small(nps_path).decode("utf-8", "replace"))
                 if not isinstance(data, dict):
                     raise ValueError("network state must be an object")
-                net = data.get("net", {})
+                net = data.get("net")
                 if not isinstance(net, dict):
-                    raise ValueError("network state 'net' must be an object")
-                hsp = net.get("http_server_properties", {})
+                    raise ValueError("unsupported layout: network state has no 'net' object")
+                # Chromium leaves this out until it has a server to remember (seen
+                # in real profiles of apps that barely use the network): nothing
+                # recorded, not another layout.
+                hsp = net.get("http_server_properties", {"servers": []})
                 if not isinstance(hsp, dict):
-                    raise ValueError("http_server_properties must be an object")
+                    raise ValueError("unsupported layout: network state has no 'http_server_properties' object")
+                if "servers" not in hsp:
+                    # Chromium writes the server list even when it is empty, so a
+                    # file without it is another layout, not an empty record.
+                    raise ValueError("unsupported layout: no 'servers' list in the network state")
                 for field, host_field in (("servers", "server"),
                                           ("broken_alternative_services", "host")):
                     entries = hsp.get(field, [])
@@ -2497,10 +2533,7 @@ def run(ctx) -> ModuleResult:
             mark_fail(label, "hsts", _locked_note(path, exc))
             return
         try:
-            with io.open(path, "rb") as fh:
-                raw = fh.read(4 * 1024 * 1024 + 1)
-            if len(raw) > 4 * 1024 * 1024:
-                raise ValueError("HSTS store exceeds the read limit")
+            raw = _browser_read_small(path, 4 * 1024 * 1024)
             if path.endswith(".bin"):
                 rows, invalid = _browser_hsts_binary(raw)
             else:
@@ -2516,6 +2549,13 @@ def run(ctx) -> ModuleResult:
             mark_fail(label, "hsts", _locked_note(path, exc))
             return
         entries = len(rows)
+        if invalid and not rows:
+            # Content was there but not one line or slot of it could be read as a
+            # record (an empty store has neither: that stays a clean read).
+            r.skipped += 1
+            mark_fail(label, "hsts", "{}: no HSTS record could be read from a non-empty file ({} "
+                      "unreadable line(s)); nothing was checked".format(os.path.basename(path), invalid))
+            return
         r.submetrics["hsts_entries"] = (
             r.submetrics.get("hsts_entries", 0) + entries)
         r.checked += entries

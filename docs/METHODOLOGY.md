@@ -147,6 +147,8 @@ beside a child-host contact stays a reference. Download-chain host matches are a
 contact; completed or received-byte metadata supports contacted. Neither proves execution
 or infection.
 
+Chromium's HSTS record stores only a hash of each host name, so it can be matched to an indicator only by the exact host name; subdomains of an indicator cannot be derived from it, and HSTS alone will not name them (history, cookies and connection records still do).
+
 Chromium cache roots are mapped separately from profile roots on Linux and macOS, using the
 standard configuration/cache relationship, each Flatpak app's own `config`/`cache` folders
 and a snap package's `common`/`common/.cache` folders. Standard Linux browser paths honour
@@ -306,7 +308,7 @@ includes ordinary user folders, application and support locations, launch direct
 temporary directories. Besides the Windows candidate extensions, Unix candidates include
 extensionless files, executable files, `.so` and versioned shared libraries, `.dylib` and
 supported script extensions. They are never executed or loaded. Full and targeted scans
-accept every extension; the 120 MiB limit and access restrictions still apply. Arbitrary
+accept every extension; the 512 MiB limit and access restrictions still apply. Arbitrary
 file-system links are refused; the exact root-owned macOS `/var`, `/tmp` and `/etc` aliases
 are validated against their `/private` locations, and the `/System/Cryptexes/App` and `OS`
 links against their Preboot volume locations.

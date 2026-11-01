@@ -52,11 +52,20 @@ def _rtl_punctuation(c):
     return bidi_rtl_char(c) and not c.isalnum()
 
 
+_SENTENCE_END = ".,:;!?"
+
+
 def _left_word(word):
     """A left-to-right word inside right-to-left text, with right-to-left
     punctuation that belongs to the sentence (an Arabic comma, question mark)
-    moved to the side the sentence reads it on."""
+    moved to the side the sentence reads it on. A plain full stop, comma or
+    colon straight after a Latin word ("Android.") belongs to the sentence too;
+    it is moved unless it is part of the word (an address, "e.g.", a number)."""
     core = word.rstrip("".join(c for c in word if _rtl_punctuation(c)))
+    last = core.rsplit(" ", 1)[-1]
+    if (core == word and len(last) > 1 and last[-1] in _SENTENCE_END and last[-2].isascii()
+            and last[-2].isalpha() and not any(c in last[:-1] for c in ".@/:\\")):
+        core = core[:-1]
     trail = word[len(core):]
     body = core.lstrip("".join(c for c in core if _rtl_punctuation(c)))
     lead = core[:len(core) - len(body)]
@@ -163,6 +172,16 @@ def bidi_line(line):
     return _RLM + line + _RLM
 
 
+# Tk 8.6 on Windows draws a right-to-left line longer than about 200 UTF-8 bytes
+# in two swapped pieces (measured: 204 bytes fine, 211 split). Native lines are
+# therefore kept under 180 bytes, however wide the window is.
+_NATIVE_LINE_BYTES = 180
+
+
+def _too_long(line):
+    return _bidi_state["mode"] == "native" and len(line.encode("utf-8")) > _NATIVE_LINE_BYTES
+
+
 def bidi_wrap(text, measure, width):
     """Wrap text to `width` pixels (measure(str) -> pixels) and return the
     displayed lines, each made ready by bidi_line. Leading indentation becomes
@@ -177,7 +196,7 @@ def bidi_wrap(text, measure, width):
         current = ""
         for word in stripped.split(" "):
             candidate = (current + " " + word) if current else word
-            if current and measure(candidate + indent) > width:
+            if current and (measure(candidate + indent) > width or _too_long(candidate)):
                 lines.append(bidi_line(current) + indent)
                 current = word
             else:

@@ -65,7 +65,8 @@ class TestDeepFindings(unittest.TestCase):
         d = collection(spy=False)
         add_dumpsys(d, batterystats="  Daily from 2026-10-01-00-00-00 to 2026-10-02-00-00-00:\n"
                                     "    Package changes:\n"
-                                    "      Uninstall {} vers=3\n".format(SPY))
+                                    # AOSP BatteryStats.java prints no vers= for an uninstall.
+                                    "      Uninstall {}\n".format(SPY))
         r = check(d)
         hit = [h for h in r.hits if h.indicator == SPY]
         self.assertEqual(len(hit), 1)

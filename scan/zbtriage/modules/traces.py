@@ -309,7 +309,8 @@ def _tr_check_motw(r, ctx):
     r.checked += examined
     r.submetrics["motw_files_examined"] = examined
     r.submetrics["motw_files_with_origin"] = stamped
-    r.ran("mark-of-the-web")
+    if examined or not (unreadable["files"] or unreadable["folders"]):
+        r.ran("mark-of-the-web")
     if stopped:
         r.could_not_run("mark-of-the-web: remaining files",
                         "stopped after {:,} files; files beyond that were not "
@@ -589,7 +590,8 @@ def _tr_check_powershell(r, ctx, leads):
 # compared with the published sample fingerprints - so a sample is found wherever
 # it ran from, not only in the folders the hash check walks.
 
-_TR_RAN_MAX_BYTES = 120 * 1024 * 1024     # same cap as the hash check
+_TR_RAN_MAX_BYTES = 120 * 1024 * 1024     # this check's own cap (the hash check's is 512 MiB)
+_TR_SHIM_ENTRIES = 4096                   # shim cache entries read at most
 _TR_LOCAL_PATH = re.compile(r"^[A-Za-z]:\\")
 
 
@@ -611,7 +613,7 @@ def _tr_parse_shimcache(blob):
     skipped, never fatal. The FILETIME is the file's modified time, NOT a run
     time, so it is not reported as one."""
     out, pos = [], 0
-    while len(out) < 4096:
+    while len(out) < _TR_SHIM_ENTRIES:
         pos = blob.find(b"10ts", pos)
         if pos < 0 or pos + 14 > len(blob):
             break
@@ -657,7 +659,16 @@ def _tr_ran_programs():
                             r"SYSTEM\CurrentControlSet\Control\Session Manager"
                             r"\AppCompatCache") as key:
             blob, _type = winreg.QueryValueEx(key, "AppCompatCache")
-        for path in _tr_parse_shimcache(bytes(blob)):
+        paths = _tr_parse_shimcache(bytes(blob))
+        if not paths:
+            # A value that exists but yields no entry is another layout, an
+            # empty cache or a damaged one; none of those was read.
+            errors["shim cache"] = ("the shim cache held no entry in the Windows 10/11 layout, so "
+                                    "it was not read")
+        elif len(paths) >= _TR_SHIM_ENTRIES:
+            errors["shim cache"] = ("only the first {:,} shim cache entries were read; later "
+                                    "entries were not fingerprinted".format(_TR_SHIM_ENTRIES))
+        for path in paths:
             programs.append((path, "", "shim cache"))
     except (ImportError, OSError) as exc:
         errors["shim cache"] = str(exc)
@@ -673,7 +684,11 @@ def _tr_ran_programs():
             if len(raw) > 32 * 1024 * 1024:
                 errors["launch list"] = "launch list exceeds the read limit"
                 raw = raw[:32 * 1024 * 1024].rsplit(b"\n", 1)[0]
-            for path, when in _tr_parse_pca(raw):
+            parsed = _tr_parse_pca(raw)
+            if raw.strip() and not parsed:
+                errors["launch list"] = ("the launch list has content but no entry in the "
+                                         "'path|time' layout, so it was not read")
+            for path, when in parsed:
                 programs.append((path, when, "launch list"))
         except OSError as exc:
             errors["launch list"] = str(exc)
@@ -695,7 +710,10 @@ def _tr_check_ran_programs(r, ctx):
         r.could_not_run("ran-programs: shim cache", errors["shim cache"])
     if "launch list" in errors:
         r.could_not_run("ran-programs: launch list", errors["launch list"])
-    if not programs and errors:
+    if not programs:
+        if not errors:
+            r.could_not_run("ran-programs", "Windows listed no program that ran, so no file was "
+                            "fingerprinted from its compatibility and launch records")
         return
     merged = {}
     for path, when, source in programs:
@@ -707,6 +725,10 @@ def _tr_check_ran_programs(r, ctx):
         entry["sources"].add(source)
         if when > entry["when"]:
             entry["when"] = when
+    if not merged:
+        r.could_not_run("ran-programs", "none of the {:,} listed entries is a local program file (they "
+                        "are app identifiers or other names), so nothing was fingerprinted".format(len(programs)))
+        return
     gone = unreadable = hashed = 0
     for entry in merged.values():
         path = entry["path"]
@@ -1018,6 +1040,9 @@ def _tr_persistence(r, ctx):
             count = winreg.QueryInfoKey(services)[0]
             if count > 10000:
                 r.could_not_run("service-registrations", "service limit reached")
+            if count == 0:
+                # Every Windows has hundreds of services; an empty key was not read.
+                raise OSError("the services key lists no service")
             for n in range(min(count, 10000)):
                 name = winreg.EnumKey(services, n)
                 for subkey, value_name in ((name, "ImagePath"), (name + r"\Parameters", "ServiceDll")):
@@ -1055,7 +1080,9 @@ def _tr_persistence(r, ctx):
                     continue
                 raise OSError("missing root")
             count = 0
+            walk_failed = []
             def onerror(exc):
+                walk_failed.append(True)
                 r.could_not_run(check, "a directory was unreadable or refused")
             for folder, dirs, files in walk_local(root, onerror=onerror):
                 for name in files:
@@ -1090,7 +1117,8 @@ def _tr_persistence(r, ctx):
                         r.checked += 1
                     except (OSError, ValueError, ET.ParseError):
                         r.could_not_run(check, "an artifact was unreadable, refused, oversized or malformed")
-            r.ran(check)
+            if count or not walk_failed:
+                r.ran(check)     # a folder that could not be walked and held nothing was not read
         except OSError as exc:
             r.could_not_run(check, str(exc))
 

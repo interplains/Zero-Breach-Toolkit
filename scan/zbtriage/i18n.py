@@ -45,8 +45,8 @@ def _i18n_blob(lang):
         return {}
     try:
         keys, values = _i18n_unpack(I18N_DATA["_keys"]), _i18n_unpack(blob)
-    except (ImportError, ValueError, KeyError, OSError):
-        return {}
+    except Exception:  # noqa: BLE001 - a damaged embedded catalogue (lzma.LZMAError is not a
+        return {}      # ValueError) must never stop the program: English is shown instead
     return {k: v for k, v in zip(keys, values) if v}
 
 

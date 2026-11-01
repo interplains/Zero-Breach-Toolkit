@@ -480,13 +480,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v2.0.2
+git checkout v2.0.3
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v2.0.2 the file is 2,865,831 bytes, SHA-256
-`bcf8459d0a6d7ecb1612e25c23abf6c676d02e086cd8af6bd7d8c7524df20aec`. The size and SHA-256
+For v2.0.3 the file is 2,965,992 bytes, SHA-256
+`4dfeeb805fcd74fd476369566659b0aeb5ebc91438f537f4ad2865264e1867d4`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
@@ -607,7 +607,7 @@ of iOS 15, 16, 17 and 18. See [docs/IPHONE.md](docs/IPHONE.md) for exact support
 - `--scan-type default` uses the computer checks and file candidates supported on your platform.
 - `--scan-type full` also reads desktop-app raw web caches and hashes all file extensions
   in the usual roots, including subdirectories normally skipped. It is broader, not a scan
-  of every drive, account or artifact. The 120 MiB file limit remains.
+  of every drive, account or artifact. The 512 MiB file limit remains.
 - `--scan-type targeted --target PATH` reads only the selected files, directories, drives
   or browser profiles; repeat `--target` for several. Selected files are hashed whatever
   their extension, within the same size and access limits. Copied Prefetch/Amcache files
@@ -722,6 +722,9 @@ could not be checked. The evidence follows.
 - **In time order** lists every dated finding and item.
 - **What could not be checked.** Read this part. A check that could not run has not
   cleared anything.
+
+The window always exits with 0 when it is closed, whatever it showed; for scripts and
+automation use the terminal commands, which return the exit codes below.
 
 Exit codes for scripts:
 

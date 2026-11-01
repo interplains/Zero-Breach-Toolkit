@@ -433,6 +433,7 @@ def run(ctx):
                         if entry.is_dir(follow_symlinks=False):
                             continue
                         candidates.append(entry.path)
+            read_before = result.checked
             for path in candidates:
                 # Links are never followed. A unit masked by a link to /dev/null
                 # has nothing to read, and a link whose target lies in an
@@ -476,7 +477,10 @@ def run(ctx):
                     result.skipped += 1
                 if total > _UX_TOTAL_CAP:
                     break
-            result.ran(check)
+            if not candidates or result.checked > read_before or not (problems or denied):
+                # A root where every file failed (damaged, unreadable, refused) was
+                # not read: its gap is reported below, not a clean read.
+                result.ran(check)
             if links_out:
                 result.could_not_run(check, "{} linked file(s) under {} point outside the inspected folders and "
                                      "were not followed (for example {} -> {})".format(

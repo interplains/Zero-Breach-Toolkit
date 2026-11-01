@@ -105,12 +105,13 @@ def _wx_prefetch(r, ctx, raw, path):
 
 
 def _wx_amcache(r, ctx, raw, path):
-    errors, count = [], 0
+    errors, count, usable = [], 0, 0
     for row in read_amcache(raw):
         count += 1
         if row["error"]:
             errors.append(row["error"])
             continue
+        usable += 1
         detail = "Amcache file inventory; does not prove execution or that the file is still present. No referenced file was opened."
         _wx_matches(r, ctx, row["path"], path, path + " :: " + row["key"], detail, EV_INVENTORY, identity=True)
         if row["name"] and row["name"].lower() != row["path"].replace("/", "\\").rsplit("\\", 1)[-1].lower():
@@ -119,6 +120,9 @@ def _wx_amcache(r, ctx, raw, path):
                         "Amcache Name differs from the recorded path basename.", EV_REFERENCED, identity=True)
             errors.append("Amcache Name differs from path basename")
         r.checked += 1
+    if count and not usable:
+        # Records were there but not one could be read: that is not a read store.
+        raise ValueError("no usable Amcache record: {}".format("; ".join(sorted(set(errors))[:3])))
     return "{} unsupported Amcache record(s): {}".format(len(errors), "; ".join(sorted(set(errors))[:3])) if errors else ""
 
 

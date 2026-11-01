@@ -332,7 +332,7 @@ def main():
                 (host, "_user_writable_dirs", lambda: [str(inputs)]),
                 (traces, "_tr_motw_roots", lambda: [str(files)]),
                 (traces, "_tr_read_runmru", lambda: ({}, "", "")),
-                (traces, "_tr_ran_programs", lambda: ([], {})),
+                (traces, "_tr_ran_programs", lambda: ([("C:\\Windows\\fixture-program.exe", "", "shim cache")], {})),
                 (traces, "_tr_events", lambda *a, **k: ([], "")),
                 (traces, "_tr_antivirus_products", lambda: ([{"name": "Fixture antivirus", "state": 0, "signature_status": 1}], "")),
                 (traces, "_tr_extra_history", lambda *a: None),

@@ -40,7 +40,12 @@ def ctx():
     return ScanContext(iocs=s, emit=lambda _m: None)
 
 
-def run(motw_roots=None, runmru=({}, "", ""), events=None, programs=([], {})):
+# A real Windows always lists programs. An empty list is not a clean read (2.0.3), so the
+# default is one listed program that no longer exists on disk.
+_LISTED = ([("C:\\Fixture\\ordinary.exe", "", "shim cache")], {})
+
+
+def run(motw_roots=None, runmru=({}, "", ""), events=None, programs=_LISTED):
     events = events or {}
 
     def fake_events(log, ids, max_events, fields):
@@ -58,7 +63,10 @@ def run(motw_roots=None, runmru=({}, "", ""), events=None, programs=([], {})):
             patch.object(traces, "_tr_extra_history", lambda *a: None), \
             patch.object(traces, "_tr_persistence", lambda *a: None), \
             patch.object(traces.sys, "platform", "win32"),             patch.object(traces, "_tr_check_motw",
-                         traces._tr_check_motw if _REAL_WINDOWS else (lambda r, c: r.ran("mark-of-the-web"))):
+                         traces._tr_check_motw if _REAL_WINDOWS else (lambda r, c: r.ran("mark-of-the-web"))), \
+            patch.object(traces, "_tr_check_ran_programs",
+                         traces._tr_check_ran_programs if _REAL_WINDOWS or programs is not _LISTED
+                         else (lambda r, c: r.ran("ran-programs"))):
         return traces.run(ctx())
 
 

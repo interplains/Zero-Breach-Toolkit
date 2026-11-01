@@ -17,6 +17,7 @@ import struct
 import tarfile
 import tempfile
 import time
+import zlib
 
 from .backupcrypto import backup_cbc, backup_ios_keys, backup_ios_file_key
 from .localpaths import local_temp_dir, open_evidence_db, path_problem
@@ -250,7 +251,7 @@ class IosEvidenceSource:
             elif self.kind == "sysdiagnose":
                 try:
                     self._archive()
-                except (OSError, ValueError, tarfile.TarError, EOFError) as exc:
+                except (OSError, ValueError, tarfile.TarError, EOFError, zlib.error) as exc:
                     self.gap("ios:input", "archive inventory incomplete: " + str(exc))
             else:
                 raise ValueError("filesystem evidence must be an extracted local directory")

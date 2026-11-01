@@ -4,6 +4,7 @@ import sys
 
 from .localpaths import path_problem
 from .contract import sanitize_untrusted
+from .i18n import T
 
 
 def scope_arguments(parser):
@@ -63,7 +64,7 @@ def scope_record(args):
               "ios_input": getattr(args, "ios_input", ""),
               "host_platform": sys.platform,
               "limits": ["Read-only local evidence; no infection-free guarantee.",
-                         "File hashing remains bounded to 120 MiB per file.",
+                         "File hashing remains bounded to 512 MiB per file.",
                          "Full means broader checks in the usual roots, not every drive or every user."]}
     return result
 
@@ -124,15 +125,12 @@ def scope_guide(platform):
     https://github.com/mvt-project/androidqf/releases and run it.
     (Or let this tool do it: --collect-android "OUTPUT FOLDER")
  4. AndroidQF asks a few questions. Answer:
-      Backup?                                  -> Only SMS
-      Download copies of all apps or ...?      -> Only non-system packages
-      Remove copies of apps signed with a
-      trusted certificate?                     -> No
-      Intrusion Logs?                          -> No (unless you turned on Intrusion
-                                                  Logging in Advanced Protection)
-      Hash files on the device?                -> No (Yes also checks file
-                                                  fingerprints, but it is slow)
-      Browser history / Magisk modules?        -> No
+      Backup? -> Only SMS
+      Download copies of all apps or ...? -> Only non-system packages
+      Remove copies of apps signed with a trusted certificate? -> No
+      Intrusion Logs? -> No (unless you turned on Intrusion Logging in Advanced Protection)
+      Hash files on the device? -> No (Yes also checks file fingerprints, but it is slow)
+      Browser history / Magisk modules? -> No
     The phone will ask you to confirm the backup: tap "Back up my data"
     (leave the password empty).
  5. When AndroidQF finishes, it leaves a .zip file next to itself. Unzip it.
@@ -172,3 +170,73 @@ Already have a file-system extraction or a sysdiagnose? Use
 The backup is never changed; anything decrypted is a temporary copy removed after the
 check. Apple's backup help: https://support.apple.com/108353
 """
+
+
+def scope_window_guide(platform):
+    """The phone guides as the window of the packaged program shows them: the
+    steps are the window's own (the check type, the folder box, the buttons),
+    never a command to type. Every button is named with the label the person
+    actually sees in their language."""
+    labels = {"phone": T("A phone"), "find": T("Find iPhone backups"), "choose": T("Choose..."),
+              "password": T("Backup password"), "start": T("Start check"), "kind": T("What is it?"),
+              "collect": T("Collect from an Android phone...")}
+    if platform == "android":
+        steps = [
+            T("On the phone: Settings > About phone, tap \"Build number\" seven times to turn on "
+              "Developer options. Then Settings > System > Developer options > turn on "
+              "\"USB debugging\"."),
+            T("Connect the phone to this computer with a USB cable. On the phone, tap \"Allow\" "
+              "when it asks to allow USB debugging from this computer."),
+            T("In this window, on the Check tab, choose \"{phone}\" and click \"{collect}\". Choose an "
+              "empty folder. A guided collection opens, downloads the official AndroidQF program, "
+              "checks it and runs it. On a Mac or Linux it shows a command to paste into Terminal "
+              "instead. (You can also download AndroidQF yourself from "
+              "https://github.com/mvt-project/androidqf/releases and run it.)", **labels),
+            T("AndroidQF asks a few questions. Answer:") + "\n" + "\n".join(
+                "• " + line for line in (
+                    T("Backup? Choose \"Only SMS\"."),
+                    T("Download copies of all apps or ...? Choose \"Only non-system packages\"."),
+                    T("Remove copies of apps signed with a trusted certificate? Choose \"No\"."),
+                    T("Intrusion Logs? Choose \"No\" (unless you turned on Intrusion Logging in "
+                      "Advanced Protection)."),
+                    T("Hash files on the device? Choose \"No\" (\"Yes\" also checks file fingerprints, "
+                      "but it is slow)."),
+                    T("Browser history / Magisk modules? Choose \"No\"."))) + "\n" +
+            T("The phone will ask you to confirm the backup: tap \"Back up my data\" "
+              "(leave the password empty)."),
+            T("When AndroidQF finishes, it leaves a .zip file next to itself. Unzip it."),
+            T("Back in this window, choose \"{phone}\", set \"{kind}\" to the Android collection, click "
+              "\"{choose}\" and pick the unzipped folder, then click \"{start}\".", **labels),
+            T("Afterwards, turn USB debugging off again on the phone."),
+        ]
+        closing = T("The collection holds private information about the phone: keep it on this "
+                    "computer. Things the collection did not include are listed in the report as "
+                    "not checked.")
+    else:
+        steps = [
+            T("Make a local backup on a computer. On a Mac: connect the iPhone, open Finder, select "
+              "the iPhone and choose \"Back up all of the data on your iPhone to this Mac\". On "
+              "Windows: install Apple Devices (or iTunes), connect the iPhone and choose \"Back up "
+              "all of the data on your iPhone to this computer\"."),
+            T("Tick \"Encrypt local backup\" and choose a password you will remember: encrypted "
+              "backups include more of the records this tool checks."),
+            T("In this window, on the Check tab, choose \"{phone}\" and click \"{find}\". It looks in "
+              "the usual places and fills in the newest backup. If it finds none, click \"{choose}\" "
+              "and pick the backup folder yourself: one folder per device, with a file called "
+              "Manifest.plist inside.", **labels),
+            T("If you encrypted the backup, type its password in the \"{password}\" box. It is used "
+              "for this check only and is never saved.", **labels),
+            T("Click \"{start}\".", **labels),
+        ]
+        closing = "\n".join([
+            T("Where the backups are kept:"),
+            "Mac: ~/Library/Application Support/MobileSync/Backup/",
+            "Windows: %USERPROFILE%\\Apple\\MobileSync\\Backup\\",
+            "iTunes (older): %APPDATA%\\Apple Computer\\MobileSync\\Backup\\",
+            "",
+            T("Already have a file-system extraction or a sysdiagnose? Choose it in the \"{kind}\" box "
+              "instead.", **labels),
+            T("The backup is never changed; anything decrypted is a temporary copy removed after the "
+              "check."),
+            T("Apple's backup help: {url}", url="https://support.apple.com/108353")])
+    return "\n\n".join(["{}. {}".format(n, step) for n, step in enumerate(steps, 1)] + [closing])

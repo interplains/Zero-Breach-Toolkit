@@ -78,7 +78,7 @@ READER_SPECS = (
         },
         "blind_spots": ["this spyware is often rebuilt per target, so a new sample will "
                         "not match a published hash",
-                        "platform-specific candidates up to 120 MiB in selected folders: Windows binary extensions; Unix also extensionless/executable files, libraries and scripts. Full/targeted modes accept all extensions",
+                        "platform-specific candidates up to 512 MiB in selected folders: Windows binary extensions; Unix also extensionless/executable files, libraries and scripts. Full/targeted modes accept all extensions",
                         "files that ran only in memory leave nothing to fingerprint"],
     }),
     ReaderSpec('host', 'host', 'host', ('win32', 'linux', 'darwin'), ('desktop',), {

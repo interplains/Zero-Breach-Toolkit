@@ -230,7 +230,7 @@ def _an_kv(path, sep="=", strict=False):
     try:
         for line in _an_read(path, _AN_MAX_JSON_BYTES).decode("utf-8", "replace").splitlines():
             key, s, value = line.partition(sep)
-            if s:
+            if s and re.fullmatch(r"[A-Za-z0-9_.:\-]+", key.strip()):
                 out[key.strip()] = value.strip()
     except (OSError, ValueError):
         if strict:
@@ -366,31 +366,113 @@ def _an_battery_changes(section):
             raw = m.group(2)
             period = (raw[:10] + "T" + raw[11:].replace("-", ":")) if len(raw) >= 19 else ""
             continue
-        m = re.match(r"\s*(Install|Update|Uninstall) ([\w.]+) vers=", line)
+        # AOSP BatteryStats.dumpDailyPackageChanges: "Update <pkg> vers=<n>" or
+        # "Uninstall <pkg>". An uninstall row has no version and there is no
+        # install row (a first install is printed as an update).
+        m = re.match(r"\s*Update ([\w.]+) vers=", line)
         if m:
-            out.append((m.group(1), m.group(2), period))
+            out.append(("Update", m.group(1), period))
+            continue
+        m = re.match(r"\s*Uninstall ([\w.]+)(?: vers=\d+)?\s*$", line)
+        if m:
+            out.append(("Uninstall", m.group(1), period))
     return out
+
+
+def _an_varint(data, pos):
+    value = shift = 0
+    while True:
+        if pos >= len(data) or shift > 63:
+            raise ValueError("truncated protobuf varint")
+        byte = data[pos]
+        pos += 1
+        value |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return value, pos
+        shift += 7
+
+
+def _an_pb_tombstone(head):
+    """(timestamp, command line) read from the start of a Tombstone protobuf.
+
+    Field numbers are AOSP debuggerd/proto/tombstone.proto (android13): 4 is
+    `string timestamp`, 9 is `repeated string command_line`. Only the top-level
+    fields are walked, within the bytes given, so words inside nested messages
+    (log buffers, open files) can never be taken for the command line. A field
+    that runs past the bytes ends the walk: the later fields are the large ones.
+    Raises ValueError for anything that is not well-formed protobuf."""
+    pos, stamp, parts, fields = 0, "", [], 0
+    while pos < len(head) and fields < 512:
+        fields += 1
+        key, pos = _an_varint(head, pos)
+        number, wire = key >> 3, key & 7
+        if number == 0:
+            raise ValueError("invalid protobuf field number")
+        if wire == 0:
+            _value, pos = _an_varint(head, pos)
+        elif wire == 1:
+            pos += 8
+        elif wire == 5:
+            pos += 4
+        elif wire == 2:
+            size, pos = _an_varint(head, pos)
+            if pos + size > len(head):
+                break
+            if number == 4:
+                stamp = head[pos:pos + size].decode("utf-8", "replace")
+            elif number == 9:
+                parts.append(head[pos:pos + size].decode("utf-8", "replace"))
+            pos += size
+        else:
+            raise ValueError("unsupported protobuf wire type")
+        if pos > len(head):
+            raise ValueError("truncated protobuf field")
+    return stamp, " ".join(parts).strip()
+
+
+def _an_text_tombstone(head):
+    """(timestamp, identity) from a text tombstone. Android 12 and later print
+    `Cmdline: <command line>`; Android 11 and older print only
+    `pid: N, tid: N, name: X  >>> <process> <<<`."""
+    ts = re.search(r"^Timestamp: (\S+ \S+)", head, re.M)
+    cmd = re.search(r"^Cmdline: (.+)$", head, re.M)
+    if cmd:
+        identity = cmd.group(1).strip()
+    else:
+        named = re.search(r"^pid: \d+, tid: \d+, name: .*?  >>> (.+?) <<<\s*$", head, re.M)
+        identity = named.group(1).strip() if named else ""
+    return (ts.group(1) if ts else ""), identity
 
 
 def _an_tombstones(folder):
-    """[(name, timestamp, cmdline)] of crash records in bugreport.zip."""
+    """[(name, timestamp, identity)] of crash records in bugreport.zip, one per
+    tombstone: a text record and its `.pb` twin (same tombstone_NN) are one.
+    An empty identity means the record could not be read."""
     path = os.path.join(folder, "bugreport.zip")
     if not _an_exists(path):
         return None
-    out = []
+    found = {}
     try:
         with _an_open(path, "rb") as source, zipfile.ZipFile(source) as z:
             for name in z.namelist():
-                if not re.search(r"tombstones/tombstone_\d+$", name):
+                m = re.search(r"tombstones/(tombstone_\d+)(\.pb)?$", name)
+                if not m:
                     continue
-                head = z.open(name).read(8192).decode("utf-8", "replace")
-                ts = re.search(r"^Timestamp: (\S+ \S+)", head, re.M)
-                cmd = re.search(r"^Cmdline: (.+)$", head, re.M)
-                out.append((name, ts.group(1)[:19].replace(" ", "T") if ts else "",
-                            cmd.group(1).strip() if cmd else ""))
+                raw = z.open(name).read(8192)
+                try:
+                    if m.group(2):
+                        ts, identity = _an_pb_tombstone(raw)
+                    else:
+                        ts, identity = _an_text_tombstone(raw.decode("utf-8", "replace"))
+                except ValueError:
+                    ts, identity = "", ""
+                key = name[:m.start(2)] if m.group(2) else name
+                previous = found.get(key)
+                if previous is None or (identity and not previous[2]):
+                    found[key] = (name, ts[:19].replace(" ", "T"), identity)
     except (OSError, zipfile.BadZipFile, KeyError, RuntimeError):
         return None
-    return out
+    return list(found.values())
 
 
 def _an_inflate(data, limit):
@@ -484,6 +566,13 @@ def _an_sms_from_backup(path, password=""):
     return messages, "; ".join(dict.fromkeys(problems))[:1000]
 
 
+def _an_count_read(r, n):
+    """Count usable records parsed, for the report's "was anything read" test.
+    A file that is merely present, or a valid empty list, adds nothing."""
+    if n > 0:
+        r.submetrics["phone_records_read"] = r.submetrics.get("phone_records_read", 0) + n
+
+
 def _an_hit(r, ind, location, detail, evidence=EV_ON_DEVICE, observed=""):
     r.add_hit(Hit(indicator=ind.value, location=location, detail=detail, tier=ind.tier,
                   confidence=ind.confidence, source=ind.source, evidence=evidence,
@@ -526,10 +615,12 @@ def _an_packages(r, ctx, folder, info):
     # covers only the digests it actually records, so each is counted apart.
     fp = {"files": 0, "no_hash": 0, "no_cert_sha256": 0, "no_cert_sha1": 0, "no_files": 0,
           "builtin_no_hash": 0, "builtin_no_cert_sha256": 0, "builtin_no_cert_sha1": 0}
+    valid = 0
     for pkg in packages:
         if not isinstance(pkg, dict) or not isinstance(pkg.get("name"), str) or not pkg["name"]:
             r.could_not_run("android:packages", "an app record has no valid package name")
             continue
+        valid += 1
         name = str(pkg.get("name") or "")
         where = "app {}".format(name)
         ind = iocs.lookup_typed(TYPE_APP_ID, name)
@@ -599,8 +690,15 @@ def _an_packages(r, ctx, folder, info):
                 text += "; it can: " + ", ".join(powers)
             r.add_lead(Lead("android:packages", where, text, _AN_WHY_SIDELOAD,
                             info["installed"].get(name, "")))
+    if not valid:
+        # No real phone has no apps: an empty or all-invalid list means the list
+        # was not recorded, and nothing about the apps was compared.
+        r.could_not_run("android:packages", "the app list holds no usable app record"
+                        if packages else "the app list is empty; no real phone has no apps")
+        return []
     r.checked += len(packages)
     r.submetrics["android_apps"] = len(packages)
+    _an_count_read(r, valid)
     r.ran("android:packages")
     _an_fingerprint_coverage(r, iocs, fp)
     return packages
@@ -635,6 +733,12 @@ def _an_fingerprint_coverage(r, iocs, fp):
         if fp[missing] or fp["no_files"]:
             r.could_not_run(check, "{} user-installed app file record(s) had no {}{}; those apps "
                             "were not compared with {}".format(fp[missing], what, without, against))
+        elif not fp["files"]:
+            # Not one app file record in the whole list: nothing could be compared.
+            # (Built-in apps that merely lack a certificate stay a note: collections
+            # commonly omit those, and a phone with no user-installed apps is normal.)
+            r.could_not_run(check, "the collection records no app files; nothing was compared with {}".format(
+                against))
         else:
             r.ran(check)
 
@@ -722,6 +826,7 @@ def _an_processes(r, ctx, folder):
             r.could_not_run("android:processes", "{}: {}".format(filename, _an_why(exc)))
     r.submetrics["android_processes"] = count
     if count:
+        _an_count_read(r, count)
         r.ran("android:processes")
     else:
         r.could_not_run("android:processes", "no supported process records" if found_input else "process list missing (processes.json, processes.txt or ps.txt)")
@@ -746,6 +851,7 @@ def _an_properties(r, ctx, props):
         r.add_lead(Lead("android:properties", "ro.build.version.security_patch",
                         "security updates are {} days old (patch level {})".format(age, patch),
                         _AN_WHY_PATCH))
+    _an_count_read(r, len(props))
     r.ran("android:properties")
 
 
@@ -773,12 +879,14 @@ def _an_settings(r, settings, info):
         r.add_lead(Lead("android:settings", "device admins",
                         "apps that are device admins: " + ", ".join(third_party_admins),
                         _AN_WHY_ADMIN))
+    _an_count_read(r, len(settings))
     r.ran("android:settings")
 
 
 def _an_device_security(r, folder, props):
     """Phone-wide signs of a modified phone. 'yellow' boot state is NOT flagged:
     it is how GrapheneOS and other properly signed custom systems report."""
+    read = 1 if props else 0
     if props.get("ro.debuggable") == "1" or props.get("ro.secure") == "0":
         r.add_lead(Lead("android:device-security", "ro.debuggable / ro.secure",
                         "the phone runs a debug or engineering build", _AN_WHY_BUILD))
@@ -794,6 +902,7 @@ def _an_device_security(r, folder, props):
     except (OSError, ValueError) as exc:
         selinux = ""
         r.could_not_run("android:device-security", "SELinux record: {}".format(_an_why(exc)))
+    read += 1 if selinux else 0
     if selinux and selinux.lower() != "enforcing":
         r.add_lead(Lead("android:device-security", "selinux",
                         "SELinux is '{}', not enforcing".format(selinux[:40]), _AN_WHY_SELINUX))
@@ -805,12 +914,16 @@ def _an_device_security(r, folder, props):
     if mounts is not None and not isinstance(mounts, list):
         r.could_not_run("android:device-security", "mounts record must be a JSON list")
         mounts = None
+    read += 1 if mounts else 0
     for m in mounts or []:
         text = m if isinstance(m, str) else json.dumps(m)
         if re.search(r"\s/system(\s|$)", " " + text + " ") and re.search(r"\brw\b", text):
             r.add_lead(Lead("android:device-security", "mounts",
                             "the system partition is mounted writable", _AN_WHY_MOUNT))
             break
+    _an_count_read(r, read)
+    if not read:
+        return      # no property, SELinux or mount record was readable: nothing was checked
     r.ran("android:device-security")
 
 
@@ -853,6 +966,7 @@ def _an_files(r, ctx, folder):
     if not valid:
         r.could_not_run("android:files", "AndroidQF could not list files on this phone")
     else:
+        _an_count_read(r, valid)
         r.ran("android:files")
         # Paths and names were checked; fingerprints only where AndroidQF
         # recorded them (its "hash files" option), so say how many.
@@ -890,7 +1004,11 @@ def _an_history(r, ctx, sections):
     if battery is None:
         r.could_not_run("android:history", "no battery history in the collection")
         return
+    if not battery.strip():
+        r.could_not_run("android:history", "the battery history in the collection is empty")
+        return
     changes = _an_battery_changes(battery)
+    _an_count_read(r, len(changes))
     reported = set()
     for verb, app, period in changes:
         ind = ctx.iocs.lookup_typed(TYPE_APP_ID, app)
@@ -904,6 +1022,17 @@ def _an_history(r, ctx, sections):
                     evidence=EV_DEVICE_LOG, observed=period)
     r.submetrics["android_package_changes"] = len(changes)
     r.ran("android:history")
+
+
+def _an_log_place(name, low, value):
+    """"phone log <file>, line <n>" for the first mention of `value` in the
+    lower-cased log bytes, so a reviewer can find it; just the file when the
+    text is not found (a boundary rule matched something this simple search
+    does not)."""
+    pos = low.find(value.lower().encode("utf-8", "replace")) if value else -1
+    if pos < 0:
+        return "phone log " + name
+    return "phone log {}, line {}".format(name, low.count(b"\n", 0, pos) + 1)
 
 
 def _an_device_logs(r, ctx, folder, already):
@@ -921,13 +1050,20 @@ def _an_device_logs(r, ctx, folder, already):
             r.could_not_run("android:device-logs", "{} exceeds the read limit; its remaining "
                            "bytes were not checked".format(name))
             data = data[:_AN_MAX_LOG_BYTES]
+        sample = data[:65536]
+        if sample.count(b"\x00") > len(sample) // 20:
+            # Binary, not a text log: AndroidQF writes text. Nothing was read from it.
+            r.could_not_run("android:device-logs", "{} is not a text log and was not searched".format(name))
+            continue
         read += len(data)
         if name == "dumpsys.txt":
+            # Same number of lines as before, so a line number still points into
+            # the collection's file.
             for region in _AN_CONFIG_REGIONS:
-                data = region.sub(b"\n", data)
+                data = region.sub(lambda m: b"\n" * m.group(0).count(b"\n"), data)
         low = data.lower()
         for ind in ctx.iocs.search_bytes(low):
-            _an_hit(r, ind, "phone log " + name,
+            _an_hit(r, ind, _an_log_place(name, low, ind.value),
                     "the phone's own system log names it", evidence=EV_DEVICE_LOG)
         if app_set is not None:
             app_low = _AN_DECLARATION_LINES.sub(b"", data).lower() if name == "dumpsys.txt" else low
@@ -935,14 +1071,14 @@ def _an_device_logs(r, ctx, folder, already):
                 if shadow.value in already:
                     continue
                 already.add(shadow.value)
-                _an_hit(r, originals[shadow.value], "phone log " + name,
+                _an_hit(r, originals[shadow.value], _an_log_place(name, app_low, shadow.value),
                         "the phone's system records name this app (it may have been "
                         "installed earlier)", evidence=EV_DEVICE_LOG)
         text = data.decode("utf-8", "replace")
         usb = dt_android_usb(text)
         for vid, pid in sorted({(v, p) for v, p, _n in usb}):
             lines = [n for v, p, n in usb if (v, p) == (vid, pid)]
-            _an_hit(r, dt_usb_indicator(vid, pid), "phone log " + name,
+            _an_hit(r, dt_usb_indicator(vid, pid), "phone log " + name + ", line {}".format(lines[0]),
                     "the phone recorded {} with device version 12.34 ({} time{}, first at line {}). "
                     "Cellebrite's unlocking hardware imitates exactly this device to break into "
                     "locked phones; a real device does not report that version.".format(
@@ -953,13 +1089,14 @@ def _an_device_logs(r, ctx, folder, already):
         for ind in list(ctx.iocs.of_type(TYPE_FILE_PATH)) + dt_android_path_indicators():
             if ind.value not in already and ioc_path_mentioned(ind, text):
                 already.add(ind.value)
-                _an_hit(r, ind, "phone log " + name,
+                _an_hit(r, ind, _an_log_place(name, low, ind.value),
                         "the phone's system records name this spyware path",
                         evidence=EV_DEVICE_LOG)
     if not read:
         r.could_not_run("android:device-logs", "no dumpsys or logcat output in the collection")
         return
     r.submetrics["android_log_bytes"] = read
+    _an_count_read(r, 1)
     r.ran("android:device-logs")
 
 
@@ -969,7 +1106,11 @@ def _an_crashes(r, ctx, folder):
         r.could_not_run("android:crashes", "bug report missing or unreadable; crash records "
                        "were not checked")
         return
+    unreadable = 0
     for name, when, cmdline in tombs:
+        if not cmdline:
+            unreadable += 1
+            continue
         app = cmdline.split(":", 1)[0].strip()
         ind = ctx.iocs.lookup_typed(TYPE_APP_ID, app)
         if ind is None:
@@ -982,6 +1123,12 @@ def _an_crashes(r, ctx, folder):
                     "a crash record names it: " + cmdline[:200], evidence=EV_DEVICE_LOG,
                     observed=when)
     r.submetrics["android_crash_records"] = len(tombs)
+    _an_count_read(r, len(tombs) - unreadable)
+    if unreadable:
+        r.could_not_run("android:crashes", "{} of {} crash record(s) in the bug report had no "
+                        "readable command line, so they were not compared".format(unreadable, len(tombs)))
+    if tombs and unreadable == len(tombs):
+        return      # nothing in any crash record could be read: not a clean read
     r.ran("android:crashes")
 
 
@@ -1021,6 +1168,7 @@ def _an_messages(r, ctx, folder):
                     evidence=EV_RECEIVED if received else EV_REFERENCED, observed=when)
     r.checked += len(messages)
     r.submetrics["android_sms_messages"] = len(messages)
+    _an_count_read(r, len(messages))
     if not problem or messages:
         r.ran("android:messages")
 
@@ -1094,7 +1242,7 @@ def run(ctx) -> ModuleResult:
                       "android:crashes": "bugreport"}.get(check, check)
             for hit in r.hits[before:]:
                 if check == "android:device-logs" and hit.location.startswith("phone log "):
-                    source = hit.location[len("phone log "):]
+                    source = hit.location[len("phone log "):].split(",", 1)[0]
                 hit.artifact = os.path.join(folder, source)
 
     guarded("android:packages", _an_packages, r, ctx, folder, info)

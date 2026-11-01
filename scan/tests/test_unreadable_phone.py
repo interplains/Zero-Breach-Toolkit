@@ -56,16 +56,21 @@ def test_encrypted_backup_without_cryptography_is_not_green(tmp_path, monkeypatc
     assert "no known indicator was found" not in summary
 
 
-def test_clean_readable_backup_stays_green(tmp_path):
+def test_readable_backup_with_gaps_is_neutral_not_green(tmp_path):
+    # 2.0.3: this test used to pin GREEN for a readable backup. An ordinary
+    # backup always has parts that could not be checked (artifacts it does not
+    # hold), and green with gaps contradicted "a gap, never a clean result".
     root = tmp_path / "backup"
     backup(root, [("HomeDomain", "Library/SMS/sms.db", _sms(tmp_path, "nothing to see here"))])
     ctx = _ctx(root)
     doc = _document(ctx, ios.run(ctx))
 
     assert not report.phone_source_unread(doc)
-    colour, title, _ = gui.gui_headline(doc)
-    assert colour == gui.GUI_GOOD
-    assert title == "No known spyware traces found"
+    assert doc["verdict"]["gaps"]
+    colour, title, subtitle = gui.gui_headline(doc)
+    assert colour == gui.GUI_NEUTRAL and colour != gui.GUI_GOOD
+    assert title == "Nothing found in what could be checked"
+    assert "could not run" in subtitle
     assert UNREAD_TITLE not in report.render_summary(doc)
 
 
@@ -79,16 +84,30 @@ def test_unreadable_android_collection_is_not_green():
 
 
 def test_a_computer_scan_with_the_same_check_is_unaffected():
+    # 2.0.3: still never "unread" (only phone scans can be); with gaps the
+    # headline is the neutral one, no longer green.
     doc = {"scope": {"phone": False},
            "modules": {"android": {"checks": [{"name": "android", "ran": False, "reason": "x"}]}},
            "verdict": {"status": report.V_NONE_WITH_GAPS, "gaps": []}}
     assert not report.phone_source_unread(doc)
-    assert gui.gui_headline(doc)[1] == "No known spyware traces found"
+    assert gui.gui_headline(doc)[1] == "Nothing found in what could be checked"
 
 
-def test_a_platform_that_did_run_is_not_unread():
+def test_a_platform_that_read_something_is_not_unread():
+    # 2.0.3: "read" is evidence that records were parsed, not a check name.
     doc = {"scope": {"phone": True},
            "modules": {"android": {"checks": [{"name": "android", "ran": False, "reason": "x"},
-                                               {"name": "android:packages", "ran": True}]}},
+                                               {"name": "android:packages", "ran": True}],
+                                   "submetrics": {"phone_records_read": 4}}},
            "verdict": {"status": report.V_NONE_WITH_GAPS, "gaps": []}}
     assert not report.phone_source_unread(doc)
+
+
+def test_checks_that_ran_without_reading_anything_are_still_unread():
+    doc = {"scope": {"phone": True},
+           "modules": {"ios": {"checks": [{"name": "ios:input", "ran": True},
+                                          {"name": "ios:manifest", "ran": True}],
+                               "submetrics": {"phone_records_read": 0}}},
+           "verdict": {"status": report.V_NONE_WITH_GAPS, "gaps": ["ios/ios:messages: x"]}}
+    assert report.phone_source_unread(doc)
+    assert gui.gui_headline(doc)[1] == UNREAD_TITLE

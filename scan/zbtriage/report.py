@@ -15,6 +15,7 @@ import copy
 import json
 import platform as _platform
 import re
+import sys
 from typing import Any, Dict, List
 
 from . import __version__
@@ -203,8 +204,8 @@ def build_document(iocs: IocSet, modules: List[ModuleResult],
             "freshness_unknown": iocs.has_unknown_age(),
             # What each indicator file contributed, and what it could not: a
             # published bundle may hold phone-only indicators this scan cannot use.
-            "sets": copy.deepcopy(getattr(iocs, "sets", [])),
-            "families": _family_counts(iocs),
+            "sets": _sanitize_deep(copy.deepcopy(getattr(iocs, "sets", []))),
+            "families": {sanitize_untrusted(k): v for k, v in _family_counts(iocs).items()},
             "feeds": _feed_block(getattr(iocs, "feeds", None)),
         },
         # Leftover temporary folders from an earlier scan that did not finish.
@@ -728,6 +729,14 @@ def render_human(document: Dict[str, Any]) -> str:
                  "  evidence type determine those steps; the number of matches does not."])
         _say(w, ["  A match means INVESTIGATE, not 'you are compromised'."])
         _say(w, ["  A match does not by itself establish that spyware ran on this device."])
+        if v["gaps"]:
+            # The summary promises the list at the end of the report; with a
+            # finding it used to be missing exactly where a report is most
+            # likely to be forwarded.
+            w("")
+            w(T("Checks that could NOT run (a gap is not a clean result):"))
+            for g in _gap_lines(v["gaps"]):
+                w("  - {}".format(g))
     elif v["status"] in (V_WITHDRAWN, V_WITHDRAWN_WITH_GAPS):
         _say(w, ["VERDICT: every match is to an indicator its publisher has withdrawn;",
                  "no actionable finding."])
@@ -1457,20 +1466,58 @@ def _support_options(w):
              "to assume spyware infection. No result from this tool rules it out."])
 
 
+PHONE_READ = "phone_records_read"
+
+
+def phone_records_read(document: Dict[str, Any]) -> int:
+    """How many usable records the phone readers actually read. The readers add
+    to the `phone_records_read` count only for records they parsed (an app, a
+    message, a listed file); a check that merely reached its last line, or a
+    source that merely opened, adds nothing."""
+    total = 0
+    for module in (document.get("modules") or {}).values():
+        try:
+            total += int((module.get("submetrics") or {}).get(PHONE_READ, 0) or 0)
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
 def phone_source_unread(document: Dict[str, Any]) -> bool:
-    """True when a phone was checked but its backup or collection could not be
-    opened at all (for example an encrypted iPhone backup that could not be
-    decrypted). Then nothing in that phone was checked, so the result must not
-    read as clean. Only phone scans count; a platform that did run is not unread."""
+    """True when a phone was checked but nothing in it was read: its backup or
+    collection could not be opened (an encrypted iPhone backup that could not be
+    decrypted), or opened and held nothing usable (an empty folder with an
+    iPhone file system chosen, a damaged sysdiagnose archive, an empty app list).
+    Then the result must not read as clean.
+
+    Decided by evidence that something was read, never by check names: the
+    iPhone reader marks its input "ran" before it reads anything, which is what
+    defeated the earlier name-based test. A finding means something was read.
+    Only phone scans count."""
     if not document.get("scope", {}).get("phone"):
         return False
-    checks = [c for m in document.get("modules", {}).values() for c in m.get("checks", [])]
-    def failed(names):
-        return any(c.get("name") in names and not c.get("ran") for c in checks)
-    def read(prefix):
-        return any(str(c.get("name", "")).startswith(prefix) and c.get("ran") for c in checks)
-    return ((failed(("android",)) and not read("android:"))
-            or (failed(("ios:manifest", "ios:input")) and not read("ios:")))
+    if any(m.get("hits") for m in (document.get("modules") or {}).values()):
+        return False
+    return phone_records_read(document) == 0
+
+
+def result_kind(document: Dict[str, Any]) -> str:
+    """What the result means, in one word, for the window and the summary alike:
+    found, withdrawn, references, unread, none_with_gaps or none. Green belongs
+    to "none" only: nothing found AND every check ran."""
+    verdict = document.get("verdict") or {}
+    status = verdict.get("status", "")
+    if status == V_HITS:
+        return "found"
+    if status in (V_WITHDRAWN, V_WITHDRAWN_WITH_GAPS):
+        return "withdrawn"
+    if status in (V_REFERENCES, V_REFERENCES_WITH_GAPS):
+        return "references"
+    if phone_source_unread(document):
+        return "unread"
+    if status == V_NONE and not verdict.get("gaps"):
+        return "none"
+    return "none_with_gaps"
 
 
 def render_summary(document: Dict[str, Any]) -> str:
@@ -1496,7 +1543,7 @@ def render_summary(document: Dict[str, Any]) -> str:
         _say(w, ["  TRAINING EXAMPLE: a made-up phone and made-up indicators, not a real check."])
     w(_RULE)
 
-    if not all_hits and phone_source_unread(document):
+    if not all_hits and result_kind(document) == "unread":
         _say(w, ["  RESULT: the phone could not be checked. Its backup or collection could",
                  "          not be opened, so nothing in it was checked."])
         w("")
@@ -1551,6 +1598,11 @@ def render_summary(document: Dict[str, Any]) -> str:
             if meaning:
                 for line in _wrap_t(meaning, 64):
                     w("          " + line)
+            if h.get("evidence") == EV_DEVICE_LOG and not h.get("withdrawn_only"):
+                # A log string is graded serious on purpose (the log is often the
+                # last trace on a phone), but it is not proof of contact.
+                for line in _wrap_t(EVIDENCE_MEANING[EV_DEVICE_LOG], 64):
+                    w("          " + line)
             if h.get("profile"):
                 w("          " + T("Account: {value}", value=h["profile"]))
             if h.get("observed"):
@@ -1602,7 +1654,7 @@ def render_summary(document: Dict[str, Any]) -> str:
         for g in _gap_lines(gaps):
             for i, line in enumerate(_wrap(g, 66) if i18n_lang() == "en" else _wrap_any(g, 66)):
                 w("    " + ("- " if i == 0 else "  ") + line)
-        w("    " + T("(Each one is listed in full at the end of this report.)"))
+        w("    " + T("(The full report lists them again at its end.)"))
         # The DNS gap is the one a reader can actually close - but only point at
         # the instructions if they were actually rendered (they are not on a
         # non-Windows host), or the pointer dangles.
@@ -1616,7 +1668,7 @@ def render_summary(document: Dict[str, Any]) -> str:
     # is the one people are most relaxed about posting publicly to say "I'm
     # fine" - and it carries the same usernames, profile names and paths.
     w("")
-    for line in _wrap_t(_PRIVACY_NOTE, 68):
+    for line in _wrap_t(_PRIVACY_NOTE if sys.platform == "win32" else _PRIVACY_NOTE_OTHER, 68):
         w("  " + line)
     w(_RULE)
     w("")
@@ -1721,6 +1773,14 @@ _PRIVACY_NOTE = ("Before you share this report: it can contain your Windows "
                  "evidence securely; do not post the full report publicly.")
 
 
+# The same note on a Mac or Linux computer, where "Windows" would be wrong.
+_PRIVACY_NOTE_OTHER = ("Before you share this report: it can contain your username, "
+                       "browser profile names, file paths and browsing "
+                       "details, SMS senders and message excerpts. --share-json writes a "
+                       "minimal summary without artifact text. Ask a responder how to share "
+                       "evidence securely; do not post the full report publicly.")
+
+
 def _dedup_serious(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Collapse repeats of the same indicator at the same grade, strongest grade
     first, so one domain found in three cache files is one line, not three."""
@@ -1797,6 +1857,19 @@ def _referrals(w) -> None:
     w("  - Access Now Digital Security Helpline  https://www.accessnow.org/help/")
     w("  - Amnesty International Security Lab     https://securitylab.amnesty.org/")
     w("  - The Citizen Lab                        https://citizenlab.ca/")
+
+
+def _sanitize_deep(value):
+    """sanitize_untrusted on every string in a nested structure: the importer's
+    per-file summaries carry text from the indicator files (paths, family
+    names), which are third-party input like any other."""
+    if isinstance(value, str):
+        return sanitize_untrusted(value)
+    if isinstance(value, dict):
+        return {_sanitize_deep(k): _sanitize_deep(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_deep(v) for v in value]
+    return value
 
 
 def _family_counts(iocs) -> Dict[str, int]:
