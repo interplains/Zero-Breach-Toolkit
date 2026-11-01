@@ -240,6 +240,14 @@ def kev_version(text):
     return tuple(int(p) for p in parts) if parts else None
 
 
+def _kev_year_bound(bound, have):
+    """True when a bound is a year rather than a version: some CVE records give
+    `lessThan: "2021"` for a product numbered 27.2, and read as a version that
+    makes every current release look out of date. A product that really is
+    numbered by year (Office 2019) still compares."""
+    return bool(bound) and len(bound) == 1 and 1990 <= bound[0] <= 2100 and have[0] < 1000
+
+
 def _kev_cmp(a, b):
     n = max(len(a), len(b))
     a, b = a + (0,) * (n - len(a)), b + (0,) * (n - len(b))
@@ -259,6 +267,7 @@ def kev_affected(installed, ranges, product=None):
             continue
         start = kev_version(r.get("version"))
         lt, le = kev_version(r.get("lessThan")), kev_version(r.get("lessThanOrEqual"))
+        lt, le = (None if _kev_year_bound(lt, have) else lt), (None if _kev_year_bound(le, have) else le)
         if lt is None and le is None:
             continue
         comparable = True

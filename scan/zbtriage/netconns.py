@@ -51,7 +51,9 @@ def _nc_windows():
             return names[pid]
         name = ""
         if pid in (0, 4):
-            name = "System" if pid == 4 else "System Idle"
+            # Pid 0 is how Windows lists a connection that is closing (TIME_WAIT):
+            # no program holds it. "System Idle" read like a program connecting.
+            name = "System"
         else:
             handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
             if handle:

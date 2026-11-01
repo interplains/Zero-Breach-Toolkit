@@ -40,7 +40,7 @@ class TestOverlapStatement(unittest.TestCase):
         self.assertNotIn("DO NOT OVERLAP", t,
                          "evidence from inside 2024-2025 must not be reported as "
                          "having no overlap with it")
-        self.assertIn("PART of the campaign period", t)
+        self.assertIn("PART of the AdFection campaign period", t)
         self.assertIn("browser/cookies", t, "must name which record reached back")
 
     def test_evidence_before_campaign_still_hedged(self):

@@ -1768,7 +1768,11 @@ def run(ctx) -> ModuleResult:
                 doc = plistlib.loads(_browser_read_small(path))
             except FileNotFoundError:
                 return None
-            except (OSError, ValueError, plistlib.InvalidFileException, RecursionError) as exc:
+            except OSError as exc:
+                # A refusal gets the same plain explanation as the databases, not a raw error.
+                mark_fail(label, kind, _locked_note(path, exc))
+                return None
+            except (ValueError, plistlib.InvalidFileException, RecursionError) as exc:
                 mark_fail(label, kind, os.path.basename(path) + " unreadable or unsupported: " + type(exc).__name__)
                 return None
             if not isinstance(doc, (dict, list)):

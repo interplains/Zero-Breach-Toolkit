@@ -25,7 +25,7 @@ from .contract import (CHECK_CATALOGUE, CONTENT_TRUST, EXIT_CODES, HELP_LINKS,
                        contract_must_relay, contract_next_steps,
                        sanitize_module_dict, sanitize_untrusted)
 from .iocs import DECAYING_IP_TIERS, IocSet
-from .localpaths import path_problem, is_packaged
+from .localpaths import mac_has_full_disk_access, path_problem, is_packaged
 from .i18n import T, TN, TX, i18n_lang
 from .result import (CLEAN, HITS, PARTIAL, UNKNOWN, Lead, ModuleResult, is_serious,
                      EV_ON_DISK, EV_FILE_PATTERN, EV_PERSISTENCE, EV_COMMAND, EV_CONTACTED,
@@ -643,6 +643,8 @@ def render_human(document: Dict[str, Any]) -> str:
         if m["submetrics"]:
             for line in _describe_metrics(m["submetrics"]):
                 w("    {}".format(line))
+        if m.get("inapplicable_reason"):
+            w("    " + _field("note   : ") + TX(m["inapplicable_reason"]))
         for note in m["notes"]:
             w("    " + _field("note   : ") + TX(note))
         if m["hits"]:
@@ -794,7 +796,7 @@ def overlap_statement(earliest: datetime.date, source: str) -> List[str]:
     if earliest > CAMPAIGN_TO:
         _say(out.append, [
             "** The oldest dated evidence reported by this scan is {source} ({date}).",
-            "   The campaign this tool searches for was active in {period}.",
+            "   AdFection, one of the campaigns this tool looks for, was active in {period}.",
             "   Those dates DO NOT OVERLAP. The dates reported here do not reach",
             "   the campaign period. Older or unread records may still exist;",
             "   this scan cannot rule out past contact during that period. **",
@@ -803,7 +805,7 @@ def overlap_statement(earliest: datetime.date, source: str) -> List[str]:
     if earliest > CAMPAIGN_FROM:
         _say(out.append, [
             "** The oldest dated evidence reported by this scan is {source} ({date}).",
-            "   That reaches PART of the campaign period ({period}),",
+            "   That reaches PART of the AdFection campaign period ({period}),",
             "   from {date} onwards, and only through that one kind of record.",
             "   This does not establish continuous coverage from that date.",
             "   Older or unread records may still exist. A clean result cannot",
@@ -1746,7 +1748,7 @@ def _gap_lines(gaps: List[str]) -> List[str]:
     fda = ((" " + (T("Full Disk Access for Zero Breach Toolkit lets macOS-protected folders be included.")
                    if is_packaged() else
                    T("Full Disk Access for Terminal lets macOS-protected folders be included.")))
-           if full_disk and not private else "")
+           if full_disk and not private and not mac_has_full_disk_access() else "")
     if files_missed:
         lines.append(T("{n} program file(s) could not be fingerprinted (in use, protected, "
                        "or over 512 MB; known spyware files are far smaller than that).",

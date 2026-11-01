@@ -320,6 +320,19 @@ def is_packaged():
     return bool(getattr(sys, "frozen", False))
 
 
+def mac_has_full_disk_access():
+    """True on a Mac when this program can list Safari's folder, which macOS only
+    allows with Full Disk Access. Then advice to turn it on would be wrong: what
+    is still closed stays closed either way."""
+    if sys.platform != "darwin":
+        return False
+    try:
+        os.listdir(os.path.join(os.path.expanduser("~"), "Library", "Safari"))
+    except OSError:
+        return False
+    return True
+
+
 def mac_privacy_app():
     """What a Mac person gives Full Disk Access to: the app, or Terminal."""
     return "Zero Breach Toolkit" if is_packaged() else "Terminal"

@@ -37,6 +37,7 @@ def test_browser_gap_names_the_app_or_terminal(monkeypatch):
 
 
 def test_hash_gap_names_the_app_or_terminal(monkeypatch):
+    monkeypatch.setattr(hashscan, "mac_has_full_disk_access", lambda: False)
     monkeypatch.setattr(hashscan.sys, "platform", "darwin")
     reasons = {"denied": 2, "large": 0, "unreadable": 0}
     _packaged(monkeypatch, True)
@@ -47,6 +48,7 @@ def test_hash_gap_names_the_app_or_terminal(monkeypatch):
 
 
 def test_summary_advice_names_the_app_or_terminal(monkeypatch):
+    monkeypatch.setattr("zbtriage.report.mac_has_full_disk_access", lambda: False)
     private_gap = ["browser/safari:safari-tabs: macOS privacy protection blocked Safari (SafariTabs.db), "
                    "so it was not checked. Give Terminal Full Disk Access, then run again."]
     folder_gap = ["hash/root: 3 folder(s) or item(s) could not be opened, so nothing in them was compared "

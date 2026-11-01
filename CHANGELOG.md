@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.4 (unreleased)
+
+- Macs no longer get a false warning that macOS is out of date: a CVE record's `lessThan: "2021"` was read as a version number. Thanks to the Mac tester who found it.
+- On Windows, double-clicking no longer leaves a terminal in the taskbar that ends the check when closed.
+- The report's date comparison names AdFection instead of implying the tool looks for one campaign.
+- Safari folders macOS refuses give the plain privacy message, and Full Disk Access advice is left out when access is already on.
+- A check that does not apply says why in the report's detail.
+- A stopped check no longer says "nothing matched" in its next steps.
+- Saved reports show their path on the Result tab, and the save dialog lists file types.
+- Help scrolls and fills its tab. Japanese and Chinese wrap correctly in Help, and Chinese, Japanese and Korean use the matching Windows font. Right-to-left lines leave more room at small window sizes.
+- Connections closing on Windows are labelled "System", not "System Idle". The Quick check estimate is now 5 to 15 minutes.
+
 ## 2.0.3 (unreleased)
 
 **If you checked a phone with 2.0.0 to 2.0.2 and got green, please check it again.** Some results said

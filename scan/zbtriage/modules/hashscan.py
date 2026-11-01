@@ -24,7 +24,7 @@ import stat
 import sys
 
 from ..result import Hit, ModuleResult, EV_ON_DISK
-from ..localpaths import (is_packaged, path_problem, path_problem_cached, walk_local, WALK_LINK_REFUSED,
+from ..localpaths import (is_packaged, mac_has_full_disk_access, path_problem, path_problem_cached, walk_local, WALK_LINK_REFUSED,
                           WALK_SPECIAL_REFUSED, WALK_CLOUD_SKIPPED, SF_DATALESS)
 
 from ..localpaths import _CLOUD_ONLY_ATTRIBUTES
@@ -212,7 +212,9 @@ def _hs_reasons(reasons, fix=True):
         parts.append("{} stored only in iCloud or OneDrive and not downloaded".format(reasons["cloud"]))
     text = ", ".join(parts) or "could not be read"
     if fix and reasons["denied"] and sys.platform == "darwin":
-        if is_packaged():
+        if mac_has_full_disk_access():
+            text += "; macOS keeps some folders closed even with Full Disk Access"
+        elif is_packaged():
             text += ("; macOS privacy protection blocks some folders: give Zero Breach Toolkit Full Disk "
                      "Access (System Settings > Privacy & Security > Full Disk Access) and run again")
         else:

@@ -40,7 +40,7 @@ GUI_WARN = "#9a6700"
 GUI_NEUTRAL = "#3c4858"
 
 GUI_CHECKS = (
-    ("browser", "Quick check", "Browsers only, where ad-delivered spyware leaves its traces. Usually 5 to 10 minutes."),
+    ("browser", "Quick check", "Browsers only, where ad-delivered spyware leaves its traces. Usually 5 to 15 minutes."),
     ("default", "Standard check", "Recommended. Browsers, apps, startup items, program files and out-of-date "
                                   "programs. Usually 15 to 20 minutes."),
     ("full", "Full check", "Everything in Standard, plus web caches and more file types. Usually 30 minutes or more."),
@@ -164,7 +164,7 @@ def gui_next_steps(document):
     elif kind == "none":
         steps.append(T("Nothing matched known spyware. Keep your system and apps updated, and run the "
                        "check again now and then."))
-    elif kind == "none_with_gaps":
+    elif kind == "none_with_gaps" and not document.get("scope", {}).get("cancelled"):
         steps.append(T("Nothing matched known spyware in what could be checked, but some checks could "
                        "not run, so this is not a full all-clear. They are listed in the summary: fix "
                        "what you can and run the check again."))
@@ -326,6 +326,43 @@ def gui_launched_by_double_click():
     return 0 < count <= (2 if getattr(sys, "frozen", False) else 1)
 
 
+def gui_font_family(default, available):
+    """The Windows face for Chinese, Japanese or Korean, so characters are not
+    drawn with another language's fallback font. Elsewhere the system default."""
+    if sys.platform != "win32":
+        return default
+    wanted = {"zh": ("Microsoft YaHei UI", "Microsoft YaHei"), "ja": ("Yu Gothic UI", "Meiryo UI", "Meiryo"),
+              "ko": ("Malgun Gothic",)}.get(i18n_lang(), ())
+    return next((name for name in wanted if name in available), default)
+
+
+def gui_save_types(extension):
+    """The save dialog's file-type list."""
+    kinds = {".txt": T("Text file"), ".json": T("Data file (JSON)")}
+    return [(kinds.get(extension, extension), "*" + extension), (T("All files"), "*.*")]
+
+
+def gui_relaunch_without_console():
+    """Double-clicked on Windows, the program starts in a terminal window that
+    stays in the taskbar, and closing it ends the check. Start again with no
+    console and let this copy end, which closes the terminal. Returns True when
+    the new copy started; on any failure the caller carries on here."""
+    if sys.platform != "win32" or not getattr(sys, "frozen", False) or os.environ.get("ZB_WINDOW_ONLY"):
+        return False
+    if not gui_launched_by_double_click():
+        return False
+    try:
+        import subprocess
+        # The reset makes the copy unpack for itself: this one's folder goes when it ends.
+        env = dict(os.environ, ZB_WINDOW_ONLY="1", PYINSTALLER_RESET_ENVIRONMENT="1")
+        subprocess.Popen([sys.executable] + sys.argv[1:], env=env, close_fds=True,
+                         creationflags=subprocess.CREATE_NO_WINDOW,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, ValueError, AttributeError):
+        return False
+    return True
+
+
 def gui_hide_console():
     if sys.platform != "win32":
         return
@@ -476,10 +513,12 @@ class GuiApp:
         from tkinter import font
         base = font.nametofont("TkDefaultFont")
         base.configure(size=10)
-        self.font_title = font.Font(family=base.cget("family"), size=18, weight="bold")
-        self.font_head = font.Font(family=base.cget("family"), size=13, weight="bold")
-        self.font_body = font.Font(family=base.cget("family"), size=10)
-        self.font_bold = font.Font(family=base.cget("family"), size=10, weight="bold")
+        family = gui_font_family(base.cget("family"), font.families())
+        base.configure(family=family)
+        self.font_title = font.Font(family=family, size=18, weight="bold")
+        self.font_head = font.Font(family=family, size=13, weight="bold")
+        self.font_body = font.Font(family=family, size=10)
+        self.font_bold = font.Font(family=family, size=10, weight="bold")
         self.font_mono = font.nametofont("TkFixedFont")
         self.root.configure(bg=GUI_BG)
         style = ttk.Style(self.root)
@@ -566,6 +605,8 @@ class GuiApp:
     def _fit_width(self, label):
         try:
             width = label._fit_available() if label._fit_available else label.winfo_width() - 8
+            if i18n_rtl():
+                width -= 24     # drawn right-to-left text can be wider than Tk measures it
         except Exception:  # noqa: BLE001 - a widget not laid out yet
             width = 0
         return int(width) if width >= 120 else label._fit_fallback
@@ -821,6 +862,9 @@ class GuiApp:
         self.share_button = ttk.Button(actions, text=T("Save sharing summary..."),
                                        command=self.save_summary, state="disabled")
         self.share_button.pack(side="left")
+        self.saved_note = tk.Label(result, text="", bg=GUI_CARD, fg=GUI_MUTED, font=self.font_body,
+                                   anchor=anchor, justify=justify, wraplength=860)
+        self.saved_note.pack(fill="x", pady=(0, 6))
         frame = ttk.Frame(result, style="Card.TFrame")
         frame.pack(fill="both", expand=True)
         self.text = tk.Text(frame, wrap="word",
@@ -989,12 +1033,18 @@ class GuiApp:
 
     def _layout_help(self):
         tk = self.tk
-        card = self._card(self.tab_help, expand=True)
-        text = tk.Text(card, wrap="word", relief="flat", bg=GUI_CARD, fg=GUI_INK, font=self.font_body,
-                       padx=4, pady=4, height=24)
+        card = self.ttk.Frame(self.tab_help, style="Card.TFrame", padding=16)
+        card.pack(fill="both", expand=True, padx=16, pady=12)
+        # Japanese and Chinese have no spaces, so wrapping by word moved whole
+        # sentences to the next line and left their bullets alone.
+        text = tk.Text(card, wrap="char" if i18n_lang() in ("ja", "zh") else "word", relief="flat",
+                       bg=GUI_CARD, fg=GUI_INK, font=self.font_body, padx=4, pady=4, height=24)
         self._fill(text, gui_help_text())
         text.configure(state="disabled")
-        text.pack(fill="both", expand=True)
+        scroll = self.ttk.Scrollbar(card, command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        text.pack(side="left", fill="both", expand=True)
 
     # --- events from worker threads ----------------------------------------
     def _drain(self):
@@ -1209,6 +1259,7 @@ class GuiApp:
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         return filedialog.asksaveasfilename(
             parent=self.root, title=title, defaultextension=extension,
+            filetypes=gui_save_types(extension),
             initialfile="{}-{}{}".format(name, stamp, extension), initialdir=gui_save_folder())
 
     def _save(self, writer, title, name, extension):
@@ -1221,7 +1272,9 @@ class GuiApp:
         try:
             workflow_output_guard(self.args, path, self.document)
             writer(path)
-            self.status.set(T("Saved: {path}", path=path))
+            shown = T("Saved: {path}", path=os.path.normpath(path))
+            self.status.set(shown)
+            self.saved_note.configure(text=shown)
         except OSError as exc:
             self.status.set(T("Not saved."))
             messagebox.showerror(T("Not saved"), gui_save_failure(exc), parent=self.root)
@@ -1495,6 +1548,8 @@ def gui_main(hooks):
     except ImportError:
         gui_fallback_notice()
         return None
+    if gui_relaunch_without_console():
+        return 0
     try:
         root = tk.Tk()
     except tk.TclError:
