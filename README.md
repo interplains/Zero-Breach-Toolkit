@@ -46,6 +46,8 @@ traces it looks for, in the places it could read. It cannot find spyware nobody 
 traces of, and it does not prove a device is safe. If you think you are being targeted, ask a
 digital-security helpline even if the result is green.
 
+**Your antivirus may flag these programs.** Antivirus products often wrongly flag new programs that are not code-signed yet, and some flag these. If you downloaded the file from [the official release page](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest), this is a false alarm and you can ignore it: the code is public, and each program has a public build record you can check. We have applied for free code signing and will report these false alarms to the antivirus companies. **If the file came from anywhere else, do not run it and trust the warning.**
+
 ### Windows
 
 1. Download `zero-breach-toolkit-windows-x64.exe`.
