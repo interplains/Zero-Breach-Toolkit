@@ -313,6 +313,9 @@ class TestMenus(TrainingCase):
 class TestWindowLayout(TrainingCase):
     def test_the_example_and_phone_rows_do_not_cover_a_choice(self):
         try:
+            from zbtriage import gui as gui_probe_module
+            if not gui_probe_module.gui_available():
+                raise RuntimeError("no window")
             import tkinter as tk
             root = tk.Tk()
         except Exception as exc:  # no display here

@@ -1,12 +1,27 @@
 # Changelog
 
-## 2.0.1 (unreleased)
+## 2.0.2 (2026-11-01)
+
+- On a Mac, opening the window can abort the whole program ("Python quit unexpectedly"): with no
+  screen session (for example over SSH), and also on a normal desktop when Apple's own Python 3.9 is
+  used, because its Tk refuses some macOS versions. The program now checks first whether a window can
+  be opened (a throw-away child process on a Mac, so a crash costs nothing) and, if not, says so in
+  one line ("The window could not be opened on this computer ...") and carries on in the terminal.
+  On Apple's own Python it adds a second line pointing to python.org for the window. The same check
+  makes the window tests skip instead of taking the test run down.
+- Test suite: the release-check fixture no longer mistakes Apple's bytecode cache (or
+  PYTHONPYCACHEPREFIX) for the scanner reading files; the write-ahead-log test builds its uncommitted
+  tail from the file format instead of relying on how a given SQLite spills pages; a single test file
+  can be run on its own (`pytest scan/tests/test_x.py`); `gate-out/` is ignored by git.
+- German: "This is NOT a clean result" no longer leaves the English word "clean" in the sentence.
+
+## 2.0.1 (2026-11-01)
 
 - The programs now include the library needed to open encrypted iPhone backups; before, an
   encrypted backup could not be read and the result could wrongly look clean. A phone backup
   that cannot be read now shows as not checked, never as clean.
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-01)
 
 Languages
 - The window and the report are available in 27 languages: English, Arabic, Chinese,

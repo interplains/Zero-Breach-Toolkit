@@ -40,6 +40,8 @@ class WindowCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="gui_layout_")
         try:
+            if not gui.gui_available():
+                raise RuntimeError("no window")
             import tkinter as tk
             self.root = tk.Tk()
         except Exception as exc:  # noqa: BLE001 - no display here

@@ -219,9 +219,23 @@ def main():
                     + [p.absolute() for p in runtime_roots]
                     + [p.resolve() for p in runtime_roots])
 
+    # Where the interpreter keeps compiled bytecode when it is NOT beside the source:
+    # PYTHONPYCACHEPREFIX, and on a Mac Apple's own Python (~/Library/Caches/com.apple.python).
+    # Only compiled-module files (.pyc) under those folders are let through, so a codec
+    # or module import is not mistaken for the scanner reading evidence, while every
+    # other file there stays denied.
+    bytecode_roots = []
+    if getattr(sys, "pycache_prefix", None):
+        bytecode_roots.append(sys.pycache_prefix)
+    if sys.platform == "darwin":
+        bytecode_roots.append(os.path.join(os.path.expanduser("~"), "Library", "Caches", "com.apple.python"))
+    bytecode_roots = [os.path.normcase(os.path.abspath(p)) for p in bytecode_roots]
+
     def within(path):
         # Lexical only; no link resolution before the scanner's locality guard.
         path = os.path.normcase(os.path.abspath(os.fspath(path)))
+        if path.endswith(".pyc") and any(path.startswith(b + os.sep) for b in bytecode_roots):
+            return True
         return any(path == os.path.normcase(str(base))
                    or path.startswith(os.path.normcase(str(base)) + os.sep) for base in allowed)
 

@@ -190,6 +190,7 @@ def test_window_start_failure_falls_back_to_the_terminal(monkeypatch):
 
     fake_tk = types.SimpleNamespace(Tk=FakeRoot, TclError=type("TclError", (Exception,), {}))
     monkeypatch.setitem(sys.modules, "tkinter", fake_tk)
+    monkeypatch.setattr(gui, "gui_available", lambda: True)
 
     def broken(self, root, hooks):
         raise RuntimeError("cannot load font")

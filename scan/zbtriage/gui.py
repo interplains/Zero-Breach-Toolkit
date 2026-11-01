@@ -1230,17 +1230,102 @@ def gui_report_text(document):
               "anyone helping you.") + "\n" + "=" * 72 + "\n\n" + original)
 
 
+_GUI_PROBE_CODE = "import tkinter; tkinter.Tk().destroy()"
+_gui_probe_cache = []
+
+
+def gui_probe(command, timeout=15):
+    """Run `command` (a list) in a child process and say whether it exited 0.
+    A crash, a signal, a missing program or a timeout all count as "no"; the
+    child's output is thrown away. Used because on a Mac creating the window can
+    abort the whole process instead of raising: with no window server, or on
+    Apple's own Python whose Tk refuses this macOS version even on a normal
+    desktop."""
+    import subprocess
+    try:
+        done = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, timeout=timeout)
+    except Exception:  # noqa: BLE001 - timeout, missing program, anything
+        return False
+    return done.returncode == 0
+
+
+def _mac_has_window_server():
+    """For a packaged program, which cannot re-run itself as a plain interpreter.
+    A double-clicked app has no terminal to fall back to, so a wrong "no" would
+    look like an app that does nothing: only a remote (SSH) session can get a
+    "no" here, and only if it also has no CoreGraphics desktop session."""
+    if not (os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_TTY")):
+        return True
+    try:
+        import ctypes
+        lib = ctypes.CDLL("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")
+        lib.CGSessionCopyCurrentDictionary.restype = ctypes.c_void_p
+        return bool(lib.CGSessionCopyCurrentDictionary())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def gui_available():
+    """Can a window be opened here? Decided before any Tk root is created and
+    cached for the process. Never raises. "No" covers a missing display AND a Tk
+    that cannot start on this computer even with a desktop present (Apple's own
+    Python 3.9 aborts the process on some macOS versions)."""
+    if _gui_probe_cache:
+        return _gui_probe_cache[0]
+    try:
+        if sys.platform.startswith("win"):
+            ok = True
+        elif sys.platform == "darwin":
+            if getattr(sys, "frozen", False):
+                ok = _mac_has_window_server()
+            else:
+                ok = gui_probe([sys.executable, "-c", _GUI_PROBE_CODE])
+        else:
+            ok = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    except Exception:  # noqa: BLE001
+        ok = False
+    _gui_probe_cache.append(ok)
+    return ok
+
+
+def _apple_system_python():
+    """True for the Python that ships with macOS / the Command Line Tools. Its Tk
+    can refuse to start on some macOS versions even on a normal desktop (it quits
+    the whole process), so the window is unavailable there while python.org's
+    Python works."""
+    if sys.platform != "darwin" or getattr(sys, "frozen", False):
+        return False
+    where = (sys.executable or "") + " " + (getattr(sys, "base_prefix", "") or "")
+    return ("/CommandLineTools/" in where or "/Xcode.app/" in where
+            or (sys.executable or "").startswith("/usr/bin/"))
+
+
+def gui_fallback_notice():
+    print(T("The window could not be opened on this computer, so the check is running in the terminal instead."),
+          file=sys.stderr)
+    if _apple_system_python():
+        print(T("To get the window, install Python from python.org/downloads and start the check with that Python."),
+              file=sys.stderr)
+
+
 def gui_main(hooks):
     """Open the window. Returns an exit code, or None if no window can be shown
-    here (no display), so the caller can fall back to the terminal."""
+    here (no display, a Tk that refuses to start, a desktop session that is not
+    available), so the caller can fall back to the terminal."""
     i18n_set(hooks.get("lang") or i18n_default())
+    if not gui_available():
+        gui_fallback_notice()
+        return None
     try:
         import tkinter as tk
     except ImportError:
+        gui_fallback_notice()
         return None
     try:
         root = tk.Tk()
     except tk.TclError:
+        gui_fallback_notice()
         return None
     if gui_launched_by_double_click():
         gui_hide_console()
@@ -1254,6 +1339,7 @@ def gui_main(hooks):
             root.destroy()
         except Exception:
             pass
+        gui_fallback_notice()
         return None
     root.mainloop()
     return 0

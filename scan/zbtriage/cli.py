@@ -248,7 +248,6 @@ def _main(argv: List[str] = None) -> int:
         code = gui_main(dict(_gui_hooks(not args.no_version_check), lang=args.lang))
         if code is not None:
             return code
-        print("No window can be shown here; continuing in the terminal.", file=sys.stderr)
     if not args.no_banner:
         show_banner(__version__)
     if args.indicator_cache and _refuse_remote("--indicator-cache", args.indicator_cache):

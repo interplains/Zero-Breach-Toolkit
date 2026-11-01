@@ -1,11 +1,16 @@
 """Tests never use the internet. Any web request a test makes (through the
 source package or the single-file build, which both use urllib) fails at once
 instead of reaching a real server; local test servers still work."""
+import os
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
 import pytest
+
+# Lets a single test file run on its own (`pytest scan/tests/test_x.py`) from any folder.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _REAL_OPEN = urllib.request.OpenerDirector.open
 

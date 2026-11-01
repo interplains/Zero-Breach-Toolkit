@@ -342,6 +342,37 @@ def test_message_metadata_and_malformed_cache_neighbours(tmp_path, reader):
     assert any(not c.ran and c.name == "ios:browser-state" for c in result.checks)
 
 
+def _uncommit_last_transaction(wal):
+    """Return `wal` with its final commit frame turned into an ordinary frame, so
+    the last transaction is a valid but UNCOMMITTED tail. Built from the published
+    WAL format rather than from how a live SQLite engine happens to spill pages,
+    which differs between SQLite versions (Apple's Python 3.9 ships 3.43.2, where
+    a small transaction is one committed frame and nothing is left over)."""
+    magic, _version, page = struct.unpack_from(">3I", wal)
+    order = "<II" if magic == 0x377f0682 else ">II"
+
+    def checksum(data, a, b):
+        for x, y in struct.iter_unpack(order, data):
+            a = (a + x + b) & 0xffffffff
+            b = (b + y + a) & 0xffffffff
+        return a, b
+
+    out = bytearray(wal)
+    frame = 24 + page
+    starts = list(range(32, len(wal) - frame + 1, frame))
+    commits = [i for i in starts if struct.unpack_from(">I", wal, i + 4)[0]]
+    assert len(commits) >= 2, "need two committed transactions to leave one uncommitted"
+    cut = commits[-1]
+    struct.pack_into(">I", out, cut + 4, 0)
+    c0, c1 = struct.unpack_from(">2I", wal, 24)
+    for i in starts:
+        c0, c1 = checksum(bytes(out[i:i + 8]), c0, c1)
+        c0, c1 = checksum(bytes(out[i + 24:i + frame]), c0, c1)
+        if i >= cut:
+            struct.pack_into(">2I", out, i + 16, c0, c1)
+    return bytes(out)
+
+
 def test_native_uncommitted_wal_tail_not_promoted(tmp_path, reader):
     work = tmp_path / "source.db"
     con = sqlite3.connect(work)
@@ -349,16 +380,16 @@ def test_native_uncommitted_wal_tail_not_promoted(tmp_path, reader):
     con.commit()
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA wal_autocheckpoint=0")
-    con.execute("PRAGMA cache_size=1")
     con.execute("INSERT INTO message VALUES('ordinary',0,0)")
     con.commit()
     con.execute("INSERT INTO message VALUES(?,0,0)", (DOMAIN,))
-    con.executemany("INSERT INTO message VALUES(?,0,0)", [("ordinary " * 1024,)] * 20)
+    con.commit()
     raw, wal = work.read_bytes(), Path(str(work) + "-wal").read_bytes()
-    con.rollback()
     con.close()
+    wal = _uncommit_last_transaction(wal)
     prefix, issues = ios_sources._is_wal_prefix(wal, raw)
     assert prefix and len(prefix) < len(wal) and not issues
+    assert DOMAIN.encode() in wal[len(prefix):] and DOMAIN.encode() not in prefix
     root = tmp_path / "backup"
     backup(root, [("HomeDomain", "Library/SMS/sms.db", raw), ("HomeDomain", "Library/SMS/sms.db-wal", wal)])
     result = reader(ctx(root))

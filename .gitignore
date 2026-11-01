@@ -34,3 +34,6 @@ __pycache__/
 
 # Local review notes
 ideas.md
+
+# release gate output
+gate-out/

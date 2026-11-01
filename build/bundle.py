@@ -508,7 +508,6 @@ def _bundle_main(argv=None):
         code = gui_main(dict(_bundle_gui_hooks(), lang=args.lang))
         if code is not None:
             return code
-        print("No window can be shown here; continuing in the terminal.", file=sys.stderr)
     if not args.no_banner:
         show_banner(__version__)
     if args.indicator_cache and path_problem(os.path.abspath(args.indicator_cache)):

@@ -26,22 +26,51 @@ Made by archivegenocide. Built on [Zero Breach](https://github.com/interplains/z
 
 ## Easiest: download the program (no Python, no commands)
 
-Download the file for your computer from the
-[latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest) and
-double-click it. A window opens: choose a check, press **Start check**, then read the result
-and save the report if you want to keep it. The **Live connections** tab shows which programs
-are connected to the internet right now and marks any address on the spyware lists.
+**You do not need to know anything technical to use this.** Download one file from the
+[latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest), open it,
+and follow the window. You do not need the source code on this page, and you do not need to
+type any commands.
 
-| Your computer | Download | The first time you open it |
-|---|---|---|
-| Windows | `zero-breach-toolkit-windows-x64.exe` | Windows may say it "protected your PC". Click **More info**, then **Run anyway**. |
-| Mac with Apple silicon (M1 or newer) | `zero-breach-toolkit-macos-apple-silicon.dmg` | Open it and drag **Zero Breach Toolkit** to Applications, then open it. macOS stops it once: open **System Settings → Privacy & Security**, click **Open Anyway**, and open it again. |
-| Mac with Intel | `zero-breach-toolkit-macos-intel.dmg` | As above. |
-| Linux | `zero-breach-toolkit-linux-x64.tar.gz` | Extract it and run `./zero-breach-toolkit` (or right-click → Run in Terminal). |
+Once it is open: choose a check, press **Start check**, and read the result. It tells you in
+plain words whether anything was found and what to do next. You can save the report if you
+want to keep it or show it to someone helping you.
 
-The warnings appear because the programs are not signed by Microsoft or Apple; signing
-needs a paid account in a real person's name. Each program is built by GitHub from the
-published source, and you can check that before running it:
+**Which check?** Use **Standard** unless you have a reason not to: it covers browsers, apps,
+startup items, program files and out-of-date programs (usually 15 to 20 minutes). **Quick** looks
+at browsers only (5 to 10 minutes). **Full** adds web caches and more file types (30 minutes or
+more). You can press **Stop** at any time and keep what has been checked so far. To check a
+phone, choose **A phone** in the window; the guides there explain what you need first.
+
+**A green result is good news, not a guarantee.** It means this check found none of the published
+traces it looks for, in the places it could read. It cannot find spyware nobody has published
+traces of, and it does not prove a device is safe. If you think you are being targeted, ask a
+digital-security helpline even if the result is green.
+
+### Windows
+
+1. Download `zero-breach-toolkit-windows-x64.exe`.
+2. Double-click it in your Downloads folder.
+3. Windows may say it "protected your PC". Click **More info**, then **Run anyway**.
+
+### Mac
+
+1. Download `zero-breach-toolkit-macos-apple-silicon.dmg` for a newer Mac (M1, M2, M3, M4),
+   or `zero-breach-toolkit-macos-intel.dmg` for an older Intel Mac. The Apple menu →
+   **About This Mac** says which one you have.
+2. Open it, drag **Zero Breach Toolkit** into Applications, then open it from Applications.
+3. macOS will refuse the first time. Open **System Settings → Privacy & Security**, scroll
+   down, click **Open Anyway**, then open the app again.
+
+Open the app on the Mac itself, not through a remote or SSH session: it needs a desktop.
+
+### Linux
+
+1. Download `zero-breach-toolkit-linux-x64.tar.gz`.
+2. Extract it (double-click it, or `tar -xzf zero-breach-toolkit-linux-x64.tar.gz`).
+3. Run `./zero-breach-toolkit`, or right-click it and choose **Run in Terminal**.
+
+The warnings appear because the programs are not signed by Microsoft or Apple yet. Each
+program is built by GitHub from the published source, and you can check that before running it:
 `gh attestation verify <file> --repo interplains/Zero-Breach-Toolkit` (see
 [docs/VERIFYING.md](docs/VERIFYING.md)). Prefer to see exactly what runs? Use the Python
 version in the guide below; it is the same check.
@@ -109,6 +138,10 @@ computer and about 20 minutes. Phones are checked by connecting them to the comp
    ```
    cd ~/Downloads/Zero-Breach-Toolkit-main && python3 -X utf8 scan/zero-breach-toolkit.py
    ```
+   After step 1, `python3` is the Python from python.org. If you skipped step 1, `python3` is
+   the one Apple ships with the Command Line Tools: it still runs the check in the terminal, but
+   on some macOS versions its window cannot open (it says so, and carries on in the terminal).
+   For the window, finish step 1 or use the downloadable Mac app.
 6. A menu appears. Type the number next to **Update the indicator lists** and press Enter,
    then type `y` and press Enter. When it finishes, press Enter.
 7. Press Enter again to start **This computer - standard check**. It takes about 15 minutes.
@@ -445,13 +478,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v2.0.0
+git checkout v2.0.2
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v2.0.1 the file is 2,860,326 bytes, SHA-256
-`0044b2773561711d74bbb432034d34b429a5cbe0d28d30d4747389487cbaabac`. The size and SHA-256
+For v2.0.2 the file is 2,865,831 bytes, SHA-256
+`bcf8459d0a6d7ecb1612e25c23abf6c676d02e086cd8af6bd7d8c7524df20aec`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
