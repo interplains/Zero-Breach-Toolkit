@@ -163,7 +163,7 @@ READER_SPECS = (
     }),
     ReaderSpec('unix-host', 'posix', 'posix', ('linux', 'darwin'), ('desktop',), {
         "platforms": ["Linux", "macOS"],
-        "reads": "Linux autostart entries, systemd units and one-level overrides, cron files/scripts; macOS launchd property lists; both platforms' standard shell profiles, saved shell history and current readable text logs. No commands are executed.",
+        "reads": "Linux autostart entries, systemd units and one-level overrides, cron files/scripts; macOS launchd property lists and the record of downloaded files; both platforms' standard shell profiles, saved shell history and current readable text logs. No commands are executed.",
         "check_kinds": {"linux-autostart": "supported autostart desktop entries",
                         "linux-systemd-units": "literal systemd command fields; activation unverified",
                         "linux-cron": "readable cron configuration; shell interpretation unverified",
@@ -171,6 +171,7 @@ READER_SPECS = (
                         "unix-shell-profiles": "standard shell startup files and immediate profile snippets; commands not interpreted",
                         "unix-system-logs": "readable current system/authentication text logs; bounded recent records, matches remain references",
                         "macos-launch-items": "supported launchd property-list command fields",
+                        "macos-download-record": "file and page addresses in macOS's record of downloaded files; a missing or unreadable record is not checked",
                         "unix-host-platform": "host platform applicability",
                         "unix-host-limits": "reader budgets and unsupported configurations"},
         "blind_spots": ["File presence does not establish enablement, execution or infection.",

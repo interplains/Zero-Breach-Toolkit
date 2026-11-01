@@ -7,18 +7,24 @@ reference; an exact published executable path can support configuration evidence
 from __future__ import annotations
 
 import configparser
+import contextlib
+import datetime
 import json
 import os
 import plistlib
 import re
+import sqlite3
 import stat
 import sys
 import xml.parsers.expat
 
-from ..localpaths import path_problem
-from ..result import Hit, ModuleResult, EV_CONFIGURED, EV_REFERENCED
+from ..localpaths import open_evidence_db, path_problem
+from ..result import Hit, ModuleResult, EV_CONFIGURED, EV_CONTACTED, EV_REFERENCED
+from .browser import (_MAC_EPOCH, _browser_url_evidence, _discard_snapshot, _guard_db,
+                      _locked_note, copy_locked)
 
 NAME = "unix-host"
+_UX_DOWNLOAD_ROW_CAP = 200000
 _UX_FILE_CAP = 1024 * 1024
 _UX_COUNT_CAP = 4096
 _UX_TOTAL_CAP = 32 * 1024 * 1024
@@ -76,7 +82,10 @@ def _ux_roots():
             # links from being gaps.
             "/System/Cryptexes/App/System/Library/LaunchAgents",
             "/System/Cryptexes/App/System/Library/LaunchDaemons")] + [
-                ("unix-system-logs", "/var/log/system.log", "log-file")]
+                ("unix-system-logs", "/var/log/system.log", "log-file"),
+                ("macos-download-record", os.path.join(
+                    home, "Library", "Preferences",
+                    "com.apple.LaunchServices.QuarantineEventsV2"), "download-record-file")]
     return []
 
 
@@ -370,6 +379,92 @@ def _ux_match(result, ctx, path, text, programs, context="startup configuration"
                 family=ind.family, kind=ind.type, evidence=EV_CONFIGURED, artifact=path))
 
 
+def _ux_download_time(stamp):
+    """The local time of an Apple timestamp, or None if it is not a plausible one."""
+    if type(stamp) not in (int, float) or not 0 < stamp < 4e9:
+        return None
+    try:
+        return datetime.datetime.fromtimestamp(stamp + _MAC_EPOCH)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _ux_download_record(result, ctx, check, path):
+    """macOS's record of where downloaded files came from, separate from any browser.
+
+    Only the two addresses and the date are read, from a private temporary copy.
+    An application writes its own row, so only a file address on an indicator's
+    host counts as contact; the page address stays a reference. A missing record
+    is not checked rather than clean: it may simply have been cleared."""
+    try:
+        tmp, incomplete = copy_locked(path)
+    except FileNotFoundError:
+        result.could_not_run(check, "macOS has no record of downloaded files for this account, so "
+                                    "none was checked. It may have been cleared; this says nothing "
+                                    "about past downloads")
+        return
+    except OSError as exc:
+        result.skipped += 1
+        result.could_not_run(check, _locked_note(path, exc))
+        return
+    con = None
+    try:
+        con = open_evidence_db(tmp)
+        _guard_db(con)
+        con.text_factory = lambda b: b.decode("utf-8", "replace")
+        oldest, count, seen = None, 0, set()
+        # Oldest first, so a repeated indicator keeps the date it was first seen.
+        with contextlib.closing(con.execute(
+                "SELECT LSQuarantineDataURLString, LSQuarantineOriginURLString, LSQuarantineTimeStamp "
+                "FROM LSQuarantineEvent ORDER BY LSQuarantineTimeStamp")) as rows:
+            for data_url, origin_url, stamp in rows:
+                if count >= _UX_DOWNLOAD_ROW_CAP:
+                    result.could_not_run(check, "record limit reached; the newest download records "
+                                                "were not searched")
+                    break
+                count += 1
+                when = _ux_download_time(stamp)
+                if when is not None and oldest is None:
+                    oldest = when
+                for url, grade in ((data_url, EV_CONTACTED), (origin_url, EV_REFERENCED)):
+                    if not isinstance(url, str):
+                        continue
+                    for ind, evidence in _browser_url_evidence(url, ctx.iocs, grade):
+                        if (ind.value, evidence) in seen:
+                            continue
+                        seen.add((ind.value, evidence))
+                        contacted = evidence == EV_CONTACTED
+                        result.add_hit(Hit(ind.value, path,
+                            "macOS recorded a file downloaded from this host; execution is unverified."
+                            if contacted else
+                            "An address in macOS's record of downloaded files mentions this; "
+                            "a saved reference, not proof of contact.",
+                            tier=ind.tier, confidence=ind.confidence, source=ind.source,
+                            family=ind.family, kind=ind.type, evidence=evidence, artifact=path,
+                            observed=when.isoformat(timespec="seconds") if contacted and when else ""))
+        result.checked += count
+        result.submetrics["download_records"] = count
+        if oldest is not None:
+            result.reach["macos-download-record"] = {
+                "earliest": oldest.isoformat(timespec="seconds"),
+                "days": max(0, (datetime.datetime.now() - oldest).days),
+                "basis": "oldest of {:,} macOS download records".format(count),
+                "note": "This covers downloaded files only, not pages or ads that were merely "
+                        "shown, and it can be cleared."}
+        result.ran(check)
+        if incomplete:
+            result.could_not_run(check, "snapshot is incomplete - {}, so recent download records "
+                                        "may be missing".format("; ".join(incomplete)))
+    except (sqlite3.Error, ValueError, TypeError) as exc:
+        result.skipped += 1
+        result.could_not_run(check, "macOS's record of downloaded files is unreadable or "
+                                    "unsupported: {}".format(exc))
+    finally:
+        if not _discard_snapshot(os.path.dirname(tmp), con):
+            result.could_not_run(check, "temporary copy of the download record could not be "
+                                        "removed: {}".format(os.path.dirname(tmp)))
+
+
 def run(ctx):
     result = ModuleResult(NAME)
     ctx.partial = result
@@ -384,6 +479,9 @@ def run(ctx):
     # under its own name, not reported as a refused redirection.
     root_dirs = {os.path.normpath(r): k for _c, r, k in roots if not k.endswith("-file")}
     for check, root, kind in roots:
+        if kind == "download-record-file":
+            _ux_download_record(result, ctx, check, root)
+            continue
         problems, denied, unexpanded = [], [], []
         links_out = []
         try:

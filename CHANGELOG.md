@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- macOS: indicators are also searched in the system's record of downloaded files. A missing or
+  unreadable record is reported as not checked.
+
 ## 2.0.3 (unreleased)
 
 **If you checked a phone with 2.0.0 to 2.0.2 and got green, please check it again.** Some results said
