@@ -82,8 +82,9 @@ computer and about 20 minutes. Phones are checked by connecting them to the comp
 6. A menu appears. Type the number next to **Update the indicator lists** and press Enter,
    then type `y` and press Enter. When it finishes, press Enter.
 7. Press Enter again to start **This computer - standard check**. It takes about 15 minutes.
-8. To keep a copy of the result, type `3` and press Enter, type `report.txt` and press Enter.
-   It is saved in the Zero-Breach-Toolkit-main folder. Type `0` to finish.
+8. To keep a copy of the result, type `3` and press Enter, then type `.` (a full stop) and
+   press Enter. It is saved in the Zero-Breach-Toolkit-main folder with the date and time in
+   its name, so every check gets its own file. Type `0` to finish.
 
 ### Linux
 
@@ -107,8 +108,9 @@ computer and about 20 minutes. Phones are checked by connecting them to the comp
 5. A menu appears. Type the number next to **Update the indicator lists** and press Enter,
    then type `y` and press Enter. When it finishes, press Enter.
 6. Press Enter again to start **This computer - standard check**. It takes about 15 minutes.
-7. To keep a copy of the result, type `3` and press Enter, type `report.txt` and press Enter.
-   It is saved in the Zero-Breach-Toolkit-main folder. Type `0` to finish.
+7. To keep a copy of the result, type `3` and press Enter, then type `.` (a full stop) and
+   press Enter. It is saved in the Zero-Breach-Toolkit-main folder with the date and time in
+   its name, so every check gets its own file. Type `0` to finish.
 
 You do not need `sudo` to run the check. It reads your own account's records; if you run with
 `sudo`, it may look at the root account's browsers instead of yours.
