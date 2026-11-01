@@ -33,6 +33,12 @@ or connected to any of the organisations whose published research it draws on:
     Mobile Verification Toolkit (MVT) project
     Echap
     Kaspersky
+    Cisco Talos
+    SentinelOne (SentinelLabs)
+    Meta
+    Volexity
+    Palo Alto Networks Unit 42
+    Lookout
     Rapid7 / Velociraptor
     SigmaHQ
 
@@ -48,6 +54,13 @@ The indicator set in iocs/ is NOT covered by the Apache License above. It is
 released into the public domain under CC0 1.0 so that it can be copied into
 blocklists, STIX bundles, MISP instances and other tools without friction.
 See iocs/LICENSE.md.
+
+iocs/curated_targeted.txt holds file fingerprints and package names copied from
+researchers' own indicator files. The selection is CC0; the values remain under
+their publishers' terms where those apply, and each notice is kept in that file's
+header: ESET and Volexity (BSD-2-Clause), Meta and Palo Alto Networks Unit 42
+(MIT), Lookout (Apache License 2.0), Amnesty International (CC BY 2.0) and Cisco
+Talos (CC0).
 
 The optional Candiru YARA rules are NOT part of that CC0 indicator grant.
 Microsoft Threat Intelligence Center's MAL_DevilsTongue_HijackDll rule is

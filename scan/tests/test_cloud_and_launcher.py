@@ -30,7 +30,7 @@ def test_cloud_only_file_is_not_read(tmp_path, monkeypatch, flags, attributes):
     target = tmp_path / "evicted.exe"
     target.write_bytes(b"x")
     monkeypatch.setattr(hashscan.os, "stat", lambda p, follow_symlinks=True: _fake_stat(flags, attributes))
-    monkeypatch.setattr(hashscan, "_sha256", lambda p: pytest.fail("a cloud-only file was read"))
+    monkeypatch.setattr(hashscan, "_sha256", lambda p, *_rest: pytest.fail("a cloud-only file was read"))
     assert hashscan._hash_one(str(target))[3] == "cloud"
 
 

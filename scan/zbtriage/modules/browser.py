@@ -45,8 +45,8 @@ import tempfile
 import time
 from urllib.parse import urlsplit
 from ..ios_sources import _is_wal_prefix
-from ..localpaths import (WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED, local_temp_dir, open_evidence_db,
-                          path_problem, walk_local)
+from ..localpaths import (is_packaged, WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED, local_temp_dir, open_evidence_db,
+                          path_problem, path_problem_cached, walk_local)
 
 from ..result import (Hit, Lead, ModuleResult, EV_ON_DISK, EV_PERSISTENCE,
                       EV_CONTACTED, EV_ATTEMPTED, EV_CONFIGURED, EV_REFERENCED)
@@ -1002,9 +1002,15 @@ def _locked_note(path, exc):
         # privacy protection (Safari's folders, Desktop, Documents...), and
         # closing the browser would not help. The refusal also hides whether the
         # folder exists, so it must not claim the browser is installed.
-        return ("macOS privacy protection blocked {} so it could not be checked{}. Give "
-                "Terminal Full Disk Access (System Settings > Privacy & Security > Full Disk "
-                "Access), then run again.".format(
+        if is_packaged():
+            blocked = ("macOS privacy protection blocked {} so it could not be checked{}. Give "
+                       "Zero Breach Toolkit Full Disk Access (System Settings > Privacy & Security > "
+                       "Full Disk Access), then run again.")
+        else:
+            blocked = ("macOS privacy protection blocked {} so it could not be checked{}. Give "
+                       "Terminal Full Disk Access (System Settings > Privacy & Security > Full Disk "
+                       "Access), then run again.")
+        return (blocked.format(
                     path, "" if browser_name == "the browser"
                     else " (or whether {} keeps data there)".format(browser_name))
                 + cleanup_warning)
@@ -2247,13 +2253,14 @@ def run(ctx) -> ModuleResult:
                 getattr(exc, "filename", root), exc))
 
         read_any = False
+        folder_checked = [None]
         owner_index = {}
         for dirpath, _dirs, files in walk_local(root, onerror=onerror):
             for fn in files:
                 heartbeat(label)
                 full = os.path.join(dirpath, fn)
                 try:
-                    problem = path_problem(full)
+                    problem = path_problem_cached(full, folder_checked)
                     if problem:
                         raise PermissionError(13, problem, full)
                     st = os.stat(full)

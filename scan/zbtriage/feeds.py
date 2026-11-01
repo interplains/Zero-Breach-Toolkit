@@ -32,6 +32,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import ssl
 import stat
 import sys
@@ -45,7 +46,8 @@ from . import __version__
 from .iocs import (SHARED_SERVICE_HOSTS, SHARED_SERVICE_REASON, TYPE_DOMAIN, TYPE_IP,
                    TYPE_SHA256, Indicator, IocError, IocSet, infer_type, load_any,
                    shared_service_domain)
-from .localpaths import path_problem
+from .i18n import T
+from .localpaths import path_problem, tls_context, is_packaged
 from .stix import TIER_INFRA, TIER_INFRA_IP, TIER_SAMPLE, _normalise
 
 RAW = "https://raw.githubusercontent.com/"
@@ -185,7 +187,8 @@ SOURCES: List[Dict[str, str]] = [
          "domains-txt",
          "Amnesty International (2020-09-25), FinSpy for Windows, Android and Linux",
          family="FinSpy"),
-    # Citizen Lab's indicator repository (MISP CSV exports), Israeli vendors only:
+    # Citizen Lab's indicator repository (MISP CSV exports): Israeli vendors, and one
+    # unattributed campaign (the last entry).
     _src("citizenlab-nso-2016", "NSO Group (Trident / Ahmed Mansoor, 2016)",
          "citizenlab/malware-indicators/master/", "201608_NSO_Group/iocs.csv", "misp-csv",
          "The Citizen Lab, 'The Million Dollar Dissident' (2016-08)", family="Pegasus"),
@@ -202,9 +205,14 @@ SOURCES: List[Dict[str, str]] = [
     _src("citizenlab-nso-mexico-redux-2017", "NSO Group (Reckless Redux, Mexico, 2017)",
          "citizenlab/malware-indicators/master/", "201706_RecklessRedux/iocs.csv", "misp-csv",
          "The Citizen Lab, 'Reckless Redux' (2017-06), Mexico", family="Pegasus"),
-    _src("citizenlab-nso-insider-2017", "NSO Group (Insider Information, Mexico, 2017)",
+    # Not NSO Group, despite the id (kept so that existing downloads still
+    # verify): the publisher describes this folder as an intrusion campaign
+    # against Chinese-language news sites, with no spyware family named.
+    _src("citizenlab-nso-insider-2017",
+         "Intrusion campaign against Chinese-language news sites (Insider Information, 2017)",
          "citizenlab/malware-indicators/master/", "201707_InsiderInfo/indicators.csv", "misp-csv",
-         "The Citizen Lab, 'Insider Information' (2017-07), Mexico", family="Pegasus"),
+         "The Citizen Lab, 'Insider Information: An intrusion campaign targeting Chinese "
+         "language news sites' (2017-07)"),
 ]
 
 MANIFEST = "manifest.json"
@@ -415,7 +423,8 @@ class _AllowListRedirect(urllib.request.HTTPRedirectHandler):
 def _fetch(url: str) -> bytes:
     if not url_allowed(url):
         raise IocError("refused: not an allow-listed indicator source: {}".format(url))
-    opener = urllib.request.build_opener(_AllowListRedirect())
+    opener = urllib.request.build_opener(_AllowListRedirect(),
+                                      urllib.request.HTTPSHandler(context=tls_context()))
     # A generic label: the sources' servers need not learn that this is a spyware check.
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with opener.open(req, timeout=TIMEOUT_S) as resp:
@@ -441,6 +450,11 @@ def _certificate_help(outcome="nothing was downloaded and the previous indicator
     `outcome` says what the failure left unchanged."""
     platform = sys.platform if platform is None else platform
     start = "this Python cannot check website certificates, so " + outcome + ". "
+    if platform == "darwin" and is_packaged():
+        # The app has no Python folder and no Install Certificates step; it reads
+        # the Mac's own certificate list.
+        return (start + "Check that the Mac's date and time are right and that the network or a security "
+                "program is not replacing website certificates, then try again.")
     if platform == "darwin":
         return (start + "To fix it once: open Finder, go to Applications, open the Python 3 folder "
                 "and double-click Install Certificates.command, then try again.")
@@ -695,8 +709,53 @@ def cached_sets(cache: Optional[str] = None,
     return sets, status
 
 
+RELEASE_API = "https://api.github.com/repos/interplains/Zero-Breach-Toolkit/releases/latest"
+RELEASE_PAGE = "https://github.com/interplains/Zero-Breach-Toolkit/releases/tag/"
+# The newest-version line of the last update in this process (the window shows it).
+LAST_VERSION_NOTICE = ""
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.URLError("redirect refused")
+
+
+def _release_tag() -> str:
+    """The newest release's tag from GitHub: one plain request, no redirects."""
+    opener = urllib.request.build_opener(_NoRedirect(),
+                                         urllib.request.HTTPSHandler(context=tls_context()))
+    req = urllib.request.Request(RELEASE_API, headers={"User-Agent": "Mozilla/5.0"})
+    with opener.open(req, timeout=8) as resp:
+        data = resp.read(200001)
+    if len(data) > 200000:
+        return ""
+    tag = json.loads(data.decode("utf-8")).get("tag_name", "")
+    return tag if isinstance(tag, str) else ""
+
+
+def _version_tuple(text):
+    m = re.fullmatch(r"v?(\d{1,4})\.(\d{1,4})\.(\d{1,4})", text or "")
+    return tuple(int(g) for g in m.groups()) if m else None
+
+
+def version_notice(current: str = __version__, fetch=None) -> str:
+    """One line if a newer release exists, else "". Every failure (offline, rate
+    limit, bad JSON, an unexpected tag) gives "": it must never affect an update."""
+    try:
+        tag = (fetch or _release_tag)()
+        newer, mine = _version_tuple(tag), _version_tuple(current)
+        if newer is None or mine is None or newer <= mine:
+            return ""
+        return T("Version {version} is available: {url}",
+                 version=".".join(str(n) for n in newer),
+                 url=RELEASE_PAGE + "v" + ".".join(str(n) for n in newer))
+    except Exception:
+        return ""
+
+
 def update_command(cache: Optional[str], json_path: Optional[str],
-                   accept_shrink: Optional[List[str]] = None, latest: bool = False) -> int:
+                   accept_shrink: Optional[List[str]] = None, latest: bool = False,
+                   version_check: bool = True) -> int:
     """The `--update` command for both entry points (source CLI and single
     file). Prints a short summary; exit 0 only if every source succeeded."""
     from .report import write_json, _report_console
@@ -728,6 +787,22 @@ def update_command(cache: Optional[str], json_path: Optional[str],
         if r["status"] == "failed":
             _report_console("  FAILED {}: {}{}".format(r["name"], r.get("error", ""),
                   " (previous copy kept)" if r.get("kept_previous") else ""), sys.stdout)
+    # The actively-exploited-software list: prevention advice, separate from the
+    # indicators. A failure here is reported but never fails the indicator update.
+    from .kevdata import KevError, kev_update
+    try:
+        kev = kev_update(summary["cache"], emit=lambda s: _report_console(s, sys.stderr))
+        _report_console("Actively exploited software list ({}): {:,} entries for the checked programs{}.".format(
+            kev["catalogVersion"], kev["entries"],
+            "; {} record(s) unavailable, advice only for those".format(kev["records_missing"])
+            if kev["records_missing"] else ""), sys.stdout)
+    except (KevError, OSError, ValueError) as exc:
+        _report_console("  Actively exploited software list not updated: {} (the indicator lists above "
+                        "are unaffected)".format(exc), sys.stdout)
+    global LAST_VERSION_NOTICE
+    LAST_VERSION_NOTICE = version_notice() if version_check else ""
+    if LAST_VERSION_NOTICE:
+        _report_console(LAST_VERSION_NOTICE, sys.stdout)
     if json_path:
         try:
             write_json(summary, json_path)

@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "tag or commit to build, for example v0.1.12"
+        description: "tag or commit to build, for example v2.0.0"
         required: true
 
 permissions:
@@ -26,8 +26,8 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, label: windows-x64, program: zero-breach-toolkit.exe }
-          - { os: macos-latest, label: macos-apple-silicon, program: zero-breach-toolkit }
-          - { os: macos-15-intel, label: macos-intel, program: zero-breach-toolkit }
+          - { os: macos-latest, label: macos-apple-silicon, program: "Zero Breach Toolkit.app/Contents/MacOS/Zero Breach Toolkit" }
+          - { os: macos-15-intel, label: macos-intel, program: "Zero Breach Toolkit.app/Contents/MacOS/Zero Breach Toolkit" }
           - { os: ubuntu-22.04, label: linux-x64, program: zero-breach-toolkit }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
@@ -73,10 +73,13 @@ jobs:
             windows-*)
               cp "dist/${{ matrix.program }}" "out/$name.exe" ;;
             macos-*)
-              mkdir -p "pkg/$name"
-              cp "dist/${{ matrix.program }}" "pkg/$name/Zero Breach Toolkit"
-              cp build/program-readme-macos.txt "pkg/$name/HOW TO OPEN.txt"
-              (cd pkg && ditto -c -k --keepParent "$name" "../out/$name.zip") ;;
+              # A disk image with the app, a shortcut to Applications to drag it
+              # onto, and the first-open instructions.
+              mkdir -p pkg/dmg
+              ditto "dist/Zero Breach Toolkit.app" "pkg/dmg/Zero Breach Toolkit.app"
+              ln -s /Applications pkg/dmg/Applications
+              cp build/program-readme-macos.txt "pkg/dmg/HOW TO OPEN.txt"
+              hdiutil create -volname "Zero Breach Toolkit" -srcfolder pkg/dmg -ov -format UDZO "out/$name.dmg" ;;
             linux-*)
               mkdir -p "pkg/$name"
               cp "dist/${{ matrix.program }}" "pkg/$name/zero-breach-toolkit"
@@ -86,7 +89,9 @@ jobs:
           esac
           ls -l out
 
+      # Build attestations are not available to private repositories owned by a user, so a private test copy of this repository skips them; the public repository always attests.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        if: ${{ !github.event.repository.private }}
         with:
           subject-path: out/*
 

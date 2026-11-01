@@ -17,6 +17,9 @@ Indicator *type* is inferred from shape, not stored, so the file stays 3 columns
   - 64 hex chars            -> sha256 sample hash
   - looks like an IPv4/IPv6 -> ip
   - otherwise               -> domain
+An Android package name is shaped exactly like a domain, so a row that holds one
+says so in an optional 6th column (after source-tag and family): `app-id`, or
+`app-cert` for a signing-certificate fingerprint. Only those two may be declared.
 """
 
 from __future__ import annotations
@@ -75,6 +78,10 @@ VALID_TIERS = {
     # signing certificate, an iOS process name, a configuration profile, a file
     # path or name, an Android system property. Used by phone/backup checks.
     "artifact",
+    # A trace of a phone-forensics tool (Cellebrite): not spyware, but proof the
+    # phone was unlocked, or an unlock attempted, while out of its owner's hands.
+    # Built in (devicetraces.py) and used only by the phone checks.
+    "forensic",
 }
 VALID_CONFIDENCE = {"primary", "secondary"}
 
@@ -123,6 +130,13 @@ DEVICE_TYPES = {TYPE_APP_ID, TYPE_APP_CERT, TYPE_PROCESS, TYPE_PROFILE,
                 TYPE_FILE_PATH, TYPE_FILE_NAME, TYPE_ANDROID_PROP, TYPE_EMAIL}
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+# Kinds a curated row may declare in its 6th column, with the exact shape each
+# must have (the same shapes the STIX importer accepts for them).
+CURATED_DECLARED_KINDS = {
+    TYPE_APP_ID: re.compile(r"^(?=.{3,255}$)[a-z0-9_]+(\.[a-z0-9_]+)+$"),
+    TYPE_APP_CERT: re.compile(r"^([0-9a-f]{40}|[0-9a-f]{64})$"),
+}
 _IPV4_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 _ASOF_RE = re.compile(r"^#\s*as-of:\s*(\d{4}-\d{2}-\d{2})\s*$")
 
@@ -1023,7 +1037,8 @@ def _ioc_drop_shared(indicators):
 def load(path: str) -> IocSet:
     if not os.path.exists(path):
         raise IocError("IOC file not found: {}".format(path))
-    seen: Dict[str, Indicator] = {}
+    # Keyed by (type, value): a package name and a domain may share a string.
+    seen: Dict[Tuple[str, str], Indicator] = {}
     asof: Optional[str] = None
     # utf-8-sig, not utf-8: Windows editors save a byte-order mark, and U+FEFF is
     # not whitespace to str.strip(). With plain utf-8 the first indicator in a
@@ -1040,9 +1055,9 @@ def load(path: str) -> IocSet:
                 asof = m.group(1)
             continue
         parts = [p.strip() for p in raw.rstrip("\r\n").split("\t")]
-        if not 3 <= len(parts) <= 5:
+        if not 3 <= len(parts) <= 6:
             raise IocError(
-                "line {}: expected 3 to 5 tab-separated columns, got {!r}"
+                "line {}: expected 3 to 6 tab-separated columns, got {!r}"
                 .format(lineno, line))
         value, tier, confidence = parts[0].lower(), parts[1], parts[2]
         # 4th column is an optional source tag; files written before it
@@ -1061,7 +1076,20 @@ def load(path: str) -> IocSet:
             raise IocError("line {}: invisible character in {!r} - the "
                            "file was probably re-saved by an editor".format(
                                lineno, value))
-        kind = infer_type(value)
+        # Optional 6th column: the kind, for the two kinds that cannot be told
+        # from their shape. Anything else stays inferred, so a typo cannot turn
+        # a hash or an address into a phone-only indicator that is never checked.
+        declared = parts[5] if len(parts) > 5 else ""
+        if declared:
+            if declared not in CURATED_DECLARED_KINDS:
+                raise IocError("line {}: unknown kind {!r} (only {} may be declared)".format(
+                    lineno, declared, ", ".join(sorted(CURATED_DECLARED_KINDS))))
+            pattern = CURATED_DECLARED_KINDS[declared]
+            if not pattern.match(value):
+                raise IocError("line {}: {!r} is not a valid {}".format(lineno, value[:80], declared))
+            kind = declared
+        else:
+            kind = infer_type(value)
         if kind == TYPE_DOMAIN:
             value = value.rstrip(".")
             if not value.isascii():
@@ -1083,19 +1111,19 @@ def load(path: str) -> IocSet:
             raise IocError("line {}: {!r}: {}".format(
                 lineno, value[:80], problem))
         ind = Indicator(value, tier, confidence, kind, source, family)
-        prev = seen.get(value)
+        prev = seen.get((kind, value))
         if prev is not None:
             if (prev.tier, prev.confidence) != (tier, confidence):
                 raise IocError("line {}: conflicting duplicate classification for {!r}; "
                                "resolve the tier and confidence in this file".format(lineno, value))
             ind = _ioc_combine(prev, ind)
-        seen[value] = ind
+        seen[(kind, value)] = ind
         if len(seen) > _MAX_INDICATORS:
             raise IocError("more than {:,} indicators - refusing what looks "
                            "like a corrupted or hostile feed".format(
                                _MAX_INDICATORS))
     kept, skipped = _ioc_drop_shared(list(seen.values()))
-    seen = {i.value: i for i in kept}
+    seen = {(i.type, i.value): i for i in kept}
     if not seen:
         # An empty list must never produce a report. A truncated download or an
         # emptied file would otherwise run a full scan, search for nothing, and
@@ -1105,7 +1133,7 @@ def load(path: str) -> IocSet:
         mtime = os.path.getmtime(path)
     except OSError:
         mtime = None
-    s = IocSet(sorted(seen.values(), key=lambda i: i.value),
+    s = IocSet(sorted(seen.values(), key=lambda i: (i.value, i.type)),
                os.path.abspath(path), mtime)
     s.asof = asof
     s.shared_skipped = skipped

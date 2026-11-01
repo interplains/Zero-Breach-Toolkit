@@ -8,6 +8,7 @@ paths here. This is not a sandbox against concurrent filesystem changes.
 import os
 import posixpath
 import shutil
+import ssl
 import stat
 import sys
 import time
@@ -100,6 +101,47 @@ def path_problem(path):
                     canonical = os.path.join(target, *parts[index + 1:])
                     return path_problem(canonical)
             return "symlink or reparse point was not followed: {}".format(current)
+    return ""
+
+
+def path_problem_cached(path, cache):
+    """path_problem for many files in turn, re-checking each file's folders only
+    when the folder changes.
+
+    path_problem inspects every folder from the drive down, one disk lookup per
+    level. A walk lists thousands of files in the same folder, so checking each
+    of them in full repeated the same lookups thousands of times (most of the
+    browser check's time). Here the folder is checked in full once, then each
+    file is checked on its own. Any file that is a link, a reparse point, a cloud
+    placeholder or otherwise unusual gets the full check, so the answer is always
+    what path_problem would give. `cache` is a one-item list owned by the caller
+    for one walk; reading and replacing its single tuple is safe across threads.
+    """
+    path = os.fspath(path)
+    parent, name = os.path.split(path)
+    if not parent or name in ("", ".", ".."):
+        return path_problem(path)
+    known = cache[0]
+    if known is not None and known[0] == parent:
+        problem = known[1]
+    else:
+        problem = path_problem(parent)
+        cache[0] = (parent, problem)
+    return problem or _last_part_problem(path)
+
+
+def _last_part_problem(path):
+    """path_problem for a path whose folder is already known to be safe: only
+    the last part is looked at, and anything unusual gets the full check."""
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return ""  # caller handles a genuinely absent artifact
+    except OSError as exc:
+        return "cannot safely inspect {}: {}".format(path, exc)
+    if (stat.S_ISLNK(info.st_mode)
+            or getattr(info, "st_file_attributes", 0) & 0x400):
+        return path_problem(path)
     return ""
 
 
@@ -208,10 +250,19 @@ def walk_local(root, onerror=None):
     folder or entry that could not be read.
     """
     pending = [root]
+    # What each folder's check found, so a subfolder only needs its own last part
+    # looked at: its parent was checked in full (or from its own parent) when it
+    # was opened, instead of every level again for every folder.
+    checked = {}
     while pending:
         current = pending.pop()
         try:
-            problem = path_problem(current)
+            parent = os.path.dirname(current)
+            if current != root and parent in checked:
+                problem = checked[parent] or _last_part_problem(current)
+            else:
+                problem = path_problem(current)
+            checked[current] = problem
             if problem:
                 raise PermissionError(13, problem, current)
             dirs, files = [], []
@@ -261,3 +312,47 @@ def open_evidence_db(path):
         con.close()
         raise
     return con
+
+
+def is_packaged():
+    """True when running as the packaged program (Windows .exe, Mac app, Linux
+    program); False when run as a Python script."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def mac_privacy_app():
+    """What a Mac person gives Full Disk Access to: the app, or Terminal."""
+    return "Zero Breach Toolkit" if is_packaged() else "Terminal"
+
+
+# Where systems keep their trusted root certificates. A bundled OpenSSL looks in
+# one fixed place (Debian's), so on other systems it can find none.
+TLS_CA_BUNDLES = (
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/ssl/ca-bundle.pem",
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    "/etc/ssl/cert.pem",
+    "/usr/local/etc/openssl/cert.pem",
+    "/opt/homebrew/etc/openssl@3/cert.pem",
+)
+
+
+def tls_context():
+    """The default HTTPS context. If it loaded no trusted root certificates (a
+    bundled OpenSSL on Fedora, Arch or a Mac app), add the system's own bundle.
+    Verification is never turned off."""
+    ctx = ssl.create_default_context()
+    try:
+        have = ctx.cert_store_stats().get("x509_ca", 0)
+    except (AttributeError, ssl.SSLError):
+        have = 0
+    if have == 0:
+        for path in TLS_CA_BUNDLES:
+            if os.path.isfile(path):
+                try:
+                    ctx.load_verify_locations(cafile=path)
+                    break
+                except (ssl.SSLError, OSError):
+                    continue
+    return ctx

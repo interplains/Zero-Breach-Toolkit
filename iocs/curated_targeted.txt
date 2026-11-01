@@ -1,0 +1,1059 @@
+# Spyware used against journalists, activists, human-rights defenders and minorities
+# as-of: 2026-11-01
+# ^ Curated date; the staleness reference for this file.
+# Licence: the selection is CC0 1.0 (as iocs/LICENSE.md). The values are facts published by
+#   the researchers named below. Where a publisher's repository carries a licence, its notice
+#   is kept here and its terms still apply to the values copied from it.
+# Method: every value was copied from the publisher's own indicator file (or, for the package
+#   names marked so, the report's own sample table) and checked for shape. Only SHA-256 file
+#   fingerprints and Android package names are included: no domains, no IP addresses.
+#   Package names that another developer could plausibly use, or that belong to a real app
+#   the spyware imitated, are left out; those samples are still matched by fingerprint.
+# Format: indicator <TAB> tier <TAB> confidence <TAB> source-tag <TAB> family [<TAB> kind]
+#   (kind is given only for package names: app-id)
+#
+# Sources
+#   eset-aridspy-2024-06  ESET, 'Arid Viper poisons Android apps with AridSpy' (2024-06-13).
+#       https://www.welivesecurity.com/en/eset-research/arid-viper-poisons-android-apps-with-aridspy/
+#       Fingerprints from github.com/eset/malware-ioc (aridspy/samples.sha256); package names
+#       from the report's sample tables.
+#   talos-aridviper-2023-10  Cisco Talos, 'Arid Viper disguising mobile spyware as updates for
+#       non-malicious Android applications' (2023-10-31).
+#       https://github.com/Cisco-Talos/IOCs/blob/main/2023/10/arid-viper-mobile-spyware.txt (CC0-1.0)
+#   sentinel-spyc23-2023-10  SentinelLabs, 'Arid Viper | APT's Nest of SpyC23 Malware Continues to
+#       Target Android Devices' (2023-10-24). Package names from the report text.
+#       https://www.sentinelone.com/labs/arid-viper-apts-nest-of-spyc23-malware-continues-to-target-android-devices/
+#   meta-palestine-2021-04  Meta, 'Taking Action Against Hackers in Palestine' (2021-04-21):
+#       Palestinian Preventive Security Service malware, sha256 rows only.
+#       https://github.com/facebook/threat-research/blob/main/indicators/csv/2021_04_taking_action_against_hackers_in_palestine.csv
+#       Meta threat-research data is provided under the MIT License, Copyright (c) Meta Platforms, Inc. and its affiliates.
+#   volexity-evilbamboo-2023-09  Volexity, EvilBamboo (2023-09-22): BADBAZAAR, BADSOLAR and
+#       BADSIGNAL, used against Tibetan, Uyghur and Taiwanese people.
+#       https://github.com/volexity/threat-intel/tree/main/2023/2023-09-22%20EvilBamboo
+#   volexity-uta0560-2026-09  Volexity, Chrome exploit chain sent by UTA0560 (2026-09-09).
+#       https://github.com/volexity/threat-intel/tree/main/2026/2026-09-09%20Chrome
+#   volexity-brazenbamboo-2024-11  Volexity, BrazenBamboo: LIGHTSPY and DEEPDATA (2024-11-15).
+#       https://github.com/volexity/threat-intel/tree/main/2024/2024-11-15%20BrazenBamboo
+#       Volexity values: Copyright 2022 by Volexity, Inc.; BSD-2-Clause,
+#       https://github.com/volexity/threat-intel/blob/main/LICENSE.txt
+#   unit42-henbox-2018-03  Palo Alto Networks Unit 42, HenBox Android spyware used against Uyghurs
+#       (March 2018). https://github.com/pan-unit42/iocs/blob/master/henbox/henbox_samples.csv
+#       Copyright (c) 2018 Palo Alto Networks; MIT License,
+#       https://github.com/pan-unit42/iocs/blob/master/LICENSE
+#   lookout-bonespy-2024-12  Lookout, BoneSpy (December 2024).
+#       https://github.com/lookout/threat-intelligence/blob/main/2024/bonespy_dec_2024.csv
+#   lookout-plaingnome-2024-12  Lookout, PlainGnome (December 2024).
+#       https://github.com/lookout/threat-intelligence/blob/main/2024/plaingnome_dec_2024.csv
+#       Lookout values: Apache License 2.0, https://github.com/lookout/threat-intelligence/blob/main/LICENSE
+#   eset-ghostchat-2026-01  ESET, 'Love? Actually: Fake dating app used as lure in targeted spyware
+#       campaign in Pakistan' (January 2026). https://github.com/eset/malware-ioc/tree/master/ghostchat
+#   eset-kamran-2023-11  ESET, 'Unlucky Kamran: Android malware spying on Urdu-speaking residents of
+#       Gilgit Baltistan' (November 2023).
+#       https://www.welivesecurity.com/en/eset-research/unlucky-kamran-android-malware-spying-urdu-speaking-residents-gilgit-baltistan/
+#   eset-vajraspy-2024-01  ESET, 'VajraSpy: A Patchwork of espionage apps' (January 2024).
+#       https://www.welivesecurity.com/en/eset-research/vajraspy-patchwork-espionage-apps
+#   eset-exoticvisit-2024-03  ESET, 'eXotic Visit campaign: Tracing the footprints of Virtual
+#       Invaders' (March 2024).
+#       https://www.welivesecurity.com/en/eset-research/exotic-visit-campaign-tracing-footprints-virtual-invaders/
+#   eset-gravityrat-2023-06  ESET, 'Android GravityRAT goes after WhatsApp backups' (2023-06-15).
+#       https://www.welivesecurity.com/2023/06/15/android-gravityrat-goes-after-whatsapp-backups/
+#   eset-dazzlespy-2022-01  ESET, 'Watering hole deploys new macOS malware, DazzleSpy, in Asia'
+#       (2022-01-25). https://www.welivesecurity.com/2022/01/25/watering-hole-deploys-new-macos-malware-dazzlespy-asia/
+#   eset-scarcruft-dolphin-2022-11  ESET, 'Who's swimming in South Korean waters? Meet ScarCruft's
+#       Dolphin' (2022-11-30).
+#       https://www.welivesecurity.com/2022/11/30/whos-swimming-south-korean-waters-meet-scarcrufts-dolphin/
+#   eset-scarcruft-birdcall-2026-05  ESET, 'A rigged game: ScarCruft compromises gaming platform in a
+#       supply-chain attack' (May 2026). https://github.com/eset/malware-ioc/tree/master/scarcruft
+#       ESET values: Copyright (c) 2014-2018 ESET spol. s r.o.; BSD-2-Clause,
+#       https://github.com/eset/malware-ioc/blob/master/LICENSE
+#   amnesty-donot-togo-2021-10  Amnesty International, 'Hackers-for-hire in West Africa: Activists in
+#       Togo Attacked with Indian-made Spyware' (2021-10-07).
+#       https://github.com/AmnestyTech/investigations/tree/master/2021-10-07_donot
+#   amnesty-oceanlotus-vietnam-2021-02  Amnesty International, 'Click and Bait: Vietnamese Human Rights
+#       Defenders Targeted with Spyware Attacks' (2021-02-24).
+#       https://github.com/AmnestyTech/investigations/tree/master/2021-02-24_vietnam
+#   amnesty-netwire-india-2020-06  Amnesty International, 'India: Human Rights Defenders Targeted by a
+#       Coordinated Spyware Operation' (2020-06-15).
+#       https://github.com/AmnestyTech/investigations/tree/master/2020-06-15_india
+#       Amnesty values are shared under CC BY 2.0 (https://creativecommons.org/licenses/by/2.0/);
+#       credit: Amnesty International Security Lab.
+#
+# NOT included, deliberately:
+#   - domains, IP addresses, URLs and e-mail addresses from these reports (old ones may now
+#     belong to someone innocent);
+#   - SHA-1 and MD5 values (the check computes SHA-256 only);
+#   - Volexity BrazenBamboo rows named after ordinary Windows or Chromium libraries, and the
+#     rows of a second actor in the 2026-09-09 Chrome file.
+#
+#
+# ESET aridspy/samples.sha256: AridSpy apps (trojanised LapizaChat, NortirChat, ReblyChat;
+# fake Palestinian Civil Registry and job-offer apps) and their downloaded payloads.
+0cb41557841ff6f314c398250a165706e0b18f93674a7c12f4489018a1661673	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+7aac86b914b56baebf002e4f4ab93f5145be77fe99fcba8bb2845b1058bb203e	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+f4ddfd426440829bcbbbe789cb0c18fa3a23798eb5643f1c88b7986390b3d648	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+cace16a3ef7594ac9881a5a3baa3426b30a4d8c5f0f5caf378946f6ca72a4868	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+47430361b57ffdb0384353178e5a46af50595a4adb7474fa19951c7fb7a2868f	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+d6140ef329f2a8f141a05055b1d583a40dc9f5b26b00c63c72c7ebd82fa3c7ec	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+ddb91e692d0276684ac1a8af5f9ce5215fe53175c5918ce76906d45cfc2c7a03	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+6290d860b12c4981180f1acba8277dcd6ff7c50b811c267b80044f32126f8055	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+19df327e7c0ffe8bd883f044c3906424cefe893d50a0d5386e8445668d2dd1e4	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+750886cf50faa37df1b9eb4ae48af1758d35badf8269242e310ec4db1ac1d6e5	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+b696f443fa40dbbb775ade3645c9e7ab0976dc14d9b36d5ab0851ab39a20999e	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+914b290675a688bb63ff147104b170afffd1c20e602ede16c45e40d03381ea7d	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+89ea177e5043876829228a5b5f736b43b8215480ab646592be808d2708f8c9b0	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+20505a62147fa01fd4e66fd9568725189899456083e17d9a895aeb8274290139	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+a4e74f74e675a08fdf8e0b55d5da59af8f1c67a2820c97ba6c6790b29589663d	sample	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)
+#
+# ESET article, sample tables: package names of the malicious apps. Generic names the
+# article also lists (com.app.workapp, com.studio.manager.app, com.weather.services.manager)
+# are left out: another developer could use them, and only a fingerprint can tell.
+com.rebelvox.rebly	artifact	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)	app-id
+com.chat.lapiza	artifact	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)	app-id
+com.app.civilpal	artifact	primary	eset-aridspy-2024-06	Arid Viper (AridSpy)	app-id
+#
+# Cisco Talos 2023/10/arid-viper-mobile-spyware.txt: SpyC23 Android samples.
+d5e59be8ad9418bebca786b3a0a681f7e97ea6374f379b0c4352fee1219b3c29	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+8667482470edd4f7d484857fea5b560abe62553f299f25bb652f4c6baf697964	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+d69cf49f703409bc01ff188902d88858a6237a2b4b0124d553a9fc490e8df68a	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+1b6113f2faf070d078a643d77f09d4ca65410cf944a89530549fc1bebdb88c8c	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+57fb9daf70417c3cbe390ac44979437c33802a049f7ab2d0e9b69f53763028c5	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+f91e88dadc38e48215c81200920f0ac517da068ef00a75b1b67e3a0cd27a6552	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+a8ca778c5852ae05344ac60b01ad7f43bb21bd8aa709ea1bb03d23bde3146885	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+fb9306f6a0cacce21afd67d0887d7254172f61c7390fc06612c2ca9b55d28f80	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+682b58cad9e815196b7d7ccf04ab7383a9bbf1f74e65679e6c708f2219b8692b	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+e0e2a101ede6ccc266d2f7b7068b813d65afa4a3f65cb0c19eb73716f67983f7	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+f15a22d2bdfa42d2297bd03c43413b36849f78b55360f2ad013493912b13378a	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+ee7e5bd5254fff480f2b39bfc9dc17ccdad0b208ba59c010add52aee5187ed7f	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+ee98fd4db0b153832b1d64d4fea1af86aff152758fe6b19d01438bc9940f2516	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+9a7b9edddc3cd450aadc7340454465bd02c8619dda25c1ce8df12a87073e4a1f	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+33ae5c96f8589cc8bcd2f5152ba360ca61f93ef406369966e69428989583a14e	sample	primary	talos-aridviper-2023-10	Arid Viper (SpyC23)
+#
+# SentinelLabs article: package names of SpyC23 apps (fake Telegram and Skipped/dating lures).
+com.teleram.app	artifact	primary	sentinel-spyc23-2023-10	Arid Viper (SpyC23)	app-id
+com.alied.santafi	artifact	primary	sentinel-spyc23-2023-10	Arid Viper (SpyC23)	app-id
+#
+# Volexity EvilBamboo indicators/iocs.csv, file rows described 'BADBAZAAR'.
+b7c1a56d3e817bfa47d540f37dc45441325e81332e4c71a5e65d7de67b8f4b3c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+98e9550fc175a36d5a0132d93f316cfa6cb0e578ae6e619ef9a1b6f49b3c6564	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+cd20f2cdfe30b2907ab5609a723a4d9dab1693d2079f4dd0e29b5d1d2f1ac14e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a54cf7f8bdbeff78264bbd6284e773a43933acbdd1e34c345db534674f9abbb7	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ce96e97012fd13a2c4d756330a8b889e63ead3126cf9ddab7d13a01a36a83b36	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+de32d38fb1eaff6fd09a224a799527554fae6be626242f8ed09ebc3ef5c7efb4	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ad8d7a3e23c11aac9533e84db81052c8765db4fbff15a605f566fccad475825d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e14b64a04db103dafe910875858ba37099c9d4fe2728b059771e24ca1489f806	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4a104c0e4b91d07b8fba04cfcd3ac572a8a460cbd20355cdd58e6a86e2731529	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9fd9c447fd356ac4016f69f7f6536f561e61e235adcbda0bebc66ae1a711e74e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e213b12d4e12236b3837ebc2f52d59f5d7e86187bb605f6d599d30511e0bb19e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+5b0f903e8587edda296126dae07e537e2164e188ac28a7cb749f4d99e8ee055e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d9f6495fb818accb647ef21a5030293b748bd38c0aa0135b307fca92170312b5	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+fb4febd0f61fa53198e4acb899baa3140f5e8a3ad68103a94e05c6559662269e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3090de13c890e4bc0485b111f2babdace0909808ee26f245b965d5e8e0c364d6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+1ab35db617cf151a08d70de8d8f49d4d402dae53f1c72c1e3619a0388891d7a3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+570e2f608cbbbdd7144abc8c2f3c34ca47f3facce19602bae7cda32ef26d168b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a29ec9cc9603e10e8db37197eaa007655f68cbd2785b0b5fb4c1e50beb6c9807	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b3689c708af23680655dac7f31b6fb5d91c6d038d6d95e5e94ca72f0dfc6e9ab	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b9476668a03c8d0900f393779ccfb36d299498861be3035b311e66ff83fe9e84	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+48e3d64f1be719ce286b5707105d5f0f8b76bfccacb0e90974dbccf1bacd32b1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9b205a74cd5e83a0cbf0c75011a44d84381bd9c2841af22f9ab97ba091e86224	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+01965c3fd21e4d0a9030ac2a044c34beaaa410fb079258dc3e0028b4f66ae1e2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a322a34bb4d6de6506e1ae40c99584bf190fa3c4db9bbd46b8087f8c8c78d6e3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4dcd4174f5baee7d6ac77bec6f803b076b023c77512ec734da66e31772f5b14d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3a6bfc2a7e6380d7030c412fda940b57f83a802ce0ac40ffce410de5caf33795	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d2f6b0e137363b645a72bbe048598b75bd6ae65511ec0aa85bcee0f0a33ecd00	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+519a30d5d8f0a50c5620e0837cee78bbd09f87adc35905fd1aff6b62633579eb	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+02642e1c0421ae52e5668f09c04b787ff02f38d2bdb35218c6dae2fb0615a4db	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b82605dfa3accc6d428cf54389f0397f3228e3da23bffd74799ad8e9103be63a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9c4569a6abfbf3a41e508c23489d59064cd58e7751743db59f42a863e6d26b83	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3c4a7826d008d614e06e30f39429fc21a787de5d6a7dbe4c53e9f2498733faa4	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+7c28595a84db1b256964239a42f55f96012cf226dc2d107a799586160bf6d606	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+59c99f5af2945a1cf876c4e7e8586cd2329173f660c46623da889df7cbb73e60	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3f1b9f087d60bc133ab07ab8ea3528dab4045354dffc81da1a3bd7d8d50976d7	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e249fee2a26ade6eb3877734262166c3a6f19f3c63aee4fcbe52f1c901de8a93	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+8fdb8b8b4d2b424aaf1320ccb0953464368f279180d29e2ed60908a04057b2f7	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b5684199e86e793e18b501214256e8b9b51f810f80345b956a98ec984eecfd50	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+031fe91a93ef5f7140226f77e83c14f1e99737a65a0606ba65f8e452d7aa6918	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9985a564a7f8bf54a28821c33641c8e9927d6d59545e2df771940323362ac904	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+25da1f336b7aab59340b0e7d9de2a95ec5c5fd3818b4b5fff4712139f5d6c0cd	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+fe0035f4670f23dcee6eb5d0ceb6fac9756dd7291862b4f470eb3ad892805ba0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f38928a9c2172b369086cf1a188f834b6733f4e1b27c4654e83f4cd15d4bc1ed	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c9eb92eb240a77ec002eff0b4311ed719e12f7331db2cc3236f316aab9a59161	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+36677065e351d308e25f221099c24aaea52a19c316802b7b394a14404649e0ec	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+009cc3470a741086c955fcaa1646d369eaa61dca9c83bf5dacf9bef82cfc919c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+05fa38cd7a5a9ab1695ac29efd99a76e3fb5a0740d3b32a721d415c21dde472e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+07a31086a219d9c1bb8215a50712d89db9a959199be87c2dc9f8c202c69028b2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+09eaa17563b50ec1c5034a61639e45b6a55438b69cc32ce3c2cc8286dadc8c2f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+0b3b005ad4b6fcbeabff71e8baa5c5f4e1417cbb1da45499b332740b2ab6cf80	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+0c1990572e45389422430be7a26331907a1995fc23b486d2c0db263405af467b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+122a9c4d16fe0cfae1372e2fa1aaef66162fd240557d32bed6deab914caaa70d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+12a79bcf414d68c13cd7849203e2503fb9045fd47eca51d5b1b0a5a0811551b9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+12ade6d60348d6d52913df5e9e3d4eb41375faa7ab88eb2da28c2ad7e6f72813	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+141b5bf5ade4a099dc8d38ba533458206b6332c37847ff9172a1a3ebe278d434	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+14576401b2da79f1c3962519291b9a47ca9bd1738462af9385d743b59d00ed1b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+15f8d22f0a9c527e77dd6aae44ec1115dabb4e2bd44af4fd135316f5c7a1f8fe	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+195f857e42e279866f9981f57a8b4cb40eaa505491d89b99c40216b84a8b7c83	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+1ab3be550f9d0e8b652862bbee8fbdb8ac77925558c42a1ca702f1cd4e69c503	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+1caf33e5cb45de1d3616bda85bea6c4d915365eb7444c8d7c56cebd12b69d105	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+1d60180fe753af8090adae490d4c89037951bcdcfbcc7f9c62143dc089c43336	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+216ac27f154f6d132c286f81fb748b386550736505d3948470da10ea14f969c1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+265191ba213c5208d0ca3ede146a0534b58683c4a5c48820501fc4ee04f136d1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+272e373684b73edc1cfee16eefac04ebb6e40fa44cf6265dfaa49c3a3daf9d7c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+29b58fc9ceac86cb00e799f9a527e9d3b94302fb7d2c5b758bb399f2edbeb57f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+2bc2cd1041de88c08ba2ccf9d06a74113adecf38fbcc924c5fa9f37ed74bb869	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+2cb494601f3e77b4e93e5cc68b1fd6422dd86f9353062ab5dd8761295cd5779d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+34e14b375132ff9298de468de74657fd6ec02194cb4b5c695d0dc3a0c1e386e6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+35b848c771234c7dec2767734ce37ca3dc1f2bfa08af6523ec4bed2be9ca7418	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+368a03b643b7d12773f4629b8eca059b2ce5fb33b10683e7565f89741bc8c111	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3a97aff7fee1b9257f93328e66ada5712d54c24a1761bb56866c9ea947fc66a9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3aec5e3affdb25af0424a38b9744be0357bb2dde22f74eec1108c838700f9976	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3e435f363b835dff791f27a74c5dc7f8bf91256cf2f46571fae0980e81601fd2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3e9722debf2dfb2159be025f57628d15ef0fb21ea11c4ffffb88736c863bebd0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+3ebae78207c8a50b7afb1de7e46ddac2fc42885c2a3afc3896af5f6a01f7434d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+408405d6b06b8c3edbb946c59843677891f9bdb8c1123d945a8c39675578d34e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+40c2c7277b536782cbdc1237c30ccc75421b1d6e070f72f21c1e4ea4dd4db870	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+40f7a8855997ac08ac210e3c65fd69e2eeab723041b051c79f9666f77d50eecb	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+428a7dac39c7d4c8d1928c3d759a8b9d53984601c7af3889e863ec3972d2411a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+441e6924fe8e3fc5205ab34e8a751680d22ab70884d7fcad6b2369890c064ca3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4546f74ef2477b079ddb579833e300a93bb9407596154533ae07ee62efe47b7b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+47ca411b2848f36190c140e55b12af6b1c9342094817d1d733553df74d57e2d6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+49348ac7f6a73532596da1c897eda1fc8564f301a7c50488b4f322cc5eb3297a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4987b0caffd99a679e5e0bd09aacc80503fcdb80e97467efa644de7d16d89215	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4c0ab5db2c8e116a2ffb8ee4e890c8cfd54167e2d2e5a6ab31ac2d9a117eed73	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+4c8770b3dd71e650d8ef987e3774e93237ad7080bdb9c2262b24f472bf552786	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+517feb317a0c2c9aea04889c33e069c218ba0468d204b95ee89e2587d97399a9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+51ea3be7123a91565efb8f68f76692207f523934ac5f480f849e36fb944417fe	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+557d7b205a7c1aeaaa9e9b4d513b14147844950a44a4c0347e60a5a1a3d96fe6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+58442b2b540284585481a382ad91ea390736364a556eea9ebdbfb16e61a1a65d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+5a6d99b997e41d77aea9642d87f48bdc076f1a1f892f87eace6a2f54740829df	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+5be7f1422baef22f77093e4c4bd2844e2f73497667b44ea2a9c13ef2263c139a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+5d27f6d5b300e028fd0fd67f1ca71216a8b9f362a4e3425ceaa702b7754edf34	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+5d9d163befd5a926bf654b7d04f73c5a9267b0a7b0b24dd6afb033ae61ecdd23	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+60ee18ea8c37ce058064de664f687ed91c8be668d83e5e812028ebfe192ccad1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+6145bfcae76387600f0ab5307b010a323df8dea1601394b22969f0f93de61b30	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+62c56e6f89723957953ee25598d79e2014138ed614b8c4fad32c1af45c251586	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+64fdf320dc05acc0dac6d2ecae78a9367281ac330a8f51f95711f858c98bd9b0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+651fde707ad9e0825995793c45e9b34921f8581e2d3a62586ad4e288aa741928	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+67611791859de1fd58f3703ad5ae29469c45dbcd4be69ef5c22886bc9d71fdc1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+6a144b5f54cd32502140ef794203fdb186e33c394a48d53c0a4df47ff95954cc	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+6a2e2d5487e25629c95626150f6a65c21483994b27c41ef1a9cd386588fa9dd8	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+704c9279e684fa104a75319a76a66efa7f4ce39709ad4a325cc5c1018d72ef2b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+72441d6a2b8b5a5c8f1466a7955484bd6e9dcdb011b73fba33f2c8fd80e08316	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+72c4a2918aa3eb5954c4484d1f813184492031fb0e22db2a5f7ebcb3d96c1a9c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+73ddc3b1de37502277fdfa1698fc0218ed409a7402208bb7616d3b1e5f08371f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+786ca749b3a8ab8f74c2bfe2fda822fe3dd308133534bb8f18000abb3ba618f0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+7cfe366c67760ecd8c6876f2a123a14621372fed7c6d76472a6710bb66630b54	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+7f119fd5bb8e04211d1ebf22d948124cb4e4361b34418b8e72142695e7a665ef	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+7fdf462fe062b6afd099d81957db499f699ef96237276d3abd94184c445f10ef	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+823a450e6c184014c26919f9462e93bdf0cc0a40121efde32ac557d3a6105375	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+82452ffb18c4f5efdb65fc02de169e1b423d3e7fb1928cb48fe882d70f52c301	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+83e7627c118713b991a64d88004eaaf4ba1d75895de31e43227c624ac1521162	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+866b7f8c2d55afe1ad9293774f730c3df76c910cfb3faa649484085fbf96fbd9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+87a117894e13dd7cecff96c9034437ad6c30ece511415ffa738389322b83cd46	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+91284fcf1252015fe1124ada323eb011752e351800fb972376f9a871b02116af	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9361e7570da36287c48bb2ee8a3f53fb040acffacd77c1c0cc05c29a6abbcb8d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+94559fb5052a024e1210b2fac0eb1663e91c97990bb9283a93360f5bd75d1cb3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+96d7cab8638a9eb17aa4e746bbbd6ce8c93c495e09ca88cf652c74586b4af658	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+96eea0433df965e5150396bae683b0efc724c97e5d1281f68f3703e0289f9053	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9a3773de35e77aa2c1bd41c01e5f3e195a0715361244d50c2a650ae04232b8b2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9aa2e14ec630aa11f641a90c9e1346a36d52bb08130cdf33fa45da060d7065dd	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9d7d422c63353401520ecb935ba7824250a9b7276db42251cee375201e230ee1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9ddeebbcbf122064eb2a985c9166d7f966f85f29d0d81503c95166e795ae7ba2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9ea8b93d44c6a46d7bacb7e96da6dcce937717ccb56b14acb2598020306d8a21	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+9f2d939ec3e9ba85eff8538e83eaff3247cbfbc18b5d30178d675692c930628b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a3510f3afc1438b644321ab13c17dcfbf364bac590bae21728844eb627730e1f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a461fbecfc85790ce4aa4b260bfb60790402de3c8fd765f5340ec24244e71040	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a49d46f25a6bed38e486ff5ff4e120f43ae1415fb7a1131e58907eaf4815c7d8	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a6a16b7bfa9d0390eb68ff7d417be3d6de3457c03078e342d07f59447ff32e63	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+a92dc5b10ea1c1c0960898ccf2fd1d24e28ce8572c80e002a1beee758e9cb201	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ab50688ff2c79b3b5cd23e346d8511a7bde073b9f7a190682b14622c6ca65c6f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ad0cfdb7cae9800f882fd5def3cb31892e67c1a9ce58241d4a3fd63ef923a20b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ae0b284f66f21959434749b26676439aef9fdd9f4b5d1f36cdfb379ac431f91e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+af103f0d8afc8337df79ca22db1d6c0d80497a920368a3706a5b0a2e3e1e50e4	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b07d2d7ca597b7863e5af422602513d392c1d0f7a124875e4bb60725538e13b6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b1704813ce328e12367cecae1091e254af088527c867121b620338954b38e765	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b2d36c292438751ff2de391dcc79f44a926e155d1a95b518ebef8c5dee59fa43	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b2f7dc7056739bceab4dfdbfe498fedd99d57cdf5383cb5c898dc6bd3ff0848a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b82e8b7d3dcb7d40e9d9dca6621a9adc27257c5dca13f79229a8c37cdddbd439	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+b8b330ee5887d737f72f4dac1c6f24107f47d575848af9f1e1963474e2e7ec05	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ba7883de90b02fb42dcdba38942e5e5fb5678fc4c059d439b2d7c965f818240c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c088c690f3c8981bb164fde67f00c7f8d7191efe192685586ebf8ba3176d0fc1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c1f2871149ce8157a4e3792f320b04ce6e3b7e753212ccdd26465fcb0239e6f2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c579cd5d4d868a74722173b6e56bff5ecbe7536c396422a8227b7a9cb132e9fa	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c5e8476fc6938a36438a433b48e80213e2251b1d4b20a9469912d628a86198b3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c7131786f1c5b73ec67414914350e4c2241772b05ca779125fc4a058208b7cca	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c81646eeaa3d6731b548535d0267e1a73a1286695ba5e86858ba6db3a924fa47	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c89230a65563ba88860d6efd8f0651955792f341b40e78a59183270fc6a6dc9d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c8fae18a41969a97d9480ca43a2cc1aa5f373fd512d03c52910c4d815e4bf340	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+c936c43df541a7ee1609500e4849c8c003e16f9603e3b4f72c8472a6352daba7	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+ce1b965776dea13306be12a52756091e62363df61fd30ae84efe2824fd5c10cf	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+cec94cf1ac9d31e4c74c134390299213640985ff793746d637472733f3f2483e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+cf6399378217ec8e643657cc500b838e89baaf01eb10ff866810f2d68b191f24	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d2b1a8b07687e6c02abc95789602a748542788d7f15d3c646e015f8b96449d42	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d37069fffe225851e7cf82321db39a5d2e37d0bbcef16f97dad3deff6d0c5409	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d39662702d51ce955e62f78f9e5d18bb1c5e8f84afa2b7795c9adc77c7686db9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d47dd5110d2a167caf1950fa886d1170d6b62bf0765e02b9b15aa67c3a433e0e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d4ac5108b1d38a1ed7a755718cea96f11eddb70f310b6fc8776a5e331f5d2ba3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d53e5ca2b69bc4ca1be18d9c73f51873e2a5256c1b352d14fd64f007e955415b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d6843b1506e948dd51690b791c9914a020a7b4946d1788f06570a5ccaf46e94c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d7f02edad25760120b72b19c342a65cc06754ae7c8d962dc31a40740c27eeb22	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+d98eaa20ca8b9ba5540152bc153e4bdd9464b093e624e165af83b6c6bb8f4e89	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+da0efec7700861c4b29b7e25a6370a66096f6f5302ca44a0d943c2d5dc6d9226	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+dd3be73a5b499be1deec3c05355d1b6c00f7c26a53b9d5ee9a83e5ca2baf5ca1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e254c8951adf260b233abef9f4aa74d7f2b1f45b73072b81ab5596e3b3382931	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e3769b08b1cf4fa4a540842e9220e5fa7c3323b6fc85313bbb123695d82cd850	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e442ff6954ea673808a564b33e7f202a2cd70393e3ad7c0c633f30b3a8d8dfc2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e5ac37a1ecec77b99ddbee3e9c0e40d0fddc834c01b32b4b1f65dfb7ee5de1b1	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e67551849522a27f0d8de0096defa5fc9fb52f798c5326b847def4ce88288a37	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+e6d37c977cf604e72b65e08f83c8ff15ac3972176d7328ef06339e33940f9f4a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+edb835b5ca5a99aef29741c6626dcb43b1af1ccfef482ad2f8c384d77edfe344	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f1c8058bd0ef0385de129c3c6e85fa845efe56b80f8497b59e2de9345b6c0325	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f25efb7c2f158a50f329151d32a8e9bdf1949efed6f5133e22330a7d278e41b2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f38fc69560dfc8eee9fa4970466370d689e318339e16045bda65153c5be59cbc	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f7e6537f88b3231435198c249f12938c2de22ab76120db75bb827d819dd2cdce	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+f9e2f67565fe84d963bd22cc0ba1c73a27660a5fc7478e421095aad67b6817e2	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+fa9154eaa3df4ff4464b21c45362fd1c7fb5e68108ab350c05f2ca9f60263988	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+fb1eb7773c8ed85eac71200f051ca3c468fcadddf3859e843364336bab837b3d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+fb37de81ea94db4b70ff8e9ed07abe36b1aeaaf95963d68742214fabbc9a27b3	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADBAZAAR
+#
+# Volexity EvilBamboo indicators/iocs.csv, file rows described 'BADSOLAR'.
+fa42ec6f52bfe00c6a4f702963638589720c909ba820d181503a1c8027e06a96	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+f8bfbefd5292246573f3d2da6f84199f0a3286abb90804f59546ffa4d98e8513	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+f7132750db2a8ca8eb9e9e5a32377aa506395d02bacbb918f835041f5f035c4c	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+ecc2e230d27842c65ffb2bfb4a2dbeb665aa3389dfa423365fe32cf8876654b6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+eadae80f7531024be5879833d46af87a8848c5c062c482edfa8ecfe3c3382c7b	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+df18d4f984ec47f30f540ed4aa20eec2437fbe4849b15e377e27f65b4a426e49	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+cd93541622a349c282f3f81642e163292c00104254a7e2a14d50ce14cab2ee96	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+cb7b7a9495cf91948b646d26edde076e04b6511cf32e9b76af0a00f47e41ef5e	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+c73235a84f80844794c382a72dd43b46847004febd90483397e6756d0d1e717a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+9309df643ebb368f57ad7465c5b9f4c8062509c3e1325c776d6a5d0fb62246b6	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+8448f5cf984e9871966893f0604d9b6d70672c38ff1138a03377848b85a5fcaf	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+6052bee6221483b6dca4040472b16337d59e682ab1d9f48befc63484bd024257	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+4fa3f50b2de64dc8da0b7699c776a139a1979103300d0c23098d18f7d90789b4	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+4d1ff0b04a2effa52bfe39bd1600d2df8043fd368aa61e7b75122cffc483c622	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+4ad06c32daa22babcba1592a6c9303a0f255ca11b113c58b81a53480715eeeef	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+44161666f0b0f7ebd22b54da8e8ecbf9c5bf83dbe2d89590651d8078d7bc6e89	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+3f4c9f77342a34b77d6f0dfb657426a3e35942178cd8e7a87caa2e43404c2dd0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+3a8bd544d9cbdac22183317382454e697ab2810414a9fafc96bb3f3bee1079ad	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+38770287e37c571d6a80f8354c0ee465a67d78a997a8fa729b9bc18a827c35e5	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+26d7bf870c96356ee0500e1fc6377e2d04b83292f2c214ab1ada579ca923f944	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+2135dda9d31e645d159c6fe3f8349f8915ae2aa48fbfa2dd712f7a24be94a083	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+1fb0005b1fcd68caf844a805471c943e4e589f7e1775b300dbe5a6bccddb0d51	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+174ed79169b71ce793ad8f0de9b29e0af4ce3681442266301d7e2ff12a04dd6a	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+0b8709f5e50744f2c751d2ba99a71d6ab7762b172980f1c84c8a057c19062d3f	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+0484de7edc41a4d88fcade49105d9c0005cb64a17f74c446b3436686c8b95802	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+031a0768532fba97ee14d2d2813dfb1d70f0a93fb3047e9fe0c392f15639a9e9	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSOLAR
+#
+# Volexity EvilBamboo indicators/iocs.csv, file rows described 'BADSIGNAL'.
+549d726fe2b775cfdd1304c2d689dfd779731336a3143225dc3c095440f69ed0	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+602d7c0473cf5688c1a251b1e160d83e0006016d4b20b651f418f54c4e00c828	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+d1a30e3e93821154878d564433294a44193401bdc88f382bbae5734dd7f9a563	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+58ccc0f239241cbcd023a5eb0800786a20df9303854e6365ac66b99038c76d72	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+0fea799ce00c7d6f26ccb52a2ecbe6b9605cfb9910f2a309a841caedf3b102d7	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+daf3d2cb6f1bbb7c8d1cfb5fc0db23afc304a622ebb24aa940228be691bcda2d	sample	primary	volexity-evilbamboo-2023-09	EvilBamboo BADSIGNAL
+#
+# Volexity 2026-09-09 Chrome/iocs.csv, file rows associated with UTA0560 (Chrome exploit
+# chain sent to NGOs; GRIMWEDGE backdoor). Rows of the other actor in that file are left out.
+69ee454d644b20abf4caa76b7a66d244075b7c8df47aeb5d6b0242015f671abc	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+d17053557bb90298f7b115432b4820a248fdbe678bca31721529b1f51a82343b	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+337b48c1cd6dd6e7b8073327082a60e149517fa084ba17b180e041fffa3b130d	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+69c1603f3f9015beb0097d0a3bb0f17400c314e2eae65a7eceacd3b93ea570dc	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+04cdff07db9128992199142ad42995c98d40bbf5edfffeb6917cbc7e6fc343b8	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+3b71d721c39fad92a44ddd764bbb34afeae44a5db886d0a4827a399a5fbd367f	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+5995f42a828606705a7339d58a665c229936e81c4e539cdfa115eb46a2eb53d6	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+5984343880792fd0dbb3968fe6db894d699831a4c009e8ff14a140cec9b61114	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+59dc108e22cb856c228bbf8a1ab955fb66f0844a07fe10fa0d9fc3823d2cbbcb	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+c75eab680b6f7a60c40a377145e2af5593c4dc9d27c7d78c66c285bfcbf50b9f	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+51462a23ac25e1bd0e49b7cae7f3a71f8d2201e22d45175b587e4740b49863cc	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+1f551bdbdd252fe6d9fff59bf6f3f88515974396cbcc37d8118f24052c5f9201	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+8e666ccc3d45d4dcf152ffa5a5b0ba0e8d71c169070e329376236ae88888f21f	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+bf4572a93cbf5171b318bcfd81e98a71183a96764e2ec634972114d1d8b928be	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+cd0c21f9b32b7feeda1787fccab622dec60ecdf84c0538c08bde3946856b0fa0	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+b7b0cd6539464ab39c6526e499f86d611faa21c5af945535ebaf187cec543af1	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+7a52ff23949edee8faa61ce0def6dbca8b7e5943c54d23376cc190762ea3985c	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+d125b1126eeeacea9991279e84cb9a5ce5b627cdcb7b6d550c9f59251cb4005d	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+56eda0ac82e06ee609b034306025e67df161c5877399c305c8eaea136e80c951	sample	primary	volexity-uta0560-2026-09	UTA0560 (GRIMWEDGE)
+#
+# Volexity BrazenBamboo iocs.csv, file rows: LIGHTSPY macOS plugins and Windows orchestrator,
+# DEEPDATA plugins. Five rows named after ordinary Windows or Chromium libraries
+# (d3dcompiler_47, ffmpeg, ucrtbase_enclave, vertdll, iumdll) are left out.
+666a4c569d435d0e6bf9fa4d337d1bf014952b42cc6d20e797db6c9df92dd724	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+035db9a3bc9bfba542583c9350baa39741018127a27e7e3ebb6e9f50ddb96f41	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+041c13a29d3bee8d2e4bd9d8bde8152b5ac8305c1efcc198244b224e33635282	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+0b8c9d991162efca3c34d3d97b79f8edfd45ec3e052c4fef080523bacd586d11	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+0c4ebc3d96911af9878343ee8dcba7f79a64cf86ae9b8e6cdc7bbb100177b9af	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+151edcd7d877048d5e8fce9919477cbe5c2de4bd65cd46aa228528dd00360db1	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+1bfb7c520335f96c1b268bd9e59688fca49e67e5785aa2a5a3bb281484318101	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+213520170fc7113ac8f5e689f154f5c8074dd972584b56d820c19d84b7e5b477	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+2bfb82a43bb77127965a4011a87de845242b1fb98fd09085885be219e0499073	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+37c74a4a8bbe272da16f956eea69f0dcbf0caeb0d3da72d084502499c124b879	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+3d9f8e1e84e9cfc742bc51742863a325eda1ea459ed6a6a5b2c47710fc171848	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+460f1a00002e1c713a7753293b4737e65d27d0b65667b109d66afca873c23894	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+51b83c5732fbfc8da9d333e7daea85725c04f241f27648708d326077a4556717	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+55e2dbb906697dd1aff87ccf275efd06ee5e43bb21ea7865aef59513a858cf9f	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+5d39dd90ee6e01afbe070030d863385adf5976752274f95f936c1b6241f78d6a	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+7008e312446919cceb73db951af89602aaa9312c0c793b9bbb2e1a306f84d82f	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+724351b5cc9ad496a6c9486b8ef34772f640590a90293f913f005e994717134b	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+742fd59971ac576e579a45d8f2d4165c4c18b08685880fd457be1651523b5da4	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+75dadf4ead9e1b3ad73fb135a5950534d0a9e58bdb4c6f2dbd4ca8b7f66b4a56	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+765ef96d1f46aca2c2b816f92e57b92ba8126a601e76a9377d742eb6bb2d95ef	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+83c610c4a56aa15a2220d2c3b05e0ff073f6ffb97f892118ae10c03b1bee35b0	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+84edc435eac5543a01c5aa1391e73e5dfe49f6b6fd577750204d514f1caaa9b4	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+87daf1ee49925271f0f3b2f5671ef028d9e6b79d487a68b879103a752d6fdb7f	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+88e5ca44189dabb4cec8a183f6268a42f3f92b2c6d7c722d7f55efd3dc5334c8	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+a560931baa404189257ec9cbcc2b9449c579018218cc1d70c99b1d36dd292a0e	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+ac7e20d4ddccc5e249ff0c1a72e394f9c1667a896995cf55b97b4f9fbf5de2fd	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+af0de88e8b17d628b354b5586da7718b06755d88ddde8c933c8606018e5ed7ff	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+b208b73d003a8ee0eb24ce09f7ff515e18229d1836c43159a8e1821615aab19c	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+b523cdd1669dbd7ab68b43fd20f30a790ec0351876a0610958b9405468753a10	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+c3995f28476f7a775f4c1e8be47c64a300e0f16535dc5ed665ba796f05f19f73	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+c782346bf9e5c08a0c43a85d4991f26b0b3c99c054fa83beb4a9e406906f011e	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+d4aea0bbfe5b309f2464fef8ebb44dd514f8162d41be53b423c64b4acb4a5ee6	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+dab112f7c765a375f0f12313d1b1e3cf14963113cf7b6f101ba5192a0c3874de	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+dbf0ee5e96b418bb6237772262701baf213bf60ede3ed7d90c126117097aa3ec	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+ee7c3e2352a4e7bf37e3d76972de1ba493c0be26832cae5978c134155ac7835b	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+efff4106cfd21a356b13a5a99c626a4f103f03b9491c0f1f5e135c1e3c84e76c	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+0f66a4daba647486d2c9d838592cba298df2dbf38f2008b6571af8a562bc306c	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+08e0ed3c9a4c04a4cb83e17f14a4959236dda048336c04e30ab7786b5bf8ffa7	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo DEEPDATA
+80c0cdb1db961c76de7e4efb6aced8a52cd0e34178660ef34c128be5f0d587df	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+0f662991dbd0568fc073b592f46e60b081eedf0c18313f2c3789e8e3f7cb8144	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+3d6ef4d88d3d132b1e479cf211c9f8422997bfcaa72e55e9cc5d985fd2939e6d	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+18bad57109ac9be968280ea27ae3112858e8bc18c3aec02565f4c199a7295f3a	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+5fb67d42575151dd2a04d7dda7bd9331651c270d0f4426acd422b26a711156b5	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+65aa91d8ae68e64607652cad89dab3273cf5cd3551c2c1fda2a7b90aed2b3883	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+4511567b33915a4c8972ef16e5d7de89de5c6dffe18231528a1d93bfc9acc59f	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+d2ccbf41552299b24f186f905c846fb20b9f76ed94773677703f75189b838f63	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+2b4fbd5aa06f70d84091d2f7cca4bd582237f1a1084835c3c031a718b6e283f9	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+ac6d34f09fcac49c203e860da00bbbe97290d5466295ab0650265be242d692a6	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+fc7e77a56772d5ff644da143718ee7dbaf7a1da37cceb446580cd5efb96a9835	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+be02ce6964d1a10b48897466846e0889c7cf54bdf34133f52bc9226fefb31548	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+e5f0022cd79fad21c760a57fedff48e559aaf80ac0e8bbf44401b465654aba02	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+4cbc692e0c914e235b92c55e910c818ec014461462736c56e5328dbcb9971756	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+fd261e970d01f0f123e32baf02f5f32edd0db1ee3ffc6c44d18565ecf1194630	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+7d4c9e9b73f74426a975a5f8584059e8c8ca24418e7994ec83ef735c84cf2d31	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+ea2c0cbd35465dad118d69fdbf37ecfb9b0eca461e9854d2790dd98201af6dc4	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+205e62b04478c0ef69d69970716e5cb9e5d03293157733194d95ea801df3726c	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+d804e5cde29c10fa3ca56386c147706d9501b6c2fb73f8fd329a24b9acb4c4e0	sample	primary	volexity-brazenbamboo-2024-11	BrazenBamboo LIGHTSPY
+#
+# Unit 42 henbox/henbox_samples.csv: HenBox samples (first seen 2015 to 2018).
+f3d04a7f77498acec86efc8d372c4d6eac591d8030f0a867ab856074e4da1fe6	sample	primary	unit42-henbox-2018-03	HenBox
+2a7ab147d9e7c7f5349f5f929a2f955fb03b376d29d02d5a41d5e6da31d7cdcf	sample	primary	unit42-henbox-2018-03	HenBox
+ed35dab84aa4de72e782aef8cead90688d5c664de878207488828ed16902e828	sample	primary	unit42-henbox-2018-03	HenBox
+c6117397a54a1c2fda6efe40b1a209c14834f9ecb82136e06174c16644a59657	sample	primary	unit42-henbox-2018-03	HenBox
+2db13b0cdede04b1b050744114e6c849e5e527b37bcd22984b265dff874dd411	sample	primary	unit42-henbox-2018-03	HenBox
+b0e0d35649d6e5405d051580d0c2a7ca5d3eb58f38bd51d0b8b7b98813256ea1	sample	primary	unit42-henbox-2018-03	HenBox
+5808df07cedf15451ab0984e9c60b077602de258319d48cf88b0cc4ca7bb57a0	sample	primary	unit42-henbox-2018-03	HenBox
+fa5a76e86abb26e48af0b312f056d24000bc969835c40b3f98e5ca7e301b5bee	sample	primary	unit42-henbox-2018-03	HenBox
+f28761f897e3a0e1dcdb0a993076a1cc48a1b17361d3f401aa917406332a79f1	sample	primary	unit42-henbox-2018-03	HenBox
+0589bed1e3b3d6234c30061be3be1cc6685d786ab3a892a8d4dae8e2d7ed92f7	sample	primary	unit42-henbox-2018-03	HenBox
+60adc526a1bfa8df150c25016d220544671a62820493b66a8467436181b8d224	sample	primary	unit42-henbox-2018-03	HenBox
+d68070f75341ce070b11a4ecda28d80a85303fa102fb4cb84c3dcbf97863bcc5	sample	primary	unit42-henbox-2018-03	HenBox
+cf36fb6f2d4029876f50d6a1eb9eafb13eb0bc6a57e179172ffe67a305f33c41	sample	primary	unit42-henbox-2018-03	HenBox
+e0427ca401d68c347ef14f65a94735f76238f59710d99c4097e51da23cbb2a6d	sample	primary	unit42-henbox-2018-03	HenBox
+a26802ebe8ad4dc076becbc18b32a825cf057ff2059a0742ece86afe6fcb496c	sample	primary	unit42-henbox-2018-03	HenBox
+5fff623781636b2af95327293f246e0d83b90012f067a8c9e6c2b5869e606465	sample	primary	unit42-henbox-2018-03	HenBox
+88c08e7084d4e0db14fc5fec6c906ff89e68b54df09096d49573b1906dd1ecd2	sample	primary	unit42-henbox-2018-03	HenBox
+198ff17259ad377fae62ca49daaed0d9313831d5a12b16a79dd54045eb6909b8	sample	primary	unit42-henbox-2018-03	HenBox
+2f7aa05b16d870d34feb1faa62bbfb9c5cffd4a52ea094c66657887b7c7046d4	sample	primary	unit42-henbox-2018-03	HenBox
+6f0de72ee2df4206102c1ff93955fef07cee84a1ba280ef3eda3db9a7eafb22e	sample	primary	unit42-henbox-2018-03	HenBox
+000473f7168ebda3de054a126352af81b61dd0be462ae9b3c7ccc0bc5cea7986	sample	primary	unit42-henbox-2018-03	HenBox
+efff4243b6143c937509f52dbe7c4e40ceb2eb226f7cc1c96d8cf9f287668e37	sample	primary	unit42-henbox-2018-03	HenBox
+2782265ddd3a0d94d4f2622366b3401002dcfe1a9b99b7cbf6d5e824ff14d728	sample	primary	unit42-henbox-2018-03	HenBox
+f88c84156d8e9fdec6f5c400135277ecd03e4b1d95e7d3b6f5b8c8a77eeb055f	sample	primary	unit42-henbox-2018-03	HenBox
+444e73bd1020d08dc2901a041d675db1060815914024855daeddbc201e3ad4ee	sample	primary	unit42-henbox-2018-03	HenBox
+a1bf2f3fcac9d1aae94eb7a6dc37be00185e102e504032f4ffa391ddbd4bd353	sample	primary	unit42-henbox-2018-03	HenBox
+153794e424eceaba48e28e7f3333ab0c9c7addeda1c5de7835b191f5f25e4e34	sample	primary	unit42-henbox-2018-03	HenBox
+7f76f102ab233528ce3cb111ae3b026cf16b3233c6bf3002de8a0daea3ebc0d7	sample	primary	unit42-henbox-2018-03	HenBox
+740a54e1f89cb321d13396987fd26d52c6c66c49894283c6d9889156e063ecb3	sample	primary	unit42-henbox-2018-03	HenBox
+92c5fdf61b378e5252b0eb70a5cfd7af2d27c915aece48e32b9c2ba04a5fa5b3	sample	primary	unit42-henbox-2018-03	HenBox
+3db36dc3b21dbd0a9037cda21606d37c1a1dd493346e00e36231a252a14446d6	sample	primary	unit42-henbox-2018-03	HenBox
+d4ef4bdea69a248f9792211c4d52882ad6262f7223fc1aa9f328abe50412669f	sample	primary	unit42-henbox-2018-03	HenBox
+cdbd4b98625c4766cbf72f69ce951faf49a13394ea85e7a23188e70a209609be	sample	primary	unit42-henbox-2018-03	HenBox
+0efaf91842a7e45562e97bda369efa6e14f98bf9d63782ec9c323fa246da549a	sample	primary	unit42-henbox-2018-03	HenBox
+0387baebb2b0c678e46e7291325e91118c53a3206d73c1145c082b10cf6a65f1	sample	primary	unit42-henbox-2018-03	HenBox
+20fcff9826373d50abe813d3cb0272bf7b65617196cd4ac8d4646b8fd3256bea	sample	primary	unit42-henbox-2018-03	HenBox
+e9da842ccf4a681226577c26e2becea079080a4b6838171c06bb358db132bc5e	sample	primary	unit42-henbox-2018-03	HenBox
+0bfbbca56718b5bae7e21613a9884ea80db53aa1eca9cacf5a793e52f6a724e7	sample	primary	unit42-henbox-2018-03	HenBox
+2510aa8736c5462e8784f1cf494716bb923f97645899c73c56ead1ff58b35499	sample	primary	unit42-henbox-2018-03	HenBox
+c153ed3b2ae96cb2ec55294f89180302f89e9dbca6a192eec7bd4f3591b8252e	sample	primary	unit42-henbox-2018-03	HenBox
+6d441e6b75fa0ea1880937d7c94dbd1caaa210915d386dfb5a01ca22fd813d28	sample	primary	unit42-henbox-2018-03	HenBox
+eb31fc24f727bc6f25b7a90dc86c127099384398b7182ae52d3fe23950e9ed8c	sample	primary	unit42-henbox-2018-03	HenBox
+da6d75e996b0bafad782d87c809269ef5ccfa62c938039790333f0f2b4ecafe3	sample	primary	unit42-henbox-2018-03	HenBox
+011509bb9cde31c0b45c49747ff150abcfa66d283ff986f167bf564bacfded4d	sample	primary	unit42-henbox-2018-03	HenBox
+bb91d7bbea783bacd57a92691ebcbb449d9606f2f3bbb77538ec751a8b01d8a9	sample	primary	unit42-henbox-2018-03	HenBox
+35b1f11a97dd5c05c87328e2ed4ae5776b84d3ce6cf4cdbc2faa1865dab2e09b	sample	primary	unit42-henbox-2018-03	HenBox
+8a28fed36cf0d8640c7086770614e33d3788200bc7b0b408873873cd17e31653	sample	primary	unit42-henbox-2018-03	HenBox
+4ecf03a1eaa0255340a41e48728be1d50dab724b72f9096a1f537fa578e76d17	sample	primary	unit42-henbox-2018-03	HenBox
+228d1c80a92641c6ba9c9d1e68146e9bb66f02605135c2603db3ace692cc05f2	sample	primary	unit42-henbox-2018-03	HenBox
+775c2dbf6dd7423bd098b216bd6dcf11104e885e451fa95ae64dc18fb54a34c7	sample	primary	unit42-henbox-2018-03	HenBox
+4a8c5194183f2a5b593654a29213c6f705f083ddbbff10a0bb1e7695c66a0f89	sample	primary	unit42-henbox-2018-03	HenBox
+b779a7a05c226a14c2f4bad1f22c493a2a9de8b988b01602fbe60d1f6dc2ba8c	sample	primary	unit42-henbox-2018-03	HenBox
+8b4e60160089b6af71e3c555c4bdaa9344b76a5f0dfd1ecc3a6e8c23f0940b2a	sample	primary	unit42-henbox-2018-03	HenBox
+3ffa8ef36934420b08e4139385400da774f61cabe000557ff025af650f2964bb	sample	primary	unit42-henbox-2018-03	HenBox
+801d54f829668487c2ed28dc56beb6f156a6100a3be12805e1104fb9f68f6a00	sample	primary	unit42-henbox-2018-03	HenBox
+55e65d1fba82a21b0ee52435be890279cf7ae747abba7f448a6547ba2ed9666e	sample	primary	unit42-henbox-2018-03	HenBox
+de9d1c68ef9df6dd72455f50d1cdffd76e24a501bbbaa3cacc4aedb74b2f743d	sample	primary	unit42-henbox-2018-03	HenBox
+718bab91ba29791a494c31783b64ce1fe3d78bcdd6a6f909588e198fbea3b3cf	sample	primary	unit42-henbox-2018-03	HenBox
+b3413e09ceecc305187d08007ea86f654a451952807e37b8f2dcd14a8127042a	sample	primary	unit42-henbox-2018-03	HenBox
+b34b09d7b4bee3125ea9b27c128c4239c78d3be95d9d5dff73c68e479353db5b	sample	primary	unit42-henbox-2018-03	HenBox
+7d8a47cda9367ee31ebf58dd226afc583b34a73476ed5ff1b2b3f2460cd4c339	sample	primary	unit42-henbox-2018-03	HenBox
+4f6173659e2c23835228f2e05daacecb618c099878d0028dd9a52b9682de2ac4	sample	primary	unit42-henbox-2018-03	HenBox
+b5598c4a26f3b4a143a413c46935f0506afd7e400ecf4c6ca05595e83d8dc2c7	sample	primary	unit42-henbox-2018-03	HenBox
+a5d9efae12c9e5913156b5415581678748bdeed25a5767438afadc869d25e0d4	sample	primary	unit42-henbox-2018-03	HenBox
+ad5a6b9ca0389c458dde73a456404634eec473cf5833914c7466af41e23b6ea9	sample	primary	unit42-henbox-2018-03	HenBox
+bf16b9f012e1a0724f95a0e61a8748be3c9fc3fe3bb5a82bf3efd9b8211591fb	sample	primary	unit42-henbox-2018-03	HenBox
+b0bbcee232f27a1b366f8a7ed1d2c3056f9a67fa70e42c1fa7cfb7c778df8cb5	sample	primary	unit42-henbox-2018-03	HenBox
+a89bdb4fd54b9488fd6f2685a4dcfa1c106d4ac9f9fb8f8992e557e306184f1a	sample	primary	unit42-henbox-2018-03	HenBox
+ddea532ef46abb9bfa77acdbd38155d9a92381f777fe4c797967203578aa0966	sample	primary	unit42-henbox-2018-03	HenBox
+1da0e30b4b2ad2626a3f069f0f50f81d29b789d41385db26d7c84da3af02cd1c	sample	primary	unit42-henbox-2018-03	HenBox
+7603126f04e9e7cff828aabc060349d6dfbd76e795df7b0e798b3b0914ad13a0	sample	primary	unit42-henbox-2018-03	HenBox
+a267176bdc1779b19fde2e38f5f062478e8cf173582e38a26538512d64d85ecd	sample	primary	unit42-henbox-2018-03	HenBox
+0a4f38a83abbbab3a039be95862df7848f28513baa1da52a74a9e6a31f63c9b7	sample	primary	unit42-henbox-2018-03	HenBox
+3b345ffe7fac9aef0c9e0be3f01e8f9e1f3e0442849cc0e3f979b9866465b6bc	sample	primary	unit42-henbox-2018-03	HenBox
+d3dd162e7dee6022826e7fef23cb84f17a948d2761013a09943f165f378197e0	sample	primary	unit42-henbox-2018-03	HenBox
+0e31575bf0001d818d87aa134e728f62e7f2d27ff9437897303eb8ae1962a865	sample	primary	unit42-henbox-2018-03	HenBox
+80a35bcbce326d05dd74ed05560db41a0f9471c4922fc9fe88d0b1a94c3cb1ae	sample	primary	unit42-henbox-2018-03	HenBox
+a8ea1140a739b2aeeb838d7fe2c073cb834bce46db22071022bd181a59422af1	sample	primary	unit42-henbox-2018-03	HenBox
+9d85be32b54398a14abe988d98386a38ce2d35fff91caf1be367f7e4b510b054	sample	primary	unit42-henbox-2018-03	HenBox
+efa3cd45e576ef8ab22d40fc9814456d06a6eeeaeada829c16122a39cb101dbf	sample	primary	unit42-henbox-2018-03	HenBox
+184e5cbebef4ee591351cfaa1130d57419f70eb95c6387cb8ec837bd2beb14d6	sample	primary	unit42-henbox-2018-03	HenBox
+5a3c44a6e8c8e02e69caa430f41ec80b94740d099bbcfbf39cf08280fc6e16bb	sample	primary	unit42-henbox-2018-03	HenBox
+b8f785a6581bf438b1947e498b8f2255607440347d8f8b5cb31f3b98427330e6	sample	primary	unit42-henbox-2018-03	HenBox
+577ed81e07b62d9c363c505271d1f2a81592a69e1a60a82fbe8fff16e7d3419d	sample	primary	unit42-henbox-2018-03	HenBox
+c4ee98d58d38f6109d843955277f1a37bfb138a14113c6cb38bcb6eb857d4977	sample	primary	unit42-henbox-2018-03	HenBox
+a728c653b9c7be4b058eff329afb826db755fdddc4e10ba67191816db7dbeac0	sample	primary	unit42-henbox-2018-03	HenBox
+66eec9ffa2906e56656e649d5b632526e829d7142a75cd27a006bf82775e8c45	sample	primary	unit42-henbox-2018-03	HenBox
+5f16c23f92a10de59efc9a081e0c79458faa3fabb24a1356dbfff7cea8611a3e	sample	primary	unit42-henbox-2018-03	HenBox
+1749df47cf37c09a92b6a56b64b136f15ec59c4f55ec835b1e569c88e1c6e684	sample	primary	unit42-henbox-2018-03	HenBox
+89ef65813bccb8197da4af68ba8f9e8e123f3aad4ed41736f8039ad2c6817a25	sample	primary	unit42-henbox-2018-03	HenBox
+7f28caeaa484496f85c80580cd88671961149aae2295c8777becb2970455504c	sample	primary	unit42-henbox-2018-03	HenBox
+286bd20f3ea944703c8c87e66708d6b32046a640863afba7f3c4c72dc28d37d1	sample	primary	unit42-henbox-2018-03	HenBox
+44388ec38ee36177d6804d778ee554b2d063db3b88d7480eca6587ff68a15982	sample	primary	unit42-henbox-2018-03	HenBox
+2345a56d61e052af3265ee0fae47b22f1551ede4eee45bca30ad5fb9fac7a922	sample	primary	unit42-henbox-2018-03	HenBox
+d29646f2c665ef91c360e24242c634ee9051d4ab01cb8f87265088e47f41d690	sample	primary	unit42-henbox-2018-03	HenBox
+4d437d1ac29b1762cc47f8094a05ab73141d03f9ce0256d200fc691c41d1b6e7	sample	primary	unit42-henbox-2018-03	HenBox
+a1e465d905434d5dae3bb7acb7c148ef8ed0d341a6d9121d09adbc126cc3a907	sample	primary	unit42-henbox-2018-03	HenBox
+45e7dc9c0e33d4754384365a60604c66d72356a994cbed8e8eab8796cf1579e2	sample	primary	unit42-henbox-2018-03	HenBox
+b48edd2270b1aeb014291eb3ac2aaa1d4b7ee4694965d0de2c0978b2feae946d	sample	primary	unit42-henbox-2018-03	HenBox
+2f2277898f34a91a365f1a090d72678768c5e420c8350f340cc4b4602cd8a710	sample	primary	unit42-henbox-2018-03	HenBox
+53238af90efd8531686432245c516db04cd163584a811d6e5835a42fe738fbab	sample	primary	unit42-henbox-2018-03	HenBox
+70512a566f33c636ad071d18e82db89f9531a6133be89b7d3f18fc9f7730b078	sample	primary	unit42-henbox-2018-03	HenBox
+6a518d29232d3f68aa5c78df4a8d212f924e03379dc2be0a388b3118779fe583	sample	primary	unit42-henbox-2018-03	HenBox
+3e026154767b6a101d3a852946e9eb3ed1c96662490afe9b601469a8459e325b	sample	primary	unit42-henbox-2018-03	HenBox
+993692d5540c40614f4da430cf4cea64a7e0e7f950452abae19bf608afdf20a6	sample	primary	unit42-henbox-2018-03	HenBox
+3c62d00a9740c49cf01fb7635260ff71e0ac44cf80da749ca4101869120f2233	sample	primary	unit42-henbox-2018-03	HenBox
+1d4dadae0c696fde2fef99eb99188509dc0d5fbac7ee07d4f0d5a92dcc922ad7	sample	primary	unit42-henbox-2018-03	HenBox
+49556e972a35c9d592bf64ab37056f6da356b2061c1ce269d9c3af73978756d9	sample	primary	unit42-henbox-2018-03	HenBox
+8b78f469f3eda0cb02cfbf5598f0a7449cb63b7181d7fd5037ebb9cb8aff30a4	sample	primary	unit42-henbox-2018-03	HenBox
+d0e58c3e9d881f875532d1bb8bee63e4ac8728458708361f754db97fba6be22e	sample	primary	unit42-henbox-2018-03	HenBox
+48f38b671847bfba3810b74d1d815c2bb4cc94392b98e1f59f95e748eb410465	sample	primary	unit42-henbox-2018-03	HenBox
+51714b8f34db94cbd8916374af4d8e63b56ef41fa819d2d697f1a3975a32960e	sample	primary	unit42-henbox-2018-03	HenBox
+54366ee485b43cea10624d62247a48b12c1ce35c49295491f7fbb6323c68da7b	sample	primary	unit42-henbox-2018-03	HenBox
+be548c26d0863b812948a16f982e96557319346fad897f67dc7873108203fdce	sample	primary	unit42-henbox-2018-03	HenBox
+077239b3bedaa850b82204fdd42e5e45fedc3dfc2f6da5aab04d768370e990fa	sample	primary	unit42-henbox-2018-03	HenBox
+7ba216b88f84c9a0ce90ca5500ddc2e80100b23ef3784d133b69870768f1e3bc	sample	primary	unit42-henbox-2018-03	HenBox
+779b09c61951818e5afb47c369fe9b5fa7b7f6139f589f14b3042b2ac96809d8	sample	primary	unit42-henbox-2018-03	HenBox
+c375aad52c292b4d5c4efb02a33e2325a27f27158bb13c048f533a2a9d0837fb	sample	primary	unit42-henbox-2018-03	HenBox
+4cbb5a0d9b6f64dc9d8dd9aaac5651649e24b2cd7248eb9db32191102559ab9c	sample	primary	unit42-henbox-2018-03	HenBox
+6f5e7f6ca2f25667d5fe55d7e8ec1b816d6db8b31cb28dff43b4f2f73d70ecdb	sample	primary	unit42-henbox-2018-03	HenBox
+ae5598ccb3f2f31d2ec967808988a47d6ce4d1cd5e6808d1194ee93c6400039c	sample	primary	unit42-henbox-2018-03	HenBox
+a6c7351b09a733a1b3ff8a0901c5bdefdc3b566bfcedcdf5a338c3a97c9f249b	sample	primary	unit42-henbox-2018-03	HenBox
+ec2e060ac633978b9b700aa95784255b9796f4fb51c188b1c79d5947df07bf98	sample	primary	unit42-henbox-2018-03	HenBox
+dee79253deaaa57af0fddb2c8ec5d4cc0546dfe3c1d05c2916a44a37eef3d9f8	sample	primary	unit42-henbox-2018-03	HenBox
+51db059a833377666f92f64ae1e926b83da8821876c66949e320b55c1a929ff8	sample	primary	unit42-henbox-2018-03	HenBox
+2be931f008a9ea62aa35091eb9a5629824e81499ce7a5219101ccd39a02ecdec	sample	primary	unit42-henbox-2018-03	HenBox
+14f715228acff7d8bad057e4bf996635d76ab41ae25ca8a3f90196caeb241446	sample	primary	unit42-henbox-2018-03	HenBox
+e326501a0fb15bf19ac135f501b84caa2587d1fb2cad9e034f1756898686dab4	sample	primary	unit42-henbox-2018-03	HenBox
+2c5934db000a2838d42cf705453e29d16f4d4bb462fa65e134ce78b4266cefee	sample	primary	unit42-henbox-2018-03	HenBox
+59ca2754279d9cba40334c35907e2e1fc6fd2888b2c180e5b0b8d73accbb40f2	sample	primary	unit42-henbox-2018-03	HenBox
+7774432c67f3d3688a1a1b21edc0a73d9d47990cc1f132663b0010ff4bbd6e87	sample	primary	unit42-henbox-2018-03	HenBox
+6e1812f7bf313552bc60b6be5b46bdfd44582775e3cb19cf6a231a903aec508b	sample	primary	unit42-henbox-2018-03	HenBox
+43ce0c3e63de64f032ea7d4ca77c4b40b86d57e1d237f771b21c1f9c8f41eafb	sample	primary	unit42-henbox-2018-03	HenBox
+fed084773542120fe77b880fc136bd20979cddc286b75b651d01aa6e32234b2d	sample	primary	unit42-henbox-2018-03	HenBox
+8de4e886b69046c2942e26d8b2f436695ca27060f6a74c797c620502f87887c9	sample	primary	unit42-henbox-2018-03	HenBox
+5010236b481d8d2ebc45ee95154f10ffbb317eced86401486f63276520049896	sample	primary	unit42-henbox-2018-03	HenBox
+af2d44e36cc28727e29b0d9aecb4b17534a195faacbf4192ce1483a9bde65edc	sample	primary	unit42-henbox-2018-03	HenBox
+2e4aa7777ba449071b90c0c13b803ddf6c6f10576eb9806acde6c3d1391db463	sample	primary	unit42-henbox-2018-03	HenBox
+a1644194faac76a1d49fd96b875a3f9026993e9f21f6dbc50dc59aeb5e7dac4b	sample	primary	unit42-henbox-2018-03	HenBox
+7ffc1afd5749e7731f4161a6348205555e5892f1bd3446b6d0c5e7bbaa5917e3	sample	primary	unit42-henbox-2018-03	HenBox
+9f8909b1615aaa0fed38ad27162ccf3437e2eaa59cb0c990261c866f075c4113	sample	primary	unit42-henbox-2018-03	HenBox
+77b6e8cd1e6de9ee22bf0e9d735089ae24134ab955f0975d4febc9ed6b60af38	sample	primary	unit42-henbox-2018-03	HenBox
+a3deca8203792d4b34242e8f5d0f7e2e3d054f08d74885ab7ff6f3a6f4b2578a	sample	primary	unit42-henbox-2018-03	HenBox
+75fef2a0f05ae2ad971b01041fd3ed5ceacce306d78930bc2eba190c39799bc7	sample	primary	unit42-henbox-2018-03	HenBox
+56c1e23b12e83573440019084b9ce39f8f5ddd9d6de51edaf1f83e020fc648a0	sample	primary	unit42-henbox-2018-03	HenBox
+b098be6fd1859ee70ef123c59d5e2a1db435f990c9378b41af0c005f76ba24f2	sample	primary	unit42-henbox-2018-03	HenBox
+8095cf4f6aec1983bd9f81ca85c1b27415e200b315f757613afb4f0334c99f0b	sample	primary	unit42-henbox-2018-03	HenBox
+3cce965887d4677069cb9160d7c7c122087a5f434e095a9f0848c3e838bca9f5	sample	primary	unit42-henbox-2018-03	HenBox
+4d1e37e5840e8a4d5ae0f60cf33c593f595af200fbf998c3af809fd0c225c475	sample	primary	unit42-henbox-2018-03	HenBox
+5a999904b2f03263a11bcc077ad179333b431fb9e6e8090f371d975ba188e55e	sample	primary	unit42-henbox-2018-03	HenBox
+3d525435cbd88b4f1f97e32e2c6accf7855f4cc576ecbd87ad05a05ddd2d2f79	sample	primary	unit42-henbox-2018-03	HenBox
+2a7e456d2700ba13af48efdcf1f699bf51b6901a3ba5c80c009aaaca86235e5d	sample	primary	unit42-henbox-2018-03	HenBox
+3c2109adf469bfc6c320ac824355f97a2b0f5ff01891d1affcd1a5b017c97195	sample	primary	unit42-henbox-2018-03	HenBox
+a7cfae9b12542b293d8265770a10946d422736d6f716af17f7b963603e422c51	sample	primary	unit42-henbox-2018-03	HenBox
+4eb768b52b687de49c7da8845bbd7671e2e076fe64bf23596a409108ef3fbbbc	sample	primary	unit42-henbox-2018-03	HenBox
+7b7887d4ad7cab0c53d6f8557bbdf616985f3434ba536a5683f6fba604151d04	sample	primary	unit42-henbox-2018-03	HenBox
+201eca94a9e8023d021a2b4a1517c4e46cd01e3be323bc46660c1c6f42aa6abf	sample	primary	unit42-henbox-2018-03	HenBox
+f5abd5e7e325f16df3e96ff55a19ebf524f40f9ade76003355eb1d68bc084006	sample	primary	unit42-henbox-2018-03	HenBox
+bf0ab0362ee39191587921b75ab92bf6da12e377dbfdf4f7a053c1217841bdfc	sample	primary	unit42-henbox-2018-03	HenBox
+a6c1da9559d72563848802ed14a7421515009c2a0ffb85aab74c6e42584c222d	sample	primary	unit42-henbox-2018-03	HenBox
+f0fd8c5f4487df7592e5b7fa02f19f23d3ad43f5aaab84257cc560bf5ea76f1e	sample	primary	unit42-henbox-2018-03	HenBox
+3417899195780c8186356d49bc53b600b3b0e49aae83d9aeb27e518b6964be04	sample	primary	unit42-henbox-2018-03	HenBox
+51cfc1a658e63624706a6bb2ed2baa63c588e7ce499bd116a3d5752743fefb54	sample	primary	unit42-henbox-2018-03	HenBox
+7bf0e70fb4ffca19880fecdeb7e7e5d0fb4681064a98c71056cbb29c80ed6119	sample	primary	unit42-henbox-2018-03	HenBox
+9b57ab06650a137a5962b85ca9ae719e9c3956d68938a6a2425dffe8d152941a	sample	primary	unit42-henbox-2018-03	HenBox
+9192602e5a3488c322025991ca7abcbdc8f916e08f279004a94cec8eb9f220b4	sample	primary	unit42-henbox-2018-03	HenBox
+e835e4907c9ff07a3a8281530552eaed97d9dea5b182d24a8db56335bad5213d	sample	primary	unit42-henbox-2018-03	HenBox
+0fa384198ae9550e008e97fa38e8a56c4398fc91e12eddba713966bfed107130	sample	primary	unit42-henbox-2018-03	HenBox
+16bb6ff97999b838a40b66146ff4c39b9c95906f062c6fe1e3077e6e30171a4d	sample	primary	unit42-henbox-2018-03	HenBox
+ea0786bfe145d8c763684a2fdf2eb878da29c1b6ae5aacd1a428c9ffead4bad8	sample	primary	unit42-henbox-2018-03	HenBox
+446734590904c5c44978e4646bbbc629d98236c16e29940b32100c1400aebc88	sample	primary	unit42-henbox-2018-03	HenBox
+07994c9f2eeeede199dd6b4e760fce371f03f3cc4307e6551c18d2fbd024a24f	sample	primary	unit42-henbox-2018-03	HenBox
+e8c5dd35c7286e5ea576b23dfc553734a4d9664a9d5fccf5468f4c6a3e48ad9c	sample	primary	unit42-henbox-2018-03	HenBox
+14bc9f588c2094c96ca92a44fdbabdec00cff2652a5a72c7c8b6f01c6724e76f	sample	primary	unit42-henbox-2018-03	HenBox
+40744b2d8a23378d5211530e1f75bd6090c3317112b8c861f59b98487cb40a63	sample	primary	unit42-henbox-2018-03	HenBox
+9c65c515ca17034836fe734c9f94b090cc4a3b34e2469a35f814d936f2ebf046	sample	primary	unit42-henbox-2018-03	HenBox
+689b435cca157dbd9d7df5483765a0babcad907874eb75f3952f11e360f06f65	sample	primary	unit42-henbox-2018-03	HenBox
+cbc768c33b054e8493f17c5530efd4b974dd6a397de4f37a7fb0dc5f4f11175e	sample	primary	unit42-henbox-2018-03	HenBox
+be011d7a648565f4f387f4d7708a08b288e74604fcca5dcaf5f797dc15e395ec	sample	primary	unit42-henbox-2018-03	HenBox
+3d7af6290b169ad59d587ca6e076a95dcd0256c3436edd1ccbe9d4718d00c615	sample	primary	unit42-henbox-2018-03	HenBox
+00c89e5e5c1e6c129bf7f0b489af2439902014427e3342e7ef2fab0f4fe64361	sample	primary	unit42-henbox-2018-03	HenBox
+1b89a65a0ae4cdf3c49b96fa7c12bde75dbc61b7ea48843ae95d9e5fe64152c5	sample	primary	unit42-henbox-2018-03	HenBox
+849d8f100ebf8fdcbb59e1f43e544c759834011621512c64e0dbca301e533bb3	sample	primary	unit42-henbox-2018-03	HenBox
+aba5e67e80c0eb9f0cc65aac288c3998d716c405d930e7f3f2ef280e5d2e3723	sample	primary	unit42-henbox-2018-03	HenBox
+339657ed7ed75bc6ddc04719b26ca67544e2c4f045d421aae6d1eb730c8e4d8f	sample	primary	unit42-henbox-2018-03	HenBox
+334aca0af2e99eda568e271383afca5b76e0db0acf1a89f6980d5faf73a5efd2	sample	primary	unit42-henbox-2018-03	HenBox
+befe883a0ab6bf4b71edbd339f1d3c220371446299549a37f9026a38960e204c	sample	primary	unit42-henbox-2018-03	HenBox
+7a893ae4a373d1e6e59221873184dc6b54f1f68736a51bfabb9d9796db0ac4aa	sample	primary	unit42-henbox-2018-03	HenBox
+60d8ad89d78005c3b3304e654217d1caff1e7116cadc73f5b3f99d857258d357	sample	primary	unit42-henbox-2018-03	HenBox
+ce561fc847896a0df2142c06f328171aead0d6e50129895e6ccf645c93a968a2	sample	primary	unit42-henbox-2018-03	HenBox
+b8820e44ef5a202b4ae4dbed9a758594516184da10efb1e7a31b6ad54d978b76	sample	primary	unit42-henbox-2018-03	HenBox
+59d19a24329357a4eb55bd5b5eba5688f97bd5aca6a5b28682b172984ba7c987	sample	primary	unit42-henbox-2018-03	HenBox
+0a66c510ee0599f6481dcd2f816442a25eddf200ded7235e90c019e441678057	sample	primary	unit42-henbox-2018-03	HenBox
+4da0c357e68679f3b3478787e5a68bd5a16a9131d56c358c06cba3324330b077	sample	primary	unit42-henbox-2018-03	HenBox
+b849d7dd52f69123ff414a38cb4e358571a47f1bde251386fc3f24db3ee25b3c	sample	primary	unit42-henbox-2018-03	HenBox
+398d5ce463e5b87a26f4251869280e863a0ec6d0f411102da48caf16461f5d6a	sample	primary	unit42-henbox-2018-03	HenBox
+0d5cb7b22c72250e8748ecefa668ae8e12369d9c98c556fa4bf138883611fe32	sample	primary	unit42-henbox-2018-03	HenBox
+c5bd0d2551ed3f47f4d73fce25078386696b76edd0e1f3a9c063f568bd3247a2	sample	primary	unit42-henbox-2018-03	HenBox
+171b1553b692008361391c306dc58dafbad62edfd74e3e74ff2394061b068737	sample	primary	unit42-henbox-2018-03	HenBox
+10a37ed1d8aff44625f9782bae81aa75cc8293ae28098c954e5695bec24600c6	sample	primary	unit42-henbox-2018-03	HenBox
+6f7ce83c4bc4d09b9b4f377f04831c7265d0217222e9fe11931d1a4162480e9c	sample	primary	unit42-henbox-2018-03	HenBox
+e7ccb3b777989f51300a11e2b9144393a2db0632d44088124a9a4a9db9021fbd	sample	primary	unit42-henbox-2018-03	HenBox
+9e2559a18ebce0ebe4ac5646b1b4405cab9ca3d8fd1becf283f87a383cbde7d8	sample	primary	unit42-henbox-2018-03	HenBox
+694355f92e2171ca2f7569eef185b3fd89cb9d56cb95f76bc84369536e2700b0	sample	primary	unit42-henbox-2018-03	HenBox
+f06f9535241c81501276f51bf0e7f6e605bd09f8cc899ee645a22d972b710c2e	sample	primary	unit42-henbox-2018-03	HenBox
+94be405338a62d8aeaf053c4db8f6cc672fa8451ecd76eeb75d5ff512891b073	sample	primary	unit42-henbox-2018-03	HenBox
+ca2e188a8d982d128d4ace853a45caa5f9ed3a67914ae21b3f4d5a087dba3660	sample	primary	unit42-henbox-2018-03	HenBox
+5450e5e6de3dadbc7136a8c20e13d8bb408538121e0a6b19ed6ad4dd19b6ac99	sample	primary	unit42-henbox-2018-03	HenBox
+f9f4b9c61aa10f5fe7243a0a01fa1b4adf8e400f74bfbdc304d2e39f9131a0ca	sample	primary	unit42-henbox-2018-03	HenBox
+b720add86cddff8a9bce5f4e228307a0873f94d1f4e4347e6542a22bf61a9cb5	sample	primary	unit42-henbox-2018-03	HenBox
+8d8bd1309484d2a0f59ee04254d903f0e2d167f043bf6f65735cb4b253bca6ce	sample	primary	unit42-henbox-2018-03	HenBox
+4886d04ded87432664732f57c07f7eaba8c64c9a31ac8d6a2b03ad2726d13dc9	sample	primary	unit42-henbox-2018-03	HenBox
+ae14ba9e5f43bd39a6f072e7695e9194fb23434029e5e84e9b84720d75a86691	sample	primary	unit42-henbox-2018-03	HenBox
+e5be0e0751ed11aa66ed9217d6fd08e0589ced9d02f6eaf0c4103fe61a470f8d	sample	primary	unit42-henbox-2018-03	HenBox
+55b95fbfb31bf6c3ccde9f0c83c76226aaa8293fa28b66baee7527498b5602de	sample	primary	unit42-henbox-2018-03	HenBox
+#
+# Unit 42 henbox_samples.csv, apk_package_name column. Left out: com.jrzheng.supervpn.view
+# (the name of the real SuperVPN app, which HenBox repackaged) and cn.android.setting /
+# cn.android.seting (too close to a system settings name). Those samples are still
+# matched by their fingerprints above.
+com.android.backapp	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.boxwe	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.cicibox	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.genbox	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.hantool	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.henbox	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.vivibox	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+com.android.webbox	artifact	primary	unit42-henbox-2018-03	HenBox	app-id
+#
+# Lookout 2024/bonespy_dec_2024.csv (SHA256 rows only).
+114d2a25bb4c296f8ef5bfca4e8192b5aca9b169099ac6291139e68cfc7e37dc	sample	primary	lookout-bonespy-2024-12	BoneSpy
+8af63d7aa2142701116207f61e3e01c9e0239731e5bbbdf79114889b56ca46ea	sample	primary	lookout-bonespy-2024-12	BoneSpy
+fd5fa718a7411b18845b76d7007db6b4431b1a2ce2f8b2cc047c0fff7c46161f	sample	primary	lookout-bonespy-2024-12	BoneSpy
+7de055018723b612dfa66a90c83a69afce7db918fb7fa88619833557c4fc61c3	sample	primary	lookout-bonespy-2024-12	BoneSpy
+551b8917f57c5cf8cd0a34c1d500db1dd4aed8ec8f31d28a5fabc4720e5b89a3	sample	primary	lookout-bonespy-2024-12	BoneSpy
+533ff7ba5eb5329cb860486a952259a4dfc0d74654831eb08dbcadc1ae5ca333	sample	primary	lookout-bonespy-2024-12	BoneSpy
+acede5fa46e09803adf9de5e731ca690dc7b02b69a63bacd4836429d289ec4f0	sample	primary	lookout-bonespy-2024-12	BoneSpy
+a3b0c178ab5e6e4b3442d358a78df7409461fa48f6ca8e63b730b0a455a89b18	sample	primary	lookout-bonespy-2024-12	BoneSpy
+2ef72c67cf76e8162f5e4bf0a743ac4ed756e153593c430cedf2043a310b24e8	sample	primary	lookout-bonespy-2024-12	BoneSpy
+5b7b5a2995c102121695225797f12f0b860500150472126b3b465b51ccad07bd	sample	primary	lookout-bonespy-2024-12	BoneSpy
+9dd73c9caa547358b6fe5acddf59443d7bf0ffc5b92867e9b67edd5bb2a9f786	sample	primary	lookout-bonespy-2024-12	BoneSpy
+3b5794ca6051740fff6e1b449db06f169df2749f81aaf4c329e18b12afb9a5c7	sample	primary	lookout-bonespy-2024-12	BoneSpy
+dfaa47ed20021c4f84bf68820a618f9e8a2e077d36b6d7281e8724b2124c7825	sample	primary	lookout-bonespy-2024-12	BoneSpy
+f948b650bdc63cf9b1781d651974a9c54d2b2981d3bf4b882f48c3a406272470	sample	primary	lookout-bonespy-2024-12	BoneSpy
+c82f0a1546bf7025993f2e7da33d1a741d91c78b01268a2d44afa31e66eb2fe8	sample	primary	lookout-bonespy-2024-12	BoneSpy
+de3a0b30b8976da933fe6bf88e6e7ab2386a967ada2599ef1dc1b12100a37694	sample	primary	lookout-bonespy-2024-12	BoneSpy
+bd65dbd61f27a90c0770d5f8cc02cfa7d9552f0fb300868611d69972b42d3f1c	sample	primary	lookout-bonespy-2024-12	BoneSpy
+bed2cf8758d86daaf25475cc6ed1c71fd3f9a922247c42fe246f8542c76d8c15	sample	primary	lookout-bonespy-2024-12	BoneSpy
+255996e1aa2a7514b167d9c940d7c8ff3c34393e97e43bda319eb92ea626c4eb	sample	primary	lookout-bonespy-2024-12	BoneSpy
+46b10de13887c36d61517125bec87c4557f325114221291a3ac7142cbc15de29	sample	primary	lookout-bonespy-2024-12	BoneSpy
+6bfdc285dee8ae3e3dade52a34f5d178163e4a08904b651ff5c906e78ddccec0	sample	primary	lookout-bonespy-2024-12	BoneSpy
+e0c5656ca9877b37e92f5208caf9c65365e9d35ea6eb351915eb3efee235db31	sample	primary	lookout-bonespy-2024-12	BoneSpy
+30429e95b9318816709e23488c77e364a294b6f5f7e3ee414a6a2bef74620ca6	sample	primary	lookout-bonespy-2024-12	BoneSpy
+278c9819583ce64913882d425c1d7634307b290709e0143e9268f8f999dacfba	sample	primary	lookout-bonespy-2024-12	BoneSpy
+3a4fa698536111f377030a5d794851d2e23b18d67e6d440ce883b9906d65037d	sample	primary	lookout-bonespy-2024-12	BoneSpy
+629ca39d2c90ff8b343ba1f4cfae11bbc2f61ca6bae80bd093f22efbcf4e4770	sample	primary	lookout-bonespy-2024-12	BoneSpy
+633875ce353391ea8bd4c92d8f3f57a525ff0abf9eba8d78528de616b1ee7118	sample	primary	lookout-bonespy-2024-12	BoneSpy
+eadd9c3e3f7a1c5e008ca157cb850aa72d283f702da2ab4daf0e4af4d926ab3e	sample	primary	lookout-bonespy-2024-12	BoneSpy
+#
+# Lookout 2024/plaingnome_dec_2024.csv (SHA256 rows only).
+2c7827f92a103db1b299f334043fbdc73805bbee11f4bfac195f672ba0464d22	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+39cb17cb03a794e69eb4f0694e90e41a8cfb8480b82da82fcbd4a88dfe49930d	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+7a8ec25f3d4a5c6b4fbdb1002ce22ff0352ce65c0f4ddc9567458e8fcb964845	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+8407fed605805f0e7ef9628767d0aff1014e7231549b09f3c0d0cb723f07c48a	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+86e51f1cc8213e173e47080ab45577e922e624006954de73ebae531589c912f4	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+cb648ba5cce810e5ba17b89ca2c346bd3f0ad612834c225ec7b55871c4acc085	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+ce6e5838f3ada452b64ffc6261e9bf74479bd31e83f77c7409c89564846db6a3	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+f0acf9558b7a4fcdaa119731ad5fb5bbdf5a704c9be9e929735a4679735989db	sample	primary	lookout-plaingnome-2024-12	PlainGnome
+#
+# Meta 2021_04_taking_action_against_hackers_in_palestine.csv, sha256 rows ('PSS Android /
+# Windows Malware Hash'). Its 2021 domains are not included.
+aeb0c38219e714ab881d0065b9fc1915ba84ad5b86916a82814d056f1dfaf66d	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+3c21c0f64ef7b606abb73b9574d0d66895e180e6d1cf2ad21addd5ade79b69fb	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+d2787aff6e827809b836e62b06cca68bec92b3e2144f132a0015ce397cf3cac2	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+2580f7afb4746b223b14aceab76bd8bc2e4366bfa55ebf203de2715176032525	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+f7ea82e4c329bf8e29e9da37fcaf35201dd79c2fc55cc0feb88aedf0b2d26ec2	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+0540051935145fb1e3f9361ec55b62a759ce6796c1f355249805d186046328dc	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+03de278ec4c4855b885520a377f8b1df462a1d8a4b57b492b3b052aafe509793	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+fe77e052dc1a8ebea389bc0d017191e0f41d8e47d034c30df95e3d0dc33cfe10	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+6356d55c79a82829c949a46c762f9bb4ca53da01a304b13b362a8a9cab20d4d2	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+9a53506c429fa4ff9113b2cbd37d96c708b4ebb8f3424c1b7f6b05ef678f2230	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+bf61c078157dd7523cb580672273190de5de3d41577f5d66c5afcdfeade09213	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+154cb010e8ac4c50a47f4b218c133b5c7d059f5aff4c2820486e0ae511966e89	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+44ccafb69e61139d9107a87f58133c43b8586931faf620c38c1824057d66d614	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+05320c7348c156f0a98907d2b1527ff080eae36437d58735f2822d9f42f5d273	sample	primary	meta-palestine-2021-04	Palestinian Preventive Security Service spyware
+#
+# ESET ghostchat/samples.sha256.
+e4aa98c1beee901871fd8a78b37b21ef886e507e65fc6499e3df3769081cd1cb	sample	primary	eset-ghostchat-2026-01	GhostChat (GhostSpy)
+5e1cfa57771084629c2b08757f38d67f0ad28faa412090f1c6ef3fa0fd893bb3	sample	primary	eset-ghostchat-2026-01	GhostChat (GhostSpy)
+#
+# ESET kamran/samples.sha256.
+016c602caf1731d2d53e7f93dd41c04b26778a65c5c27e64a2f0c2c8d5fb87e0	sample	primary	eset-kamran-2023-11	Kamran
+#
+# ESET vajraspy/samples.sha256.
+c547fc04afad7538be1c638019867145dabf630afc2eba1ece7f972892598a65	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+ba9aeb87025ba26e7a54fe38f97bf28b72b1dac069e9fa6624a195a599c4b0ae	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+9115408ab7227f30cb6d3f785c208377b31da208171def1c3ec4d81c6f833585	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+2fdb7c4430660cb49547ac2828a631810d4e3d245a6501ce00825faa169cb7d0	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+55dd05f02ead336c99d491fa7a9945cf8f113215c5147710874be68fde519cd5	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+5672e8d711be744869e811ebbf90b511abf025eb1dfe2372d2e60ac4b825d3d0	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+35f52cb5085cc58e8d005d249bfcaa17244f1be3147780e1ac64990006db2ccc	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+64b2a100e8ca305d7362eeb4858694156d676989b8c6d6d8d01cdebe84dafc7b	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+0757de1fd165f72a084f955dc3fe45480a92b18b6153e116d1992586ca8ccd02	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+0c7afefe507ace767217dd91bdb68b06947ca668559f025425baae2afb4fff6c	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+1f744fcc5b503328e8707c93f36904d17d2a71db3aa948803c98a5d54160b878	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+1e2c03876cb0a4dfb588be0de5bffd11aff57d556dbfb8a92793470ab3c66038	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+c06f8c3fd23ae7124cc06eb63c0411418715bf99d3c9fa66525790b2b4c61858	sample	primary	eset-vajraspy-2024-01	VajraSpy (Patchwork)
+#
+# ESET virtual_invaders/samples.sha256.
+47d6d9b52bfed7481c9db51712e4a81c6f773efa1d96ac2c0d71dc0f6f6ddd6a	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+da2cf85100b27f0d063bcc495e850bb8d4ee831aa2fd2b92649f8119cdfe6b9e	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+3ca65a5a16d66ec8a36f57fc9165abb8c3c1e0d711452eb12bf82142dcb5e404	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+36bfcc34b706c0fb9b6d38e079a1cbf89d759095def7686aea403d79328c4e49	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+0da4f4ab01a1a53088d2cb063e198621dc1bf50f6642af37aa0329778233650c	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+81fda588a2a326ce29b2001d5a230de571ce447e4d6c36c7998cc9afc8d0437a	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+19d54faff4f2ac450e4578109dc1e85325edecee8532214154784eca6806f7bf	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+f24e0d1adab53f144a5da3550f2a30d5bb98c45fe20e38b9938c8aa26fe7df53	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+52fc9ac07372ac3faf3cb6d65f0033712e90f0fe6a2ac04005af15c69e277185	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+4f7eee2e2e2c64c786677a0aed5f39e8da8c62a2315b4ddf1c0c53c43b1a3e83	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+2bd35e28962b854ff213f6ee2f36d28ec367b114203c3c8b17b40946acd9b317	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+39a49e1d6dae0e85984a2599b141db386e44c74509646987d9ff31f3bc60af0f	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+06a253cddba6ac9686939527075e2235b7741ea6903349d86a1a33543af7fcfa	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+859c71b6d505dccf6f4f790539fcd14829749d18ef41fac46d9528a09598aab8	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+3db0d587001285f306fbdd73d29ad62ee826a0c27585ebaaf1d993504fdacc5f	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+a01b61ad2187772c386a682711a15b7717bdc5b7f513c82228cf9b0568e5eabb	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+cc5a38e4514526e17d089423b754b8e421e1f4a3bc947c72d4bbe75871e63dc7	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+179901656b458bf84fa3ed2c7a77d3c2bbead4ab77d178cde0f3a3e6e43147f4	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+b2b5ee9304c935694d1ec1276e98ad1ef8f04ecf8df5d8a999059b720c441419	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+fce91a190adcfdc4efb13f40869d20afc36935eb84fee169e8654045f99fde39	sample	primary	eset-exoticvisit-2024-03	eXotic Visit (XploitSPY)
+#
+# ESET gravityrat/samples.sha256.
+caf0a39318cfc1e65eae773a28de62ce08b7cf1b9d4264e843576165411e2a84	sample	primary	eset-gravityrat-2023-06	GravityRAT
+4ebdfa738ef74945f6165e337050889dfa0aad61115b738672bbeda648a59dab	sample	primary	eset-gravityrat-2023-06	GravityRAT
+e9edf3dce24f4e5057f56a3a68c8f4bc3528158e4431be64c031b7a738b312ab	sample	primary	eset-gravityrat-2023-06	GravityRAT
+#
+# ESET dazzlespy/samples.sha256.
+bbbfe62cf15006014e356885fbc7447e3fd37c3743e0522b1f8320ad5c3791c9	sample	primary	eset-dazzlespy-2022-01	DazzleSpy
+7965c61a4581f4b2f199595a6b3f0a416fe49bd8eaac0538e37e050d893f9e3c	sample	primary	eset-dazzlespy-2022-01	DazzleSpy
+f9ad42a9bd9ade188e997845cae1b0587bf496a35c3bffacd20fefe07860a348	sample	primary	eset-dazzlespy-2022-01	DazzleSpy
+#
+# ESET kamran/README.adoc and gravityrat/README.adoc, 'Package name' column.
+com.kamran.hunzanews	artifact	primary	eset-kamran-2023-11	Kamran	app-id
+eu.siacs.bingechat	artifact	primary	eset-gravityrat-2023-06	GravityRAT	app-id
+eu.siacs.chatico	artifact	primary	eset-gravityrat-2023-06	GravityRAT	app-id
+#
+# ESET scarcruft/samples.sha256, as first committed (2022-11-30): Dolphin backdoor.
+486bd76669fc2c0adc25a5498b42c1df5fc90514866d78318f8954aa0c67eacc	sample	primary	eset-scarcruft-dolphin-2022-11	ScarCruft Dolphin
+8282de02dd899f11011720db7e69826cac1f34f4a90c59f6405614bb991d3015	sample	primary	eset-scarcruft-dolphin-2022-11	ScarCruft Dolphin
+88d7aa96f00bcec816130950f4b851dddb17dcac82a05485f024266dc98713b8	sample	primary	eset-scarcruft-dolphin-2022-11	ScarCruft Dolphin
+bd620fbc225207d0abf8261847d0d942a75c939ccd3983293f4a096f547addb4	sample	primary	eset-scarcruft-dolphin-2022-11	ScarCruft Dolphin
+abfa1524bf5ea0fa2f5903068b5def272cbb73073a295c58a9e30a65d35ff2ae	sample	primary	eset-scarcruft-dolphin-2022-11	ScarCruft Dolphin
+#
+# ESET scarcruft/samples.sha256, added 2026-05-04: trojanised games carrying Android BirdCall,
+# and the Windows downloaders of the same supply-chain attack.
+415b253a81e67c8c860a97c73edc9017ce732b3c025d943d3b1a445b4ac82822	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+33d887ca2e57fa03fc807dfba5376bf96718ee88f56e90d95ee4896a2c019bd0	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+dfa9c6adac98311d0f62e0eeecb947d92f7bda41ddf4ce9a6f9e20af7990422d	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+5aa7afd790481ad98357636fa4d9927ae01111409c8d7ce69998d2485c1d5e6f	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+95cda8431419f77407484ab72dc1e356421dcd801eccabe8869f77ee0eb58eb2	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+185633e5dbe9235fc7e6a1ccb8631650afefd8f7da88c5c07d9b99ea38159822	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+751c8bda62110a0de6eb097f5c7955b1308f2d4acc2fc002a62cd9a59d59d912	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+7e3027ea9b87d7e9df5e23b54076855a296e53f718b08e9dc0b08135e0415f29	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+1b357efafbcf7d0fc7a94b81654982024255a38d9922a0ce2434b7e0e6287796	sample	primary	eset-scarcruft-birdcall-2026-05	ScarCruft BirdCall
+#
+# Amnesty investigations 2021-10-07_donot/sha256.txt.
+000ddbb75d10a939b54a7ceea5f12563b855daec971a9da0f2b4d5f935e195a3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+03d10d2682093fa126f0eaa5cbfd64eabbb06e151238bba1a7e261468ec4198e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+066ae38cc8514c07360049099bf954e3e2470b18b19ff9fc13681b1c2e3089d5	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0848541d0eda16a5c16c920916092fb0e6f1555a9b12df9f8400f70d1b4d387d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0c2494c03f07f891c67bb31390c12c84b0bb5eea132821c0873db7a87f27ccef	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0efdd55f9341dcf358872cdb42c943f2457f800886f5cfeb74fa07c0f5c750e9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+10143c8b913b5714688b5d439d11e3918cc45639c7725c1fc8e240e37091c354	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+106645830653a937cf133baefbe02ccdf8a0b55b743473b720d9129a4360bdc1	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+10a2d4fc913fa0931cf93c8725c1c9af20f22a4a35e619b1af17b84da326ea3f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+11764af75f241ccf8642558014ba29729585850a1efac86a5a8d4c7032c9bb40	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+11f8d64d479013c02c5ae2429fd3b7dd4feb7cf56e17ff27b67e07b387372ab0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1220302517cc84017a2f8f3928935a06ae6eae15f5da61f40636c07989ba9683	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+14fb7d317fff4fa2f02e106281dafa951c635adb3151343619440964370090f1	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+16ab497d5b3af927264ca4ef36f605a3d0374a49c355d1a73b5a1a52a1d6c039	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+175c0d04e9419432d0adffece655a338f71714d2b5cdc2639d1a5c5462b4e7ac	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+176bb7c9b35b9d9c62a1efc4d9a3b6d91d6139c10e6fc5987fdd49a94150d97d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+19a2aeb938785c98e2692dc055ac6e2844cf0e70ba80b9bc6f192ab362b8a635	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1c058ea5193820102495abf25683e5ac95e508d759bfc590d08fad42a0a1af03	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1c0c892678b49915487c13a0ac385d009e4f929b9f60d6f79aaec57a72aa1b01	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1d6edfbf8340ce6e0edc0e9db56287a2954a3066d5f3daca68495247a9be4374	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1dd890d2fee74408d9318fbca521064bea5a583cb043c6efbdcb3d0d691c12d9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2018340328ebc1290aced318898855a688e5b367461e52529da7077390dd10ce	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2068cd66658eac0ac50202a9ae249e45abb4ee3c4f03f8cf8dd6998acbd75261	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+214d946bd40460b1742f78aef0ac2010b1d4c59d9faddfadca1875f14725622d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+21e8d292059353cf519959ec32ffc279eb48febe294ee2a3543f83a7f69500e7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+236e0cd0914f1851072f54f4284d5af21842e47302b391e4780a14e84abb4269	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+23d45ded9bce86a6f4d51d6cb5d2fd4287d518cf396a74953812549322a77f7d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+25fdfe275fe67b7187e94d1f3b0bafd34262c7c8919fa04cedd820cc5a6f6e24	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2606b863b512957a4af47a4ad6a319fa8e1e4349de691f30b89f1fb9acc71bb5	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+27fcf586d086b6621ca70682784910faa4550edebb80299a4970f9d483a5c567	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+28eaa3f60ad93b735c9a7089222ded98e42eedf0b3076eef92241fa8aaf5ddb3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2913f1ca567bbd09292231613c5bfbc977915f0c557aca7c721e0ba871d956ee	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2941bc9cd41ab27fb59f6b1e2808840ed09003d35344d6d3d2af2b62d774b7fb	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2943fc4eec81e2da6c195b6e6a4e3c9b847f0da8079044c29b21d6fb06c84f0c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2ad705b42220ebdb5a2a39366335e67feff6994efb387dc90c52eaf51c567440	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2b7d1bb004a0c31e63fefa81003c7dfa7b2de794f59ac448afb832744e46752d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2dc48917fb975ac20305c675f8edbd45bd8337e833e2e74760dfd4d6472ac57f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2ee969e52af7cba25ed28cfe174323a88e1fdf34a614940a0bdf18ee860e6901	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2f37e456b0a503ef85ad4f40a8ec0ca1598f070146cd42a4336d5815be4edb4a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+2fb28fe0190041c47157df760dcb4f8865f2b450219016c95893d22d4eda22f0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3011075c6043c532cd8ce96c86e6074ddf319c863c8106d01697041559162ff3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+30dd33186028117fa67edaa7fd45a46ccfd2ba8c5c4fb7493a6fb75d06b8cdad	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+33bf4ad684e519ca8fc902fb8f24bc8127d5569186d64f55417c9e5f82896991	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3587b0f5d18863992dcd124b103c50ecd32a2393c2cd1c0346c3a3cf8985e107	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+375308b6f80e0365264a6c1ea9a5915b03162dba5fa39d199d32569cf039ed71	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+377c8202e9714e87b93b591e59b632c85a18a6b650eeef420296cfc4796ee727	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+37ac4de100bc2bcb725816bab2eee4f0d56b6a5634fc316736ab333a524c3e27	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3937b796c44b9e49e9c93d60ec2b8c5274ecdd43d625c2a6fa2523c5d2100d4b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3a60e5daf2833ab37f061bf1564cdfa8392def0f47adcf866d99feb672147220	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3a8ca33011e8952e03967fdcf9ccbc92c65227edde3c5ac3a0281d974398fe2e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+3cf49040371ce7703ce93fd22d30549d25ecaba72b53491dfb18e55180d4d388	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+42a116b3db5b1142f2812b1e73cd386c4381500fb95932f36aeb752179e25ef7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+46df9b77f5adbe03ed252248e5961408f8208827f4964e167356768a1fdd1b41	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4789b7c5940f6482cbb1c296b58e725f7ade070d2d8181627d90db86ff75ac7a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+47c5e6587e91d954455607508070648d9c3592fe6b28838f5985a237d79b4579	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4a5a2aa7dfabc5392c904b023314d601b2f8ebe7f737d92a844f2eda11c5d394	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4ab29d127c67cfdab035cb467082b77a2f2ab940729ac63b45a56ffb096cba09	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4b6a0e72dfb8b1f9c5ddc2bc165ef3249ddca8ee343ffe07917d7dcaca3e7a88	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4e0479314698e2085d7520f4afeaf8bc2f2492de389d251fc0ba7ab05a1efd0f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4e36d9346ea6f28a743957a8af3de78d95696ad22d9d2761e932b33ae7412c3d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4ed8ee387750da187bf327568d975d6e568ec6bfb92a0923e3a3cc04c6597514	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5140888f90a27bd78b5d00ad36d6e481f80312262beaf0ba43ae24172dd52898	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+51bd8c77ca6339d5470b6bf2781b2f3237ebba39984369a18554048723040fa8	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+52ef591503f7ace99735cf05d37c8801986c160e98b03449270c13519d353b63	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5338e321216475af588a0d27c6df6aeb9a195e1516a7a3ba780e56c1d5cbb43d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+537593479b40fd59dd40cb54d3046d7bb5c71c0356d63e6819758a7af2301a77	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+541620be7aeca3f8e86b505edb4917183cca7bf527dd7904027b37057971dd12	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+555578d8d5f116c55bfe8e8ac4794ecf67193668b52222e7a8d9fa919ee6eeac	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+559d7dc2f2803b07264e959a0158ff05727495123b8106177a9dac9c0362c301	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+572d46941db9099e9a5adac9010d61cb0332175d439a7d185431616ef1efc1bd	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5761d2eddab897c4c4f18f94fb99e91dea5e32efe46575d6bc8fe1e8797d4ed8	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5b11c38a732f7da34e154a95e954ce6501369e3343f543444122a255daac54f9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5bc9c336fc19443d82adde7d03fd2c4b49501ed4d9da5b3f2d0ef9789e925d72	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5bf56a2363bc3a40a81b6c4abcb05962efdee879328629f9d9f2545cf53d0ca0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5df353391cf558ed4c2e2cadc20b5e00dece3f74f3919adaefc39eacb12be8be	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5e798ec70b8d1d2010d1287e57cde5c5c2578aed59803eb1c3c5c53a931a4f16	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5f7f91f4bf4fe56e8d6ff95376039e77f93f62b8bf5c4c7020b70706a9543549	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+5fc3855146a45a75f41106524bee413a97ef8fcd3b23eb109251fa9aaa7e56c0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+63efcbb541cd17a9b940e125a52245f50f06d5033b64ad7111be8d82202e3c37	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+63fd5ec198ada1e34f3b78d6508814c8f1f6a97e86c970a4cde983df2d828474	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+64736eacf92ec3f297876c864b078b291b9e49ffb142892b06bb1c03bf004346	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+67825351fe867a68d4964df5fda3baa66c1824c1f73db8b04f6c7d63c0b477bb	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+678a28ab42445ebe88f597f05eb3020bbac88a2cb61ac51933154dff41ce976d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+695cbeb35e78511a5828f393fa9978f8a1a142538b713c758f0890f069169af6	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6a665cca0bb0c83cd9ae27720e5a682dd2250cded9997fa88c29ea822147ce10	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6be72daa38cbfc0f7f600b006577738bda352143575a9b376de64f87e27ac980	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6c911a9bfbdd9284ea154aa56261df13ea97db3905b5b4900aebbd1dea7894aa	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6d1ebd454a0f798c38b80934a0c2c532c6ba9c01ae43aa74a5111e8712fcb3af	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6ee1129c19271a8cdd703c5bab956bc0245b83c0de0877dc4e532f0b842d0ef6	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+704060b8bd5a1625252d494a5cffd356bb7a3bb8b2fa4f44ac33fe7cea719619	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+71127f09ab0f102c63960c4dd5fcddef3a623db658fa918f59217556facc0c83	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7181db982785232b5b6ba44f98f4e18a1064e06483789d4307abb966781f091c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+71e79a3e76e8b7f8c4ff8acb6fb794b6d846e34173b2e34ea568fa0c3f189ba8	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+723c49b6bc5cccd13ae805076d6b241f3eb6d95eeb6fb8146b5b5db8a72dbdc4	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7345788df57f6472fd3724ae7dc987bb2571df1708e079a0696e9f925bf8b8af	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+757c4bc97351828fefe3140db7675b8796ac0074e878c390814f00ef477d0c6e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7685e0fb8d5a472ac99d6f7fb8baa264c09db0b71ff3bc4f4f739850506dbabf	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7785fbd8c4e480ab5ac7c9d02d7fa6b457d932547f8fabaca1a96eaf71e8971f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7a3900d7aac39a47a36a9851860c13c39ecabc21caae9b1184c0c769d83f1b96	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7a8373b2cacbcb0c994f7566738166c8d46dae489c596b45724dfd93aea10ce1	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7bb915cb73c26fa69f874246aff087c53eb8c576fda9829589d71908f5684c36	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7c846942aeb5e5f93ffa7e765612140020ca98c9f8ad52118b73ac80cb2fd2b0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7ea3795cae9549856c1b818c97b367ab86c7d5d0b9518c19908a80805df95e16	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+80977881e905b50751726a493dea1de5119b272102fa8165f7812ec6cd004912	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+82181e75c02c326081a49ef577720dd7b9e6e3324a99407b8b8dc9b39b8af42a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+82da611e11444eb9bd675013cb08a1cb23a84db416db3a2e661f939e70f273dc	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+857e0740c4f9713b7fd1b8eeccace22a928c4a90e2b0184246fb1057731d65df	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+858133f89d3b813c8236f772aa6c1d5b26ec90439995f3355f431928954c9883	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+859c5242bc3e6fbaa908c04c425c763481eb1b57e6ee55e1ab93bcd5c0ce28f7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8679db7a6241a4365fd7e99b993c9d450713a5feddd9c957fb4e7b74bcb6f31c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+89615959c76d10cc5e995abbce4606b615d3ff7b3b376c589170f57a56be41c6	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+89b0563b6a41698b1d472114e3ab366d5ab2aa2581103cc3b0e82d695e30af01	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8a52f2f82c9542a73634a65bc91ff818dd49d36925f020df88bc183069a5862e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8b755d12e948f1ff005c2837579b1034fa4cb1d646e8f67f12d162c6752d98bc	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8be34e613b327df24b87dd4816296ea8ae106892af1bf0cfbb853ded334db85a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8c16078fd50c4492bf9ffc64bdcfba62806edd8e2982f4491dfc0aa80b45cabe	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8c1d36687a8c8f4641a161a148cb663ac1fb68f6404c34017bf0c916d17e4c58	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8ce0cbaf47ea950091072702112c9b7ee19bc45ec4582677399a59235e6bbdb9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+8de9247d12fcd346cc200c5816defef304c0f40babf3f32c34ba8ff9f44c9bc8	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+909214f3ac67d907457524d9bf6383e25fc794e8efd0bcac737a5234b5d2321e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+914e1a6506a1838cfd7b662711b113826938ce73c79baabd999a3cc33158bac5	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+944c2552499cab2e9307f3d9266b4fb230e829c3eea5b7ec377a73fdaa127c8d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+953d1e9b11e8bdef6e1fd95e1436584c826f89120d3e7cb2d846b460d109c748	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+967b66f6f9985bf788b267b24d636ce9d019790b4ffa04a92fe299f2037438fe	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+96d534616342fad15441a939117bf9b0ed083c4d7d742f72ec61846400afc53f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9781e88c5ddf38b7071db08580f8c8ae4cb80f09ba002b3fb17733c5c794d389	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+98cb66e33e17c9dda3cf474fd0a5c27de53c58ad5921b80a2e1d4cdea5a7240a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9930d0fde796cb54fee8bf62a36f5bbab34193f23a288fc287527f2100791f32	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+995f7c609b5d501727cfb3f426ebed44597625702c4e122f80d5994340c0c8b9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9a5752b09cd3ccf1b63fb6c3bcba1ec2b851ea149957b1796eb254bd46dfe81c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9b7c84ea179899d882492a94be536696e604ee9f8c3c3605c00ec7c3ec5247ab	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9d22d73ca3ddaad5c772f7715753c0be9c2cde6537657e7291d7a51a9e2c9d5b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9e8075224d5b6a26fcd9dcf166fcc1780bbb7841a535f09c18ff91edf68affde	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9f64e537b3b89ed2e6a4f9b352c893e0b42a4c0a477a0242ba66de7622f20a8d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9fc0b0285408551e2ed82b3049b9b23368320a1e26edc173d59117af0c05db57	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a026e0a61283352db37649afb4c925f5f089f4b12915c82cedbb98a69da3c4d6	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a0e7b653d395f4173836d65e44742d67c2d93ce309dba79a2dc4c1d1647e7b5f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a21babfa96ba7a6d0884a0fa48a2d77c6b5a46a1c0eb184fa5e756a2eceb73d0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a24aae147599e8bf1e512998776affb19492fba18178f5bef6ab1a14b6f7827d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a25bd7ce1147ddc2afbbf148625717de355b166169e7063b43fff7cb60207b6b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a27de158f0474624cf5d72af9734093cee082756a5b5872c107af9da2b0d645a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a3675b44a37c6218c0a79803e786dc8b6068350988e0ddae527cf7781e6fe180	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a6bead0b7e136a3fdf9fc5b5f83a50f00c04b33cfeeaf9eb4566eba2c8d24b1c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a9023f3798e2cd02b82dac3dd0c36077107fcf94bd7de74a5cd81a85492b01ca	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a94fcda30047f9f96a9a07c95b20ecf657f2f0ce22cd22b8210b8cb4a9289108	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+aecfe539581b3397e4f2034b0534491ff71f21712a8001ff6f10e120ed7a4a09	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b0b09a603abfeddfebfd6ef75ba096349426ff65993b94a6dea957c1a4cdebfc	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b1c92fda68449d85eb927aec1bfb4a3eb558f723d425be22cd254afaf586a54c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b46a0e341d7424b5fc8560eef3ee6684474559b6723e03f4d8eace8893322c9d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b488b7c2e35ddfb16557ad756aa400d6c4877dfb5ebf59df78dfcd60c14c5f17	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b583ae22c9022fb71b06ec1bae58d0d40338432b47d5733bf550972c5cb627c4	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b5a3bb48365b5550aad90f4f978df2045a119b8d8a9dbfbdb698cec65e888a3d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b81b935cec633ac04bc29da6c2f0752e53c2b36cfafb7d7a2657c4df9f9eff5f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b865052b8364c981ce3c44265a986eb68448ff24f98a2a535b2704944b304968	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b98499b0dcb733cd251113338049e3200e9ccc3425a6e636ef903b478819b817	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ba1055f9ff8db67e7220b7cec5a42e7e27cf2089e6bdf229cdcbf7c71f04735f	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+bf43171a31d241e0e98b6ae968784b7a51401a80012638a500d2afe20f5eaef7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c08f7396419ca9eece9526c19f24bf1a7df34d8ead511775b5ccc92c16affce3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c28ed0e96349c09ef2e2e8257a5fa402d89da0ca7922b3c51ba434ebb7aa3b1e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c3a8205f21362674e70226fba1bcc2d288b3bb9699ee344ba54a11266e3e7f02	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c3e443d7b36cea341bb3bd0fe17d9a4e7eb73097415eeebc7a63a56d4ec6ba00	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c4971a65af3693896fdbb02f460848b354251b28067873c043366593b8dbc6f9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c5f86ccc828ee733e081157d1b79c9b67619982d88bb1e4dd4b1d357d682dc03	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c635cafdcf0b8e7036119608e2383ba454561f77bdbabdc1f4c6afd5165b6172	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c6e2bc138aed1085319ac4306c814754ed37d7815ad646365ca5c0b9c08c06e7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+c8958024380cc6224770dbb5a1c8564e62dc9e58ec9b8190630b8510e679e4b4	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+caab79bd08b1627f265e66bf56166d6b0629c5c8c6044e53cc6e0b9dff58980c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+cc038422472ab00be3224b05068db70dcfe3336fb7d50d6fe6522eb503d6f0cd	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+cd5f246c64f0fc2bd83020638dc5ab684132f480514f45b70da6809228a6f4d0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d0392e7721276b9c034f1f45de85180fc1e73c13e301853b89c5dd57d00b218b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d1f631388513e18abd899b0b3e6aa883852d1a767e7cd9f4e19ca7027e90cb83	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d29f7748c0bdda3ff7142d3021df37a40fcb73ce0db4f43173b17d9c2f41a739	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d355c44651885eb1ec4f2fcf6b408c6b7ea6c12bb0911a72216fbb9d3f25b1ef	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d4348f68190dce400c95c67b0d78261f7ec0e9d31e78ddbe106f1db03baa4465	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d46bb606e15061ddaec5e19b048d4894655da83f1896c27b6578c524fa4748a3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d47acea1c36d3b5c6dc191e9fc211bb5ef0f59cc0fd0b26e751ed351833bc04d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d68189997b848be45c8ee82761411f7928224662c3a8fe908073bc4cc3a74106	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d742678b5ca6f12e33b455065537237ee5444a826f89658346658b7ad52bbbc1	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d7c12e843424d5a38d792a6d0be99deabb1dccf72b83503bd8190682d34f82f0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d9022c0c0c0f3b5ac9f67125636920cdfaf99e97085dff407d15bc2954584472	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d9df4124f25ea125016a9219e336fac90617f105b0342d2c47d742a1902430d7	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+d9f346b3d13d8cc580166e4484bf2bb86fb799e50bdba6d72175311c92f19491	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+daa22b90ba420ac0d8bbe4286f891023464affdcc5de35fe06f915b222fd9c41	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+de2c61282c62f86eae60f8441296a9e67b608c60e292592ca4f7a94fa225a012	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+df0fc297bf1badebaa2f399e5d339dc54b4644fe04c661961fb86e9a3585960d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e06deced1a4a4aa87b20326aa348efbe43156da4339155e154f3d439298f7aa9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e141941d2b0306968ad4385f2c8a818b5d7de0a976db44c850367b82f3c98558	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e1bc93ab028214ee01e67e5585f4748b0ae7b816f327013a5f2757d34a47ec82	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e1d721eb3d2973ebb4a5d2bc613de732de30c6fa8374658b3ff1247521b76799	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e27a6aaa0d8b4882590e2dae18267e8f6fd79b24b4c54e8d926d2d0dbd74e056	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e50e93856506f837167fee9e54a8cfd75e747ad19f6804689cd6c8b01e64dea3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e58cb5028c47c9edafd0998cfd2fb1ee0ac4a06f8dd8d07e720dd96b0d8a3563	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e6333193cf02dde8604158abfdc1159b7e9136f5b0bf4aa1944c9d5a36aa4232	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e705ec4d70010736afbca9a4561f411f71a7a0de8336295d3021d26d9d3f8a6d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e74984b8c8a2ef53e6f202922380ed3e89d58a8585e063a2cf75995863f5fa47	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e7bb56c2c41a4a97e8ff3e06a9f7ce560e9ad3477451be403678dc304a68508d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e7f441a7da2f3e247d06075053e680f3ce82ce16b053c849b647cdd20d044bb3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e8605854c8730d2e80d8a5edd8bc83eb7c397a700255754ec9140b9717f7d467	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+eb7960b2dad8ff73c9fd0105753470b333e728b0ea6c7de9b4cdda658e2d292d	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+eba10541ec72824f339085056aa3cc39f369cdf0a9948bcdd10cd47a7f36a7ed	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ecfe93ab58e0c3d2a0d5984d7a6f9fdd4f566c9c8dcd6e777d16e52d5a44bc8a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ed3b1d2d8737e8464bc4795f7485c873408b5b1ee2158f0368d1ec328a6b0265	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ed5e30d2baa5dbb969753d6f8815a72a88587e3ba32082e5a16b0aa95ef73c83	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ed9d7b7cb4eb915f9af3e8e3bf99e866023789e859fb5f97833ae21609bad915	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+f190e0e2a9ae04cc5e0347562070b0d464e06a9234c61f20c9903e0abeabccf1	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+f5487b4beda4433757476faf9c48fa778f7619ddb29f541a01c6f215460d311b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+f5942a25096deb04a42c8cf73d3b797f93e2e39ab11639ff43dc2004abcef2b9	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+f937c72487b6494f384e62ca952119656182c6e224a86921f2c267b5ec45699b	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+fa19ee10791a408d7626fe68f19f43850619a2dcc0d418711f41792c3cac1c32	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+fe8c465e9f94fb41180f3142f6dde258932dabb811cbaed6e161db38a4def620	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+ff4a07a54b117bc135ae08c31ebb8470110f78c94177d469dc7ef75d473f5ca8	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+81b4a8f6ff2489e01f6b09126583673d3df922a0bbf7ff2cbcef2bcf6102b951	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+9714f54722cf3c2d94322671cacd8f2e1fedf66209063f2746d2a81bf0af7f08	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+6b8be2c4b7d0dc6f3e5112fb956ee8f63b54b0706b21090194356e83a80897d4	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+1dff310b4521c6836bba41d42c280b12a0b181dfad7146f951ed155c6707f231	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+08f1e1cd16667e24b270a5eb661e8ac329eb50677edebe0f9565e213f49908ab	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b040fac8dcd0515cadaced0221ea1a71b22bd68d4f532bd542ba1145242cd742	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+7796b1297e4c6cde9ca8d22b2ec92c21b5fa135ec6b95c6812ba0c77e49857f0	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+4da6745681ba930312acba7fdf93a9dc0f609a2f03d1d1b597d14e1ed4726446	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+b16d10e933efd201f694402561f9c6c58873a45284eaf2b5206fe28ff4dc98d3	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+de8a5a98a9090b224d742e0c72f5e36d84fae4da55d26775b09521997f18253c	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0f8e3679d707a17c2255f517afcfc9a0971e787d88e0002c290702d01aebc33e	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+74b64679b71ecb971881211215283d48ada2ad7727c00f88d4351ab23cf0229a	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+86387e535ac53787cbac192e6715239b6154a664ccffbf72b4c6038800d7cb86	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0f8ca9e39e0ac7cad7f4b2887bce580eebcffe57d2e253ddd635896e056688be	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+a57fdc3deba23dc2fed39f3bc9538104d4f1bce61557e3ae649664f091dd0e89	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+0639eae0996df85b097e32dd6dc983643438e54679b12f24ed6df66e2ef90217	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+e3f6c813a4582f7effba4ba0a582b8c80ebfd86d551dd50b7fffa9664cd28a50	sample	primary	amnesty-donot-togo-2021-10	DoNot Team (hack-for-hire)
+#
+# Amnesty investigations 2021-02-24_vietnam/indicators/sha256.txt.
+952c16674bde3c16aa3935b3e01f3f0fb4cbac7ffa130143cbf6ccaa72733068	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+d3a198e18f8c5e9ed54ed4959b471a0f15fbda7d4abf92b7726bc07723e46dd5	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+ecb6186a5e722fa360ece37191589305858a0e176321c9339831f2884dcb0405	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+1599fe6cc77764c17802cfde1ca77f091bb3ec2a49f6cab1c80ee667ea7c752b	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+b8567ce4d0595e6466414999798bcb1dfe01cc5ca1dd058bfc55f92033f0f3d8	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+b252a8d2ec5c7080286fe3f0ad193062f506b5c34c4c797f97717e396c0a22d5	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+9c14cffd79f863fec0a6c0ed337ea82a9044db09afda53b8ac2aef1d49f74f4f	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+5ed6b7b450ead2d0e69faa3069d1e0bd3a6852909092235f75087da0ca05462f	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+a890c88b6c64371242b4047830b9189b4546536c6b11576d0738f0ba1840aded	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+0c41358adeea24d80b35bac4b4f60d93711e32e287343cb604e1fa79b5e5e465	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+148e647885712b69258967c5f8798966fb9b8ae24847dda8aeb880cb6f56b6da	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+acb33adf7429424170f63fa5490ed580cf502de4a7ef00e4b8c962425cd85052	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+5cc8d52fcabfd35042336e095f1f78c2b2884e7826358f5385729cf45ce4d860	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+a574720e7b4f420098a0ac0055089000435439eb61ec6de2077ac0f782a506e9	sample	primary	amnesty-oceanlotus-vietnam-2021-02	OceanLotus
+#
+# Amnesty investigations 2020-06-15_india/sha256.txt.
+e3dea449bf74434ee1c9cdc04ca68b8f3c9bac357768e07df303433f257d3b9a	sample	primary	amnesty-netwire-india-2020-06	NetWire
+21d24e08889f75461a7ce6f21fc612a701bca35da1a218cf3cdd6e23f613bb4d	sample	primary	amnesty-netwire-india-2020-06	NetWire
+16b5c74fb55f52ae0ae4328f65b2bf3bbe3e5ee34268c1d32a247a0a1dfa3186	sample	primary	amnesty-netwire-india-2020-06	NetWire
+5a4aca57541954195953066a4be96dfb19776ba099d72f8f1d3677581594606e	sample	primary	amnesty-netwire-india-2020-06	NetWire
+11cef331557eb693e718d27b6a7211a98d3982117a03ec1491db8098ea3cec00	sample	primary	amnesty-netwire-india-2020-06	NetWire
+88b92d985b7d616c93c391731c1e4a6d3c8323fdcbf31cfc4d340e27253913a7	sample	primary	amnesty-netwire-india-2020-06	NetWire
+b1b6e133aa320669c772ec7e5fd6fbe4cb3edca13ad5351f14df3c1f13939d09	sample	primary	amnesty-netwire-india-2020-06	NetWire
+ea5f37e1feab670171963aa83b235c772202b2d4bb7289dd45302c3851dbd6f9	sample	primary	amnesty-netwire-india-2020-06	NetWire
+de302a61e5f07b0e65753355d44d22181a2742ac3a92aa058bdcd00cc4dab788	sample	primary	amnesty-netwire-india-2020-06	NetWire
+b09ca9d48a0455ed5e02a56aabeb397c41fb63320244719749e0741da72e79c4	sample	primary	amnesty-netwire-india-2020-06	NetWire
+095ec879f323a0a3eceb97013125880d49ac701eef568e3b010fdddb1333941f	sample	primary	amnesty-netwire-india-2020-06	NetWire
+ac4d5d938009fd44b2f7587986862ab2278887a17d32f748278445b625b3efd9	sample	primary	amnesty-netwire-india-2020-06	NetWire

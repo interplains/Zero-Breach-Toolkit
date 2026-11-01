@@ -24,8 +24,8 @@ import stat
 import sys
 
 from ..result import Hit, ModuleResult, EV_ON_DISK
-from ..localpaths import (path_problem, walk_local, WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED,
-                          WALK_CLOUD_SKIPPED, SF_DATALESS)
+from ..localpaths import (is_packaged, path_problem, path_problem_cached, walk_local, WALK_LINK_REFUSED,
+                          WALK_SPECIAL_REFUSED, WALK_CLOUD_SKIPPED, SF_DATALESS)
 
 from ..localpaths import _CLOUD_ONLY_ATTRIBUTES
 
@@ -37,7 +37,10 @@ EXTS = (".dll", ".exe", ".sys", ".ocx", ".cpl", ".scr", ".tmp", ".dat", ".bin", 
 
 # Files larger than this are almost certainly not the implant; skipping them
 # (counted as skipped, never as clean) keeps the scan from stalling on big blobs.
-MAX_BYTES = 120 * 1024 * 1024
+# Reading is chunked, so the limit only bounds time. Published spyware samples
+# are kilobytes to a few megabytes; 512 MB leaves ordinary large installers and
+# app files fingerprinted instead of listed as gaps.
+MAX_BYTES = 512 * 1024 * 1024
 
 # Directory names pruned from the walk: browser/code caches, dependency trees and
 # the Windows component store - huge, noisy, and not where an implant DLL lands.
@@ -148,7 +151,7 @@ def _hs_candidate(path, filename):
 _WORKERS = max(2, min(8, (os.cpu_count() or 2)))
 
 
-def _hash_one(full):
+def _hash_one(full, folder_checked=None):
     """(path, hex digest or None, size, reason). With no digest, reason says why:
     "link" and "special" are aliases and device/socket entries, not files that
     can hold a program, and are not gaps (a link's target is fingerprinted
@@ -157,7 +160,8 @@ def _hash_one(full):
     try:
         if os.path.islink(full):
             return full, None, 0, "link"
-        problem = path_problem(full)
+        problem = (path_problem(full) if folder_checked is None
+                   else path_problem_cached(full, folder_checked))
         if problem:
             return full, None, 0, "unreadable"
         info = os.stat(full, follow_symlinks=False)
@@ -168,7 +172,7 @@ def _hash_one(full):
             return full, None, 0, "cloud"
         if info.st_size > MAX_BYTES:
             return full, None, 0, "large"
-        digest, size = _sha256(full)
+        digest, size = _sha256(full, folder_checked)
         return full, digest, size, ""
     except PermissionError:
         return full, None, 0, "denied"
@@ -193,16 +197,21 @@ def _hs_reasons(reasons, fix=True):
         parts.append("{} stored only in iCloud or OneDrive and not downloaded".format(reasons["cloud"]))
     text = ", ".join(parts) or "could not be read"
     if fix and reasons["denied"] and sys.platform == "darwin":
-        text += ("; macOS privacy protection blocks some folders: give Terminal Full Disk Access "
-                 "(System Settings > Privacy & Security > Full Disk Access) and run again")
+        if is_packaged():
+            text += ("; macOS privacy protection blocks some folders: give Zero Breach Toolkit Full Disk "
+                     "Access (System Settings > Privacy & Security > Full Disk Access) and run again")
+        else:
+            text += ("; macOS privacy protection blocks some folders: give Terminal Full Disk Access "
+                     "(System Settings > Privacy & Security > Full Disk Access) and run again")
     return text
 
 
-def _sha256(full):
+def _sha256(full, folder_checked=None):
     """SHA-256 of a file, read in 1 MiB chunks so a large file never loads whole
     into memory. Returns (hex_digest, size) or raises OSError for the caller to
     count as skipped."""
-    problem = path_problem(full)
+    problem = (path_problem(full) if folder_checked is None
+               else path_problem_cached(full, folder_checked))
     if problem:
         raise PermissionError(13, problem, full)
     info = os.stat(full, follow_symlinks=False)
@@ -240,10 +249,12 @@ def _sha256(full):
 
 
 def _hash_outcomes(candidates, ctx):
+    folder_checked = [None]
     with ThreadPoolExecutor(max_workers=_WORKERS) as pool:
         for start in range(0, len(candidates), 128):
             ctx.emit("[hash] fingerprinted {} / {} candidates".format(start, len(candidates)))
-            yield from pool.map(_hash_one, candidates[start:start + 128])
+            yield from pool.map(lambda full: _hash_one(full, folder_checked),
+                                candidates[start:start + 128])
 
 
 def run(ctx) -> ModuleResult:

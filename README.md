@@ -1,5 +1,8 @@
 # Zero Breach Toolkit
 
+> **Version 2 is out:** now a double-click app for Windows, Mac and Linux, in 27 languages.
+> [Download it from the latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest).
+
 A free, open-source check for traces of known mercenary spyware (Pegasus, Predator,
 Graphite, Candiru and others) on computers, Android phones and iPhone backups.
 
@@ -18,6 +21,33 @@ Made by archivegenocide. Built on [Zero Breach](https://github.com/interplains/z
 > civil society can contact the
 > [Access Now Digital Security Helpline](https://www.accessnow.org/help/) (free, 24/7,
 > many languages) or [Amnesty International's Security Lab](https://securitylab.amnesty.org/get-help/).
+
+---
+
+## Easiest: download the program (no Python, no commands)
+
+Download the file for your computer from the
+[latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest) and
+double-click it. A window opens: choose a check, press **Start check**, then read the result
+and save the report if you want to keep it. The **Live connections** tab shows which programs
+are connected to the internet right now and marks any address on the spyware lists.
+
+| Your computer | Download | The first time you open it |
+|---|---|---|
+| Windows | `zero-breach-toolkit-windows-x64.exe` | Windows may say it "protected your PC". Click **More info**, then **Run anyway**. |
+| Mac with Apple silicon (M1 or newer) | `zero-breach-toolkit-macos-apple-silicon.dmg` | Open it and drag **Zero Breach Toolkit** to Applications, then open it. macOS stops it once: open **System Settings → Privacy & Security**, click **Open Anyway**, and open it again. |
+| Mac with Intel | `zero-breach-toolkit-macos-intel.dmg` | As above. |
+| Linux | `zero-breach-toolkit-linux-x64.tar.gz` | Extract it and run `./zero-breach-toolkit` (or right-click → Run in Terminal). |
+
+The warnings appear because the programs are not signed by Microsoft or Apple; signing
+needs a paid account in a real person's name. Each program is built by GitHub from the
+published source, and you can check that before running it:
+`gh attestation verify <file> --repo interplains/Zero-Breach-Toolkit` (see
+[docs/VERIFYING.md](docs/VERIFYING.md)). Prefer to see exactly what runs? Use the Python
+version in the guide below; it is the same check.
+
+To let the check read Safari on a Mac, give **Zero Breach Toolkit** (or Terminal, for the Python
+version) **Full Disk Access** in System Settings → Privacy & Security.
 
 ---
 
@@ -97,6 +127,9 @@ computer and about 20 minutes. Phones are checked by connecting them to the comp
 2. On this page, click the green **Code** button, then **Download ZIP**. In your
    **Downloads** folder, right-click the zip and choose **Extract Here**, so that you have a
    folder named **Zero-Breach-Toolkit-main**.
+
+If Chinese, Japanese or Korean text in the window shows as empty boxes, install a CJK font
+(for example `sudo apt install fonts-noto-cjk`) and open the program again.
 
 **Run the check**
 
@@ -243,7 +276,7 @@ app such as Slack is listed because its web records were checked, not because it
 suspicious.
 
 The default hash check covers `.dll`, `.exe`, `.sys`, `.ocx`, `.cpl`, `.scr`, `.tmp`,
-`.dat`, `.bin` and `.ax` files up to 120 MiB in selected folders, skipping cache and
+`.dat`, `.bin` and `.ax` files up to 512 MiB in selected folders, skipping cache and
 dependency directories. Computer checks can find published infrastructure or file traces;
 they cannot tell whether a phone is infected.
 
@@ -272,9 +305,21 @@ references; exact known executable paths in supported launch configuration can b
 findings, with activation and execution unverified.
 
 File checks also cover extensionless files, executables, native libraries and scripts in
-selected application, user and temporary folders (120 MiB limit). Windows-only live checks
+selected application, user and temporary folders (512 MiB limit). Windows-only live checks
 do not run here; copied Prefetch and Amcache files can still be selected in targeted mode,
 though compressed Prefetch needs Windows.
+
+### Out-of-date programs (Windows and macOS)
+
+Prevention rather than detection: the check compares the versions of common programs (Chrome,
+Firefox, Thunderbird, Adobe Acrobat and Reader, WinRAR, 7-Zip, Notepad++, Java, Office, Edge,
+Windows itself, macOS and Safari) with CISA's list of
+[Known Exploited Vulnerabilities](https://www.cisa.gov/known-exploited-vulnerabilities-catalog),
+the flaws attackers are using right now. A program is called out of date only when the official
+CVE record gives a fixed version and the installed one is older; otherwise you get plain update
+advice. The lists are downloaded by the indicator update; the comparison happens offline and
+your list of programs never leaves the computer. An out-of-date program is not a sign of spyware,
+but it is a common way in.
 
 ### Desktop apps
 
@@ -297,7 +342,11 @@ it never talks to the phone itself. It checks:
 - links in SMS and MMS messages, from the SMS backup AndroidQF offers to take;
 - apps installed outside an app store, with what they can do (read SMS, use the
   microphone, read notifications, resist uninstalling) and when they arrived;
-- signs of a modified phone: unlocked bootloader, debug build, security protection off.
+- signs of a modified phone: unlocked bootloader, debug build, security protection off;
+- signs the phone was unlocked with **Cellebrite**, the phone-forensics tool police and
+  security services use on seized phones: the fake USB devices its unlocking hardware
+  imitates, which the phone's own logs record (published by Amnesty International). The
+  phone keeps this record for a limited time, so check a phone soon after it comes back.
 
 It recognises the collection's own traces (USB debugging, the debugging shell's
 permissions) and does not report them as suspicious.
@@ -308,13 +357,35 @@ Local Finder, Apple Devices or iTunes backups (encrypted or not), extracted file
 and sysdiagnose archives. See
 [Checking local iPhone evidence](#checking-local-iphone-evidence).
 
+Installed configuration profiles are read for what they can do. A profile that manages the
+phone remotely (MDM), makes it trust a root certificate (which can be used to read encrypted
+web traffic), sends traffic through a VPN, proxy or another DNS server, or cannot be removed is
+listed as worth a look, with its name, issuer and install date. That is normal on a work or
+school phone and for a DNS filter you installed yourself; on a personal phone nobody else should
+have set one up.
+
+Crash reports and diagnostic logs are also searched for traces of **Cellebrite** published by
+the Citizen Lab: a process named `mnm` working on a task labelled `com.cellebrite.bruteforce`,
+and, in an extracted file system, the identifiers of a Cellebrite computer in the phone's
+records of computers it trusted. An ordinary backup does not contain these records, so a
+backup alone cannot show whether the phone was accessed this way; a sysdiagnose archive or a
+file-system extraction can.
+
 ### Indicators
 
-About 12,400 published indicators from 29 sources: Amnesty International's Security Lab,
+About 13,300 published indicators from 29 downloadable sources and two built-in sets: Amnesty International's Security Lab,
 the [Mobile Verification Toolkit](https://github.com/mvt-project/mvt-indicators) project,
 the Citizen Lab and Echap's stalkerware research, and a hand-curated set from Citizen Lab
 reports (Candiru / DevilsTongue and Paragon's Graphite) with every line cited. The curated
 set works offline; `--update` downloads the rest from a fixed list of official sources.
+A second built-in set holds about 900 file fingerprints and Android package names of
+spyware used against journalists, activists and minorities (Arid Viper against Palestinians,
+EvilBamboo, HenBox, DoNot, OceanLotus and others), copied from the indicator files of ESET,
+Volexity, Cisco Talos, Meta, Unit 42, Lookout and Amnesty International (and two package
+names from a SentinelLabs report), every line cited.
+A few published phone traces that are not addresses or fingerprints (Cellebrite's, and the
+Android settings and folder of Variston's Heliconia framework, published by Google) are
+built into the phone checks, each with its source.
 
 ---
 
@@ -374,13 +445,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v0.1.15
+git checkout v2.0.0
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v0.1.15 the file is 986,053 bytes, SHA-256
-`4ebe1f3043e5efd056e201143bed8d4a44c3b937afde19f7b89e240cbf4a32f9`. The size and SHA-256
+For v2.0.0 the file is 2,854,408 bytes, SHA-256
+`56d2d5186cf372365b33f467df6b34f22cbdd10b244f033bc60c40149b131dc9`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
@@ -568,6 +639,37 @@ time and may differ from what was scanned; live databases may need their sidecar
 selected too. Use the minimal summary for first contact, and share the full archive only
 through a secure route agreed with the recipient.
 
+### Practising with a training example
+
+Trainers need a result to show, and real spyware cannot be used for that. `--training`
+checks a made-up Android phone against made-up indicators, so people can learn to read a
+report before they need to. It is also in the start menu as **Practise with a training
+example**, and in the window as **Practise**, where the result carries an amber
+**TRAINING EXAMPLE** bar.
+
+```text
+python scan/zero-breach-toolkit.py --training spyware        # findings and evidence grades
+python scan/zero-breach-toolkit.py --training worth-a-look   # leads, but no findings
+python scan/zero-breach-toolkit.py --training clean          # what "nothing found" means
+python scan/zero-breach-toolkit.py --training cellebrite     # a phone seized and unlocked with Cellebrite
+```
+
+The report is the ordinary report, so what people learn carries over to a real check. It
+opens with **TRAINING EXAMPLE - NOT A REAL CHECK** and ends with notes for the trainer; the
+JSON report has a `training` field and its first `must_relay` rule says it is an example.
+
+- Nothing on the computer, a real phone or a downloaded indicator list is read. Options
+  that point a check at real evidence or real indicators are refused with `--training`.
+- Every indicator is invented: the domain uses the reserved `.invalid` ending, which can
+  never exist, and the family is named "Training example (not real spyware)".
+- The `cellebrite` example is the exception, because its point is to show the real result.
+  Its made-up phone log records one of the fake USB devices Cellebrite's unlocking hardware
+  imitates, which the ordinary phone check recognises by itself. The serial number and the
+  rest of the log are invented.
+- A sharing summary or evidence bundle cannot be made from it, because both are meant to
+  be sent to someone.
+- The example is built in the temporary folder and deleted when the tool exits.
+
 ---
 
 ## Reading the result
@@ -607,9 +709,21 @@ proves a device is safe.
   supported artifacts in the local evidence supplied. Neither is a full phone examination.
 - It does not replace a forensic examination by experts. If you are worried, ask for help.
 
+### Blocking advertising domains
+
+The `dist/` folder of this repository holds the project's own blocklist of the advertising
+and tracking domains named in the indicators, in three formats: `adfection.adblock.txt`
+(for ad blockers such as uBlock Origin), `adfection.hosts.txt` (a hosts file) and
+`adfection.dnsmasq.conf` (for dnsmasq, many routers and Pi-hole style resolvers). Blocking is
+a stopgap: it does not detect infection. The page
+[archivegenocide.com/scan](https://archivegenocide.com/scan/) has a test and setup steps for a
+blocking DNS resolver.
+
 ## Privacy
 
-`--update` downloads indicator sources. The separate `--collect-android` command downloads
+`--update` downloads indicator sources, and also asks GitHub for the latest release number so
+it can tell you when a newer version exists (`--no-version-check` turns that off; it never
+happens during a scan). The separate `--collect-android` command downloads
 a pinned official collector after consent. Ordinary scans stay offline. Full reports can
 contain usernames, profile names, file paths, browsing details, SMS senders and message
 excerpts; keep them private. `--share-json summary.json` writes counts, scope labels, the

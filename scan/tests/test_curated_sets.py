@@ -33,7 +33,7 @@ class TestCuratedMercenary(unittest.TestCase):
         self.set = load(CURATED)
 
     def test_every_row_is_cited_and_has_a_family(self):
-        documented = set(re.findall(r"^#\s+(citizenlab-[a-z0-9-]+)\s", self.text, re.M))
+        documented = set(re.findall(r"^#\s{3}([a-z][a-z0-9-]+)\s{2}", self.text, re.M))
         self.assertTrue(documented)
         for ind in self.set.indicators:
             with self.subTest(indicator=ind.value):

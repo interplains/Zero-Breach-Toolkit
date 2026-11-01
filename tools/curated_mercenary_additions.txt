@@ -1,0 +1,175 @@
+#
+# --- Added 2026-10-29: Candiru DevilsTongue (Microsoft, ESET) and Intellexa Predator
+#     (Google, Talos, Amnesty, Recorded Future). Every value was checked verbatim against its
+#     source. Old IP addresses are in the decaying tiers (candiru-ip, infrastructure-ip).
+# Microsoft: physmem.sys in System32/drivers is a high-confidence indicator of DevilsTongue activity, although the driver itself may be used legitimately. SHA-256 of the one driver observed in use.
+c299063e3eae8ddc15839767e83b9808fd43418dc5a1af7e4f44b97ba53fbd3d	vuln-driver	primary	microsoft-mstic-2021-07	Candiru DevilsTongue
+# ESET 'C&C servers' (README.adoc / MISP domain-ip objects): addresses that the C&C domains resolved to. Domains are already in adfection_iocs.txt; only the addresses are new.
+5.2.67.82	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+5.2.75.217	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+5.206.224.54	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+5.206.224.197	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+5.206.224.226	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+5.206.227.93	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+45.77.192.33	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.97.20.89	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.236.3	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.236.147	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.236.166	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.236.225	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.236.247	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.237.48	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+83.171.239.172	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+87.120.37.237	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+87.121.52.9	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+87.121.52.128	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+87.121.52.144	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+87.121.52.252	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+91.219.236.38	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+91.219.236.50	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+91.219.239.191	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+94.140.114.247	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+109.70.236.107	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+185.82.126.104	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+185.165.171.105	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+188.93.233.149	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+188.93.233.162	candiru-ip	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+# ESET 'Files': Word documents with a VBA macro that downloaded from the C&C URLs (cuturl.app / cuturl.space). SHA-256 of each, as given in samples.sha256 and the MISP file objects.
+8d486f0c6a0d5089e96f08622047337e387faf63ae858379292a764811e55625	sample	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+91b3f4836cdf956292c806b5e4d1a9475eb7553083ea61b0a768c9a86b9fec2f	sample	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+e7ec5af4119462a67fd059a019cdc5b7f2f386723bfbb22c1912250c33645ce5	sample	primary	eset-swc-candiru-2021-11	Candiru DevilsTongue
+# GTIG 'File Indicators' (IOC section of the Intellexa post; the post describes the iOS exploit chain and the third stage it tracks as PREYHUNTER). The post gives no per-hash description beyond 'File Indicators'.
+85d8f504cadb55851a393a13a026f1833ed6db32cb07882415e029e709ae0750	sample	primary	gtig-intellexa-2025-12	Intellexa Predator
+e3314bcd085bd547d9b977351ab72a8b83093c47a73eb5502db4b98e0db42cac	sample	primary	gtig-intellexa-2025-12	Intellexa Predator
+# Talos IOC file, heading 'Hashes' (one SHA-256; the file gives no description of the sample). Its 300 domains and URL were all already in mvt-indicators intellexa_predator/domains.txt.
+8e4edb1e07ebb86784f65dccb14ab71dfd72f2be1203765b85461e65b7ed69c6	sample	primary	talos-predator-2023-05	Intellexa Predator
+# Amnesty: 'the Predator infection domains kz-news[.]cc and kz-ordas[.]com ... imitate legitimate Kazakhstani news websites and are designed to trick users to click unwittingly on a Predator infection link.' (kz-news.cc is already in MVT.)
+kz-ordas.com	infrastructure	primary	amnesty-intellexa-leaks-2025-12	Intellexa Predator
+# Recorded Future Predator CTA-2025-0612 Appendix A 'Indicators of Compromise', Domains: newly identified Predator-linked infrastructure (the report text calls it 'new infrastructure associated with Predator'; roles per domain are not given in the appendix).
+asistentcomercialonline.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+barbequebros.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+boundbreeze.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+branchbreeze.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+c3p0solutions.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+caddylane.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+canylane.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+clockpatcher.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+colabfile.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+craftilly.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+dollgoodies.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+drivemountain.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+eclipsemonitor.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+flickerxxx.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+gamestuts.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+gettravelright.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+gilfonts.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+gobbledgums.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+humansprinter.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+infoshoutout.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+keep-badinigroups.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+lawrdo.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+longtester.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+mappins.io	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+mdundobeats.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+mountinnovate.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+mundoautopro.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+myprivatedrive.net	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+myread.io	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+mystudyup.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+nightskyco.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+noticiafamosos.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+noticiafresca.net	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+onelifestyle24.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+openstreetpro.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+pedalmastery.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+pinnedplace.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+remixspot.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+roadsidefoodie.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+secneed.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+secsafty.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+shopstodrop.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+speedbrawse.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+stableconnect.net	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+starryedge.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+statuepops.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+steepmatch.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+streamable-vid.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+strictplace.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+svcsync.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+themastersphere.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+traillites.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+trigship.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+unibilateral.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+updatepoints.com	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+wtar.io	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+zipzone.io	infrastructure	primary	recordedfuture-predator-2025-06	Intellexa Predator
+# Recorded Future Predator CTA-2025-0612 Appendix A, IP Addresses: same infrastructure set (the report describes Tier 1 victim-facing servers and higher-tier components; the appendix does not label each address).
+5.183.95.179	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+5.253.43.92	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+38.54.2.119	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+38.54.2.223	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+38.54.2.238	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+45.86.163.182	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+45.86.231.100	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+45.86.231.222	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+45.143.166.125	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+45.155.250.228	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+46.30.188.19	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+46.30.188.161	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+46.30.189.26	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+46.246.96.198	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+51.195.49.222	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+79.110.52.192	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+79.141.164.56	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+85.17.9.18	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+89.150.57.192	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+89.150.57.234	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+128.199.39.196	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+138.199.153.155	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+141.164.37.66	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+146.70.81.33	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+146.70.88.93	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+154.205.146.159	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+158.247.205.35	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+158.247.222.189	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+158.247.254.22	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+162.19.214.208	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.22	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.42	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.46	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.48	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.138	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.160	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.174	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.128.182	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.129.57	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.129.63	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.129.77	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.239.129.100	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.255.58.14	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+169.255.58.18	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+172.233.116.151	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+185.158.248.139	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+185.158.248.146	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+185.167.60.33	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+185.236.202.161	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+185.243.114.170	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+188.166.0.154	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+193.29.56.52	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+193.29.59.176	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+193.168.143.206	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+193.243.147.42	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+195.54.160.224	infrastructure-ip	primary	recordedfuture-predator-2025-06	Intellexa Predator
+#
+# --- Added 2026-10-31: Google Threat Analysis Group, 2023-03-29. Hostnames exactly as published
+#     (re-fanged). Campaign 2 is attributed by Google to the Heliconia framework of the vendor
+#     Variston; Campaign 1 names no vendor. Its Android system properties and file path are
+#     built into the phone check (scan/zbtriage/devicetraces.py), not listed here.
+# Google, Campaign 2: 'landing page and exploit delivery'.
+www.sufficeconfigure.com	infrastructure	primary	google-tag-spyware-vendors-2023-03	Variston Heliconia
+# Google, Campaign 2: 'malware C2'.
+www.anglesyen.org	infrastructure	primary	google-tag-spyware-vendors-2023-03	Variston Heliconia
+# Google, Campaign 1 (no vendor named): landing page, exploit chains, exploit delivery server.
+cdn.cutlink.site	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor
+api.cutlink.site	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor
+imjustarandomsite.3utilities.com	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor

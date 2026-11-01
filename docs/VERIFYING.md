@@ -30,7 +30,7 @@ verification.
 This check does not depend on us at all. The single-file scanner is generated from the
 repository source, so you can regenerate it from the release's tag and compare:
 
-    git checkout v0.1.15
+    git checkout v2.0.0
     python build/bundle.py
     sha256sum dist/zero-breach-toolkit.py
 
@@ -56,13 +56,22 @@ workflow, name the release roles, require manual approval of signing requests an
 how to verify the executable. That decision has not been made, and the project's anonymity
 is the reason.
 
-## If you build the Windows executable
+## Checking the downloadable programs
 
-An `.exe` built from this source with PyInstaller is unsigned and has no download
-reputation, so Windows SmartScreen will warn about it and some antivirus products will flag
-it. PyInstaller output is also not byte-reproducible, so the rebuild comparison applies to
-the single-file Python build, not to an executable. Running from source avoids both
-problems and is what this project recommends.
+The Windows, macOS and Linux programs on the release page are built by GitHub Actions from
+the release tag (`.github/workflows/programs.yml`), not on anyone's own computer. Each build
+is checked against the single-file Python build before it is published, and GitHub records
+a signed attestation of exactly which workflow, commit and runner produced each file. With
+the [GitHub CLI](https://cli.github.com/):
+
+    gh attestation verify zero-breach-toolkit-windows-x64.exe --repo interplains/Zero-Breach-Toolkit
+
+A passing check means the file is byte-for-byte what that public workflow built from that
+tagged commit. The programs are not code-signed, so Windows SmartScreen and macOS
+Gatekeeper warn the first time they are opened, and some antivirus products may object to
+any new unsigned program. PyInstaller output is not byte-reproducible, so the rebuild
+comparison in section 2 applies to the single-file Python build; the attestation is the
+check for the programs.
 
 ## What a signature does and does not tell you
 

@@ -100,10 +100,10 @@ def test_unopened_folders_and_unread_files_are_counted_apart(tmp_path, monkeypat
     (tmp_path / "ok.bin").write_bytes(b"y")
     (tmp_path / "locked.bin").write_bytes(b"z")
     real_hash = hashscan._sha256
-    def locked(full):
+    def locked(full, *rest):
         if full.endswith("locked.bin"):
             raise PermissionError(13, "locked")
-        return real_hash(full)
+        return real_hash(full, *rest)
     monkeypatch.setattr(hashscan, "_sha256", locked)
     monkeypatch.setattr(hashscan, "walk_local",
                         _walk_refusing(("Photos", "Mail"), hashscan.walk_local))

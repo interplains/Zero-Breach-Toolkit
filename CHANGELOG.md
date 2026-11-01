@@ -1,5 +1,138 @@
 # Changelog
 
+## 2.0.0 (unreleased)
+
+Languages
+- The window and the report are available in 27 languages: English, Arabic, Chinese,
+  Croatian, Farsi, French, German, Greek, Hebrew, Italian, Japanese, Korean, Kurdish, Malay,
+  Polish, Portuguese, Punjabi, Romanian, Russian, Spanish, Swahili, Swedish, Tagalog, Tamil,
+  Telugu, Turkish and Ukrainian. The window starts in the computer's language and has a
+  language picker; `--lang CODE` chooses it for the terminal report. Arabic, Farsi and Hebrew
+  are laid out right to left, on Linux too.
+- English stays the record: a report saved in another language also contains the English
+  original, and the JSON report and sharing summary are always English. Indicator values,
+  paths, commands and numbers are never translated. Anything without a translation is shown
+  in English rather than left out.
+
+Programs and a window
+- Double-click programs for Windows, macOS (Apple silicon and Intel) and Linux: no Python
+  install, no commands. Built by GitHub Actions from the release tag, checked against the
+  single-file build, with a public build attestation for every file.
+- A simple window: choose a check, start it, read the result, save the report or a sharing
+  summary. It runs exactly the same check as the terminal version. A packaged program opens
+  the window when double-clicked; `--gui` opens it anywhere and `--no-gui` keeps the terminal.
+- Live connections: which programs are connected to which addresses right now, with any
+  address on the spyware lists marked. Read from the system; nothing is looked up or contacted.
+- Check a phone from the window: an iPhone backup (with a button that finds local backups and
+  a password box for encrypted ones), an Android collection, a sysdiagnose archive or an
+  extracted file system, with the step-by-step guides and the guided Android collection one
+  click away. Results open in their own tab.
+- macOS download is a standard .dmg with a Mac app that opens the window when double-clicked.
+- The window shows progress as it goes ("Step 2 of 6: Program files - 41,000 of 110,000 files")
+  with the time so far, has a Stop button that keeps everything already checked (like Ctrl+C in
+  the terminal), offers Quick, Standard and Full checks with rough times, and ends with a short
+  "What should I do now?" list drawn from the result. An advertising-network trace on its own is
+  shown as what it usually is, the mark of an ordinary ad, not as spyware.
+- Paragraphs in the window wrap to the width it has and again when it is resized, so no step is
+  cut off in a small window and right-to-left text wraps evenly. Switching the language keeps
+  the open tab, the window size, the chosen check, phone folder and practice example. On Linux,
+  English words and numbers inside Arabic, Farsi or Hebrew text read the right way round, and
+  those languages' names read correctly in the language list.
+
+Practice mode
+- Training mode for trainers and workshops: `--training spyware | worth-a-look | clean |
+  cellebrite` (also "Practise" in the window and the start menu) checks a made-up phone against
+  made-up indicators so people can learn to read a report. Four examples: spyware found, things
+  worth a look, nothing found, and a phone unlocked with Cellebrite ("Phone seized
+  (Cellebrite)"). Nothing real is read, every output is marked as a training example, and no
+  sharing summary or evidence bundle can be made from it. Contributed by @compsudev.
+
+Phone-forensics tools and more spyware families
+- Android: signs the phone was unlocked with Cellebrite, the phone-forensics tool police and
+  security services use on seized phones. Its unlocking hardware imitates particular USB
+  devices (a mouse, a webcam, sound cards, a touch pad), all reporting the version 12.34; the
+  phone's own logs record them (Amnesty International Security Lab, 2025). A real device with
+  the same ids is never reported.
+- iPhone: Cellebrite traces published by the Citizen Lab (2026) in crash reports and diagnostic
+  logs (a process named `mnm` working on `com.cellebrite.bruteforce`), and the identifiers of a
+  Cellebrite computer in the phone's records of trusted computers in a file-system extraction.
+- These are reported in their own category with their own advice: not spyware, but the phone
+  was unlocked while out of its owner's hands, so its contents were most likely copied.
+- Android: the system properties and folder of Variston's Heliconia framework, and five
+  related web addresses (Google Threat Analysis Group, 2023).
+
+Faster checks
+- Each folder's safety check now runs once per folder instead of once per file and folder
+  level. On a busy Windows PC the program-file check went from 280 to 167 seconds and the app
+  and startup check from 65 to 41, with identical results; links, junctions and cloud-only files
+  are still refused exactly as before.
+
+Indicators and checks
+- The indicator update (`--update`, the start menu and the window's update button) now also
+  asks GitHub once for the latest release number and prints "Version X.Y.Z is available" with
+  the release link if yours is older. It happens only during an explicit update, never during a
+  scan; any failure is silent and never changes the update's result; `--no-version-check`
+  turns it off.
+- A result made only of advertising-network traces keeps its calm explanation, but the
+  window and the report now give protective steps instead of "nothing to do": an ad blocker
+  such as uBlock Origin, or a DNS resolver that blocks ads and known spyware domains, and a
+  link to the project's own blocklists (adblock, hosts and dnsmasq formats). Detection and exit
+  codes are unchanged.
+- The packaged program can update the indicator lists on Linux systems whose certificate
+  folder differs from Debian's (Fedora, Arch and others) and in the macOS app: if no trusted
+  certificates are found, the system's own certificate file is used. Certificate checking is
+  never turned off. The macOS app's advice now says to give Full Disk Access to "Zero Breach
+  Toolkit" (Terminal when run as a script) and no longer mentions Install Certificates.command.
+- If the window cannot be built for any reason, the program continues in the terminal.
+- 150 more indicators for Candiru DevilsTongue and Intellexa Predator from Microsoft, ESET,
+  Google, Cisco Talos, Amnesty International and Recorded Future, each checked against its
+  source. Old IP addresses are in the tiers that treat them as possibly reassigned.
+- 909 more indicators of spyware used against journalists, activists, human-rights defenders
+  and minorities, in a new built-in set (`iocs/curated_targeted.txt`): 893 file fingerprints
+  and 16 Android package names, each copied from the researchers' own indicator files and
+  cited. Arid Viper against Palestinians: 30 fingerprints and 5 package names (ESET, Cisco
+  Talos, SentinelLabs). The Palestinian Preventive Security Service's spyware: 14 (Meta).
+  EvilBamboo against Tibetan, Uyghur and Taiwanese people: 212 (Volexity). HenBox against
+  Uyghurs: 215 and 8 package names (Unit 42). LIGHTSPY and DEEPDATA: 57 (Volexity). A Chrome
+  exploit chain sent to NGOs in 2026: 19 (Volexity). BoneSpy and PlainGnome: 36 (Lookout).
+  DoNot spyware against activists in Togo: 228; OceanLotus against Vietnamese human-rights
+  defenders: 14; NetWire against Indian human-rights defenders: 12 (Amnesty International).
+  ESET: GhostChat 2, Kamran 1 and its package name, VajraSpy 13, eXotic Visit 20, GravityRAT 3
+  and 2 package names, DazzleSpy 3, ScarCruft 14. No web addresses or IP addresses from these
+  reports are included (old ones may now belong to someone else), and package names another
+  app could share are left out.
+- New Windows check: the file locations and hijacked COM classes published for DevilsTongue,
+  reported as leads to check (never findings on their own).
+- Program files up to 512 MB are now fingerprinted (was 120 MB); the report notes that known
+  spyware files are far smaller.
+- iPhone: installed configuration profiles that manage the phone (MDM), trust a root
+  certificate, route traffic through a VPN, proxy or DNS server, or cannot be removed are listed
+  as worth a look, with name, issuer and install date.
+- Out-of-date programs (Windows and macOS): common programs are compared with CISA's Known
+  Exploited Vulnerabilities list and the fixed versions in the official CVE records. A program is
+  called out of date only when it is older than a published fix; otherwise update advice only.
+  The lists are fetched by the indicator update; the comparison is offline.
+- Tests can no longer reach the internet by accident.
+
+Fewer false alarms
+- Android: an app's manifest declarations in `dumpsys package` (`queriesPackages`,
+  `queriesProviders`, `queriesIntents` and the `uses...Libraries` lines) no longer make the
+  phone's system records "name" a monitoring app. They list what an app wants to see, not what
+  is installed: Microsoft Office apps list `com.microsoft.familysafety`, so a phone that never
+  had that app was reported. A real `Package [...]` record is still reported, and addresses on
+  those lines are still checked. Reported and fixed by @BEKO2210.
+- The Citizen Lab list `201707_InsiderInfo` is labelled as its publisher describes it, an
+  intrusion campaign against Chinese-language news sites (2017), no longer as NSO Group's
+  Pegasus in Mexico, so a match from it is not reported as Pegasus. Lists already downloaded
+  take the corrected label without updating.
+
+Also in this release
+- Everything in 0.1.12 to 0.1.15 below: full backups of current iPhones, clearer help for
+  certificate and cryptography problems, folders counted apart from files in the program-file
+  gap, and ad-blocker filter lists no longer reported.
+- The out-of-date program message is translated in every language; Tamil and Hebrew command
+  options and links are no longer altered by the translation.
+
 ## 0.1.15 (2026-10-31)
 
 - Browsers: an ad-blocker's own copy of a filter list is no longer reported. Lists such as

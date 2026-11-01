@@ -9,8 +9,14 @@ Zero Breach Toolkit runs entirely on your computer.
   Use operating-system network isolation when strict offline execution is required.
 - **`--update` uses the network only when you run it.** It downloads published indicator
   lists from a fixed allow-list of sources (the MVT project, Amnesty International, Echap and the
-  Citizen Lab on raw.githubusercontent.com). It sends no information about you or your computer beyond
-  what any web download sends (your IP address reaches GitHub).
+  Citizen Lab on raw.githubusercontent.com). It also downloads CISA's list of actively exploited
+  vulnerabilities from www.cisa.gov and, for a short list of common programs, the matching official
+  CVE records from the CVE Program's repository on raw.githubusercontent.com. It sends no information
+  about you or your computer beyond what any web download sends (your IP address reaches GitHub and
+  CISA); in particular it never sends the list of programs installed on your computer. The
+  update also asks GitHub (api.github.com) for the number of the latest release, and says so if
+  a newer version exists; that is the only time it does, never during a scan, and
+  `--no-version-check` turns it off.
 - **`--collect-android DIR` is a separate acquisition command.** After explicit owner consent,
   it downloads a pinned official AndroidQF binary from GitHub's release hosts and verifies
   SHA-256 before launching it. AndroidQF communicates with the connected phone and has its

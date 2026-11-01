@@ -22,12 +22,24 @@ class WorkflowParser(argparse.ArgumentParser):
         self.exit(1, "{}: error: {}\n".format(self.prog, message))
 
 
+def gui_wanted(raw, args):
+    """Open the window for --gui, or for a packaged program opened with no
+    options (a double-click). --no-gui and any option keep the terminal."""
+    if getattr(args, "no_gui", False):
+        return False
+    if getattr(args, "gui", False):
+        return True
+    return bool(getattr(sys, "frozen", False)) and not raw
+
+
 def workflow_arguments(parser):
     parser.add_argument("--report", metavar="PATH", help="also save the readable report to a local text file")
     parser.add_argument("--evidence-bundle", metavar="PATH", help="save a private, unencrypted evidence ZIP; refuses to overwrite an existing file")
     parser.add_argument("--evidence-file", action="append", default=[], metavar="PATH",
                         help="explicit local original file to include in --evidence-bundle (repeatable; may contain private data)")
     parser.add_argument("--post-menu", action="store_true", help="show report inspection and export choices after an explicit scan, in an interactive terminal")
+    parser.add_argument("--gui", action="store_true", help="open the window instead of the terminal menu")
+    parser.add_argument("--no-gui", action="store_true", help="never open the window, even for a packaged program opened without options")
 
 
 def workflow_validate(parser, args):
@@ -300,6 +312,11 @@ def workflow_menu(document, args):
             return not failed
         if choice in ("", "0", "q", "quit", "exit"):
             return not failed
+        if choice in ("4", "5") and document.get("training"):
+            say("  Not available for a training example: a sharing summary and an evidence"
+                "\n  bundle are made to be sent to someone, and this report is not about a"
+                "\n  real device. The readable report (3) is marked as training.")
+            continue
         try:
             if choice == "1":
                 hits = [(name, h) for name, module in document["modules"].items() for h in module["hits"]]

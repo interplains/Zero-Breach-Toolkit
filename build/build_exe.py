@@ -71,17 +71,34 @@ def main():
     if not os.path.isfile(SOURCE):
         sys.exit("missing {} - run build/bundle.py first".format(SOURCE))
     ver = version()
-    cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--console", "--noupx",
-           "--clean", "--noconfirm", "--name", "zero-breach-toolkit",
-           "--distpath", os.path.join(ROOT, "dist"), "--workpath", WORK,
-           "--specpath", WORK, SOURCE]
+    if sys.platform == "darwin":
+        # A Mac app bundle (Zero Breach Toolkit.app) that opens the window when
+        # double-clicked; the release workflow puts it in a .dmg. PyInstaller
+        # builds .app bundles as a folder (one-file .app is deprecated).
+        cmd = [sys.executable, "-m", "PyInstaller", "--onedir", "--windowed", "--noupx",
+               "--clean", "--noconfirm", "--name", PRODUCT,
+               "--osx-bundle-identifier", "io.github.interplains.zerobreach",
+               "--distpath", os.path.join(ROOT, "dist"), "--workpath", WORK,
+               "--specpath", WORK, SOURCE]
+    else:
+        cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--console", "--noupx",
+               "--clean", "--noconfirm", "--name", "zero-breach-toolkit",
+               "--distpath", os.path.join(ROOT, "dist"), "--workpath", WORK,
+               "--specpath", WORK, SOURCE]
     if os.name == "nt":
         # Windows shows these details under the file's Properties.
         cmd[-1:-1] = ["--version-file", version_file(ver)]
     print("building version", ver)
     subprocess.run(cmd, check=True)
-    exe = os.path.join(ROOT, "dist", "zero-breach-toolkit" + (".exe" if os.name == "nt" else ""))
+    exe = program_path()
     print("wrote {} ({:,} bytes)".format(exe, os.path.getsize(exe)))
+
+
+def program_path():
+    """The runnable file this platform's build produces."""
+    if sys.platform == "darwin":
+        return os.path.join(ROOT, "dist", PRODUCT + ".app", "Contents", "MacOS", PRODUCT)
+    return os.path.join(ROOT, "dist", "zero-breach-toolkit" + (".exe" if os.name == "nt" else ""))
 
 
 if __name__ == "__main__":

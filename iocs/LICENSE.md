@@ -52,6 +52,28 @@ blocking, while its named operational subdomains remain. Historical domains
 may have expired or changed ownership; inclusion is not a claim of current
 malicious activity. Shared hosting parents and IPs are not block rules.
 
+## `curated_targeted.txt`: values copied from publishers' indicator files
+
+`curated_targeted.txt` holds SHA-256 file fingerprints and Android package names of
+spyware used against journalists, activists, human-rights defenders and minorities,
+copied from the researchers' own indicator files. The selection and arrangement are
+dedicated to CC0 as above, but **the values remain under their publishers' terms where
+those apply**, and each publisher's notice is kept in the file's header:
+
+- **ESET** ([malware-ioc](https://github.com/eset/malware-ioc)) and **Volexity**
+  ([threat-intel](https://github.com/volexity/threat-intel)): BSD-2-Clause.
+- **Meta** ([threat-research](https://github.com/facebook/threat-research)) and
+  **Palo Alto Networks Unit 42** ([iocs](https://github.com/pan-unit42/iocs)): MIT.
+- **Lookout** ([threat-intelligence](https://github.com/lookout/threat-intelligence)):
+  Apache License 2.0.
+- **Amnesty International Security Lab**
+  ([investigations](https://github.com/AmnestyTech/investigations)): CC BY 2.0. Please
+  credit Amnesty International when you reuse these values.
+- **Cisco Talos** ([IOCs](https://github.com/Cisco-Talos/IOCs)): CC0 1.0.
+- **SentinelLabs**: two package names read from the cited report.
+
+Keep the source column and the header when you redistribute this file.
+
 ## Please read the header of the indicator file before using it
 
 `adfection_iocs.txt` documents what was **deliberately not imported** and why —

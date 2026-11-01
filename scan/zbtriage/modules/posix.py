@@ -301,7 +301,7 @@ def _ux_commands(text, kind):
         if len(parts) <= fields:
             continue
         # An unescaped % ends the command (the rest is standard input).
-        command = re.split(r"(?<!\\)%", parts[fields], 1)[0]
+        command = re.split(r"(?<!\\)%", parts[fields], maxsplit=1)[0]
         out.append((command, _ux_first_path(command)))
     return out
 

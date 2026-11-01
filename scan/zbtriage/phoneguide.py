@@ -21,7 +21,7 @@ import base64
 import zlib
 
 from .feeds import _certificate_help, _certificate_problem
-from .localpaths import path_problem, local_temp_dir, walk_local
+from .localpaths import path_problem, local_temp_dir, walk_local, tls_context
 from .contract import sanitize_untrusted
 
 _PHONE_RELEASE = "https://github.com/mvt-project/androidqf/releases/download/v1.8.3/"
@@ -55,7 +55,8 @@ def _phone_download(asset, digest, dest):
     problem = path_problem(os.path.abspath(dest))
     if problem:
         raise ValueError("download path refused: " + problem)
-    opener = urllib.request.build_opener(_PhoneRedirect())
+    opener = urllib.request.build_opener(_PhoneRedirect(),
+                                      urllib.request.HTTPSHandler(context=tls_context()))
     req = urllib.request.Request(_PHONE_RELEASE + asset, headers={"User-Agent": "Mozilla/5.0"})
     actual, count = hashlib.sha256(), 0
     with opener.open(req, timeout=60) as response, open(dest, "xb") as out:

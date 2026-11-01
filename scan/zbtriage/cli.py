@@ -29,6 +29,7 @@ import sys
 import time
 from typing import List
 
+from .i18n import I18N_CODES, i18n_set
 from . import __version__
 from .context import ScanContext, scan_recovery
 from .iocs import IocError, load_any, merge
@@ -42,7 +43,9 @@ from .banner import show_banner
 from .menu import menu_wanted, choose_scan
 from .scope import scope_arguments, scope_validate, scope_preview, scope_guide
 from .workflow import (WorkflowParser, workflow_arguments, workflow_validate,
-                       workflow_check_outputs, workflow_before_scan)
+                       workflow_check_outputs, workflow_before_scan, gui_wanted)
+from .training import (training_arguments, training_validate, training_prepare,
+                       training_cleanup)
 
 
 def _force_utf8_io() -> None:
@@ -71,10 +74,12 @@ def _default_ioc_path() -> str:
 
 def _default_ioc_paths() -> List[str]:
     """The curated files shipped with the tool: Zero Breach's AdFection/Candiru
-    set and the hand-curated mercenary-vendor set (e.g. Paragon Graphite)."""
+    set, the hand-curated mercenary-vendor set (e.g. Paragon Graphite) and the
+    set of spyware used against journalists, activists and minorities."""
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.dirname(os.path.dirname(here))
-    return [_default_ioc_path(), os.path.join(repo, "iocs", "curated_mercenary.txt")]
+    return [_default_ioc_path(), os.path.join(repo, "iocs", "curated_mercenary.txt"),
+            os.path.join(repo, "iocs", "curated_targeted.txt")]
 
 
 def _parse(argv: List[str]) -> argparse.Namespace:
@@ -121,6 +126,9 @@ def _parse(argv: List[str]) -> argparse.Namespace:
                         "instead of the copy pinned and checked for this release; when "
                         "scanning: use lists downloaded that way (otherwise only the "
                         "pinned copies are used)")
+    p.add_argument("--no-version-check", action="store_true",
+                   help="with --update (and the update in the menu or window): do not ask "
+                        "GitHub whether a newer release exists")
     p.add_argument("--no-feeds", action="store_true",
                    help="scan with the built-in indicator set only, ignoring "
                         "downloaded sets")
@@ -131,6 +139,8 @@ def _parse(argv: List[str]) -> argparse.Namespace:
                         "cannot see, the exit codes and the rules for relaying a "
                         "result; then exit without scanning (for scripts and AI "
                         "assistants)")
+    p.add_argument("--lang", metavar="CODE", default=None, choices=I18N_CODES,
+                   help="report and window language: " + ", ".join(I18N_CODES) + ". The terminal report is English unless this is given; the window follows the computer's language. The JSON report and the sharing summary are always English")
     p.add_argument("--no-banner", action="store_true",
                    help="do not show the welcome banner (it is only ever shown to a "
                         "person at a terminal, never in redirected output)")
@@ -142,9 +152,11 @@ def _parse(argv: List[str]) -> argparse.Namespace:
                    version="Zero Breach Toolkit {}".format(__version__))
     scope_arguments(p)
     workflow_arguments(p)
+    training_arguments(p)
     args = p.parse_args(argv)
     scope_validate(p, args)
     workflow_validate(p, args)
+    training_validate(p, args)
     args.iocs_explicit = bool(args.iocs)
     if not args.iocs:
         args.iocs = _default_ioc_paths()
@@ -181,9 +193,35 @@ def _refuse_remote(label: str, value: str) -> bool:
     return False
 
 
+def _load_iocs(args):
+    """The indicator set a scan uses: the built-in lists plus any downloaded,
+    verified sources (or only --iocs files when given)."""
+    many = len(args.iocs) > 1
+    sets = [load_any(path, allow_empty=many) for path in args.iocs]
+    if args.iocs_explicit or args.no_feeds:
+        feed_status = {"used": False,
+                       "reason": "--iocs given" if args.iocs_explicit else "--no-feeds"}
+    else:
+        cached, feed_status = feeds.cached_sets(args.indicator_cache, args.latest)
+        feed_status["used"] = True
+        sets += cached
+    iocs = merge(sets)
+    iocs.feeds = feed_status
+    return iocs
+
+
+def _gui_hooks(version_check=True):
+    def run_readers(ctx):
+        ctx.completed = _run_modules(ctx)
+    return {"parse": _parse, "load_iocs": _load_iocs, "run_readers": run_readers,
+            "update": lambda: feeds.update_command(None, None, version_check=version_check),
+            "version": __version__}
+
+
 def _run_update(args) -> int:
     """--update: an explicit network step, never part of a scan."""
-    return feeds.update_command(args.indicator_cache, args.json, args.accept_shrink, args.latest)
+    return feeds.update_command(args.indicator_cache, args.json, args.accept_shrink, args.latest,
+                                version_check=not args.no_version_check)
 
 
 def _main(argv: List[str] = None) -> int:
@@ -203,6 +241,14 @@ def _main(argv: List[str] = None) -> int:
     if args.describe:
         print(json.dumps(describe_document(), indent=2, ensure_ascii=False))
         return 0
+    if args.lang:
+        i18n_set(args.lang)
+    if gui_wanted(raw, args):
+        from .gui import gui_main
+        code = gui_main(dict(_gui_hooks(not args.no_version_check), lang=args.lang))
+        if code is not None:
+            return code
+        print("No window can be shown here; continuing in the terminal.", file=sys.stderr)
     if not args.no_banner:
         show_banner(__version__)
     if args.indicator_cache and _refuse_remote("--indicator-cache", args.indicator_cache):
@@ -212,8 +258,12 @@ def _main(argv: List[str] = None) -> int:
     # see it (menu_wanted). The menu's update step never writes the scan's
     # --json file: that path is for the report of the check chosen next.
     if menu_wanted(raw, args) and not choose_scan(
-            args, lambda: feeds.update_command(args.indicator_cache, None)):
+            args, lambda: feeds.update_command(args.indicator_cache, None,
+                                               version_check=not args.no_version_check)):
         return EXIT_NOT_SCANNED
+    # --training (or the menu's practice entry) swaps in a made-up phone and
+    # made-up indicators; main() deletes them when the tool exits.
+    training_prepare(args)
     try:
         workflow_check_outputs(args)
     except (OSError, ValueError) as exc:
@@ -247,17 +297,7 @@ def _main(argv: List[str] = None) -> int:
             print("error: {}".format(exc), file=sys.stderr)
             return 1
     try:
-        many = len(args.iocs) > 1
-        sets = [load_any(path, allow_empty=many) for path in args.iocs]
-        if args.iocs_explicit or args.no_feeds:
-            feed_status = {"used": False,
-                           "reason": "--iocs given" if args.iocs_explicit else "--no-feeds"}
-        else:
-            cached, feed_status = feeds.cached_sets(args.indicator_cache, args.latest)
-            feed_status["used"] = True
-            sets += cached
-        iocs = merge(sets)
-        iocs.feeds = feed_status
+        iocs = _load_iocs(args)
     except IocError as exc:
         print("error: {}".format(exc), file=sys.stderr)
         return 1
@@ -294,6 +334,8 @@ def main(argv: List[str] = None) -> int:
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1
+    finally:
+        training_cleanup()
 
 
 if __name__ == "__main__":

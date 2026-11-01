@@ -49,7 +49,7 @@ import sys
 import re
 import subprocess
 
-from ..result import (Hit, ModuleResult, EV_DNS, EV_ATTEMPTED,
+from ..result import (Hit, Lead, ModuleResult, EV_DNS, EV_ATTEMPTED,
                       EV_PERSISTENCE, EV_CONFIGURED, EV_REFERENCED, EV_ON_DISK)
 
 NAME = "host"
@@ -1026,6 +1026,108 @@ def _check_known_paths(r: ModuleResult, ctx) -> None:
         len(_KNOWN_DROPS), found))
 
 
+# --- 6. Candiru DevilsTongue traces ------------------------------------------
+
+# Where DevilsTongue puts its files and which COM classes it hijacks to start
+# with Windows. Sources: Microsoft Threat Intelligence, "Protecting customers
+# from a private-sector offensive actor using 0-day exploits and DevilsTongue
+# malware" (2021-07-15), and Avast/Gen, "The Return of Candiru" (2022-07-21,
+# github.com/avast/ioc/tree/master/Candiru). None of these files ships with
+# Windows, but several names imitate Windows input-method (IME) or WMI files, so
+# a file here is a lead to check, never a finding by itself: its fingerprint is
+# what the hash check compares. Path parts, so the join is right on every OS.
+_DT_PATHS = (
+    ("System32", "IME", "IMEJP", "imjpueact.dll"), ("System32", "IME", "IMEJP", "imjpuexp.dll"),
+    ("System32", "IME", "IMETC", "IMTCPROT.DLL"), ("System32", "IME", "SHARED", "imecpmeid.dll"),
+    ("System32", "IME", "SHARED", "imccphd.dll"), ("System32", "IME", "SHARED", "imebrokev.dll"),
+    ("System32", "IME", "SHARED", "imepadsvd.dll"),
+    ("System32", "IME", "SHARED", "WimBootConfigurations.ini"),
+    ("System32", "IME", "IMEJP", "WimBootConfigurations.ini"),
+    ("System32", "IME", "IMETC", "WimBootConfigurations.ini"),
+    ("System32", "config", "spp", "ServiceState", "Recovery", "pac.dat"),
+    ("System32", "config", "cy-GB", "Setup", "SKB", "InputMethod", "TupTask.dat"),
+    ("System32", "config", "config", "startwus.dat"),
+    ("System32", "drivers", "physmem.sys"), ("System32", "drivers", "HW.sys.dat"),
+    ("System32", "migration", "netiopmig.dll"), ("System32", "migration", "netiopmig.dll.inf"),
+    ("System32", "migration", "sppvmig.dll"), ("System32", "migration", "spvmig.dll"),
+    ("System32", "migration", "imjprmig.dll"),
+    ("System32", "wbem", "dmwmibridgeprov132.dll"), ("System32", "wbem", "esscli32.dll"),
+    ("System32", "wbem", "netdacim32.dll"), ("System32", "wbem", "netpeerdistcim32.dll"),
+    ("System32", "wbem", "viewprov32.dll"), ("System32", "wbem", "vsswmi32.dll"),
+    ("System32", "wbem", "wbemcore32.dll"), ("System32", "wbem", "wbemdisp32.dll"),
+    ("System32", "wbem", "wbemsvc32.dll"), ("System32", "wbem", "wfascim32.dll"),
+    ("System32", "wbem", "win32_encryptablevolume32.dll"), ("System32", "wbem", "wmiaprpl32.dll"),
+)
+
+# The COM classes DevilsTongue re-points at its own DLL, and the Windows file
+# each normally loads. Anything else, or a per-user copy of the class, is the
+# hijack Microsoft and Avast describe.
+_DT_CLASSES = {
+    "{4590F811-1D3A-11D0-891F-00AA004B2E24}": "wbemprox.dll",
+    "{4FA18276-912A-11D1-AD9B-00C04FD8FDFF}": "wbemcore.dll",
+    "{7C857801-7381-11CF-884D-00AA004B2E24}": "wbemsvc.dll",
+    "{CF4CC405-E2C5-4DDD-B3CE-5E7582D8C9FA}": "wmiutils.dll",
+}
+
+_DT_USUAL_FILE = ("These names do not ship with Windows, but some imitate its input-method "
+                  "or WMI files. Check the file's digital signature (right-click > Properties > "
+                  "Digital Signatures). If it is not signed by Microsoft, keep the computer as it "
+                  "is and get expert help.")
+_DT_USUAL_CLASS = ("Some legitimate software re-registers Windows components, but rarely these. "
+                   "If you did not install system tools recently, get expert help.")
+
+
+def _dt_class_server(hive, clsid):
+    """The InprocServer32 file a COM class loads in `hive` ("HKLM" or "HKCU"),
+    or None if absent."""
+    root = winreg.HKEY_LOCAL_MACHINE if hive == "HKLM" else winreg.HKEY_CURRENT_USER
+    try:
+        with winreg.OpenKey(root, r"Software\Classes\CLSID\{}\InprocServer32".format(clsid)) as key:
+            value, _kind = winreg.QueryValueEx(key, "")
+    except FileNotFoundError:
+        return None
+    return os.path.expandvars(str(value))
+
+
+def _check_devilstongue(r: ModuleResult, ctx) -> None:
+    root = os.environ.get("SystemRoot", r"C:\Windows")
+    present = 0
+    for parts in _DT_PATHS:
+        path = os.path.join(root, *parts)
+        try:
+            problem = path_problem(path)
+            if problem:
+                raise PermissionError(13, problem, path)
+            exists = os.path.lexists(path)
+        except OSError as exc:
+            r.could_not_run("devilstongue-traces", "could not inspect {}: {}".format(path, exc))
+            return
+        if exists:
+            present += 1
+            r.add_lead(Lead("devilstongue-traces", path,
+                            "A file exists where Candiru's DevilsTongue spyware was documented "
+                            "putting its files (Microsoft 2021, Avast 2022).", _DT_USUAL_FILE))
+    changed = 0
+    for clsid, normal in _DT_CLASSES.items():
+        machine = _dt_class_server("HKLM", clsid)
+        user = _dt_class_server("HKCU", clsid)
+        if machine and os.path.basename(machine).lower() != normal:
+            changed += 1
+            r.add_lead(Lead("devilstongue-traces", "HKLM\\Software\\Classes\\CLSID\\" + clsid,
+                            "A Windows component that DevilsTongue is documented hijacking loads "
+                            "{} instead of {}.".format(machine, normal), _DT_USUAL_CLASS))
+        if user:
+            changed += 1
+            r.add_lead(Lead("devilstongue-traces", "HKCU\\Software\\Classes\\CLSID\\" + clsid,
+                            "A per-user copy of a Windows component that DevilsTongue is documented "
+                            "hijacking loads {}.".format(user), _DT_USUAL_CLASS))
+    r.checked += len(_DT_PATHS) + len(_DT_CLASSES)
+    r.submetrics["devilstongue_paths_checked"] = len(_DT_PATHS)
+    r.ran("devilstongue-traces")
+    ctx.emit("[host] DevilsTongue traces: {} paths and {} components checked, {} to look at".format(
+        len(_DT_PATHS), len(_DT_CLASSES), present + changed))
+
+
 # --- module entry point -----------------------------------------------------
 
 def run(ctx) -> ModuleResult:
@@ -1051,7 +1153,7 @@ def run(ctx) -> ModuleResult:
         # Never a fake CLEAN on a platform where nothing was observed.
         reason = "not supported on {}".format(system or "unknown platform")
         for name in ("com-persistence", "dns-cache", "dns-log", "hosts-file",
-                     "known-paths"):
+                     "known-paths", "devilstongue-traces"):
             r.could_not_run(name, reason)
         return r
 
@@ -1060,7 +1162,8 @@ def run(ctx) -> ModuleResult:
                      ("dns-cache", _check_dns_cache),
                      ("dns-log", _check_dns_log),
                      ("hosts-file", _check_hosts),
-                     ("known-paths", _check_known_paths)):
+                     ("known-paths", _check_known_paths),
+                     ("devilstongue-traces", _check_devilstongue)):
         try:
             fn(r, ctx)
         except Exception as exc:

@@ -24,7 +24,8 @@ from .contract import (CHECK_CATALOGUE, CONTENT_TRUST, EXIT_CODES, HELP_LINKS,
                        contract_must_relay, contract_next_steps,
                        sanitize_module_dict, sanitize_untrusted)
 from .iocs import DECAYING_IP_TIERS, IocSet
-from .localpaths import path_problem
+from .localpaths import path_problem, is_packaged
+from .i18n import T, TN, TX, i18n_lang
 from .result import (CLEAN, HITS, PARTIAL, UNKNOWN, Lead, ModuleResult, is_serious,
                      EV_ON_DISK, EV_FILE_PATTERN, EV_PERSISTENCE, EV_COMMAND, EV_CONTACTED,
                      EV_ATTEMPTED, EV_ON_DEVICE, EV_DEVICE_LOG, EV_RECEIVED, EV_EXECUTION, EV_INVENTORY,
@@ -374,10 +375,31 @@ def _report_console(text, stream):
     print(text.encode(encoding, "backslashreplace").decode(encoding), file=stream)
 
 
+def prepare_document(iocs, results, started, args, cancelled=False):
+    """The complete report document for a finished scan. The terminal and the
+    window both use this, so what they save can never differ."""
+    from .scope import scope_record
+    from .training import training_marker
+    from .workflow import workflow_fingerprints
+    document = build_document(iocs, results, started)
+    document["scope"] = scope_record(args)
+    document["scope"].update(scanned=True, cancelled=cancelled)
+    # A training example is stamped in every output, from the terminal or the window.
+    training = training_marker(args)
+    if training:
+        document["training"] = training
+    document["scan_state"] = "partial" if cancelled or document["verdict"]["gaps"] else "completed"
+    document["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    document["indicator_fingerprints"] = workflow_fingerprints(iocs)
+    document["must_relay"] = contract_must_relay(document)
+    return document
+
+
 def finalize_report(iocs, results, started, args, cancelled=False):
     """Save independent outputs before rendering; retry one interrupted operation."""
     import sys
     from .scope import scope_record
+    from .training import training_marker
     from .workflow import (workflow_write_text, workflow_fingerprints,
                            workflow_interactive, workflow_menu, workflow_output_guard)
     def attempt(operation):
@@ -386,13 +408,7 @@ def finalize_report(iocs, results, started, args, cancelled=False):
         except KeyboardInterrupt:
             print("Report finalization interrupted; preserving completed evidence (interrupt again to stop).", file=sys.stderr)
             return operation()
-    document = attempt(lambda: build_document(iocs, results, started))
-    document["scope"] = scope_record(args)
-    document["scope"].update(scanned=True, cancelled=cancelled)
-    document["scan_state"] = "partial" if cancelled or document["verdict"]["gaps"] else "completed"
-    document["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
-    document["indicator_fingerprints"] = workflow_fingerprints(iocs)
-    document["must_relay"] = contract_must_relay(document)
+    document = attempt(lambda: prepare_document(iocs, results, started, args, cancelled))
     failed = False
     for label, path, minimal in (("JSON report", args.json, False), ("sharing summary", args.share_json, True)):
         if not path:
@@ -522,46 +538,53 @@ def _describe_metrics(metrics: Dict[str, int]) -> List[str]:
     out = []
     for key, value in metrics.items():
         if key == "bytes_hashed":
-            out.append("{:,.1f} GB of files read".format(value / 1e9))
+            out.append(T("{gb} GB of files read", gb="{:,.1f}".format(value / 1e9)))
             continue
         if key == "dns_log_enabled":
-            out.append("Windows DNS history logging: {}".format(
-                "ON" if value else "OFF (the Windows default)"))
+            out.append(T("Windows DNS history logging: {state}",
+                         state=T("ON") if value else T("OFF (the Windows default)")))
             continue
         label = _METRIC_LABELS.get(key)
         if label is None:
             out.append("{}: {}".format(key, _fmt_count(value)))
-        else:
+        elif i18n_lang() == "en":
             out.append("{}: {}".format(label, _fmt_count(value)))
+        else:
+            indent = label[:len(label) - len(label.lstrip())]
+            out.append("{}{}: {}".format(indent, T(label.strip()), _fmt_count(value)))
     return out
 
 
 def render_human(document: Dict[str, Any]) -> str:
+    from .training import training_banner
     document = _human_document(document)
     out: List[str] = []
     w = out.append
+    training_top, training_bottom = training_banner(document)
+    out.extend(training_top)
 
     w(_RULE)
-    w("  Zero Breach Toolkit {} - spyware indicator check".format(
-        document["tool"]["version"]))
+    w("  " + T("Zero Breach Toolkit {version} - spyware indicator check",
+               version=document["tool"]["version"]))
     # The name must not be read as a promise. The tagline carries the tool's one
     # non-negotiable caveat right next to it, so a screenshot of the top of the
     # report cannot imply "you are safe".
     scope = document.get("scope", {})
     if scope:
-        w("  Scope: {}{}".format(scope.get("scan_type", "default"), " (phone evidence only)" if scope.get("phone") else ""))
+        w("  " + (T("Scope: {kind} (phone evidence only)", kind=scope.get("scan_type", "default"))
+                  if scope.get("phone") else T("Scope: {kind}", kind=scope.get("scan_type", "default"))))
         if scope.get("phone") and scope.get("ios_input"):
-            w("  iPhone input: " + _safe_text(scope["ios_input"]))
+            w("  " + T("iPhone input: {kind}", kind=_safe_text(scope["ios_input"])))
         if scope.get("targets"):
-            w("  Only selected targets were checked; system and other-user records are outside scope.")
+            _say(w, ["  Only selected targets were checked; system and other-user records are outside scope."])
         if scope.get("scan_type") == "browser":
-            w("  Only browser profiles were checked; the rest of this computer was not.")
+            _say(w, ["  Only browser profiles were checked; the rest of this computer was not."])
         if scope.get("scan_type") == "full":
-            w("  Full includes more file types and caches in the usual roots; other drives require --target.")
+            _say(w, ["  Full includes more file types and caches in the usual roots; other drives require --target."])
         if scope.get("cancelled"):
-            w("  Cancelled: this report contains partial evidence only.")
-    w("  Checks for TRACES of known mercenary spyware. A clean result is NOT a")
-    w("  clean bill of health - see what could not be checked, below.")
+            _say(w, ["  Cancelled: this report contains partial evidence only."])
+    _say(w, ["  Checks for TRACES of known mercenary spyware. A clean result is NOT a",
+             "  clean bill of health - see what could not be checked, below."])
     w("  {}   {} {}".format(document["timestamp"],
                             document["platform"]["system"],
                             document["platform"]["release"]))
@@ -573,53 +596,54 @@ def render_human(document: Dict[str, Any]) -> str:
 
     ioc = document["ioc_set"]
     age = ioc["age_days"]
-    age_txt = "unknown age" if age is None else "{} day(s) old".format(age)
-    w("Indicator set : {:,} indicator{}, {}".format(ioc["count"], "" if ioc["count"] == 1 else "s", age_txt))
+    age_txt = T("unknown age") if age is None else T("{days} day(s) old", days=age)
+    w(TN("Indicator set : {count} indicator, {age}", "Indicator set : {count} indicators, {age}",
+         ioc["count"], count="{:,}".format(ioc["count"]), age=age_txt))
     for entry in ioc.get("sets", []) if len(ioc.get("sets", [])) > 1 else []:
         device = sum((entry.get("device_indicators") or {}).values())
         skipped = sum((entry.get("not_applicable_to_this_scan") or {}).values())
         refused = sum((entry.get("refused_invalid") or {}).values())
         extra = []
         if device:
-            extra.append("{} for phone-backup / mail checks".format(device))
+            extra.append(T("{n} for phone-backup / mail checks", n=device))
         if skipped:
-            extra.append("{} not usable by this tool".format(skipped))
+            extra.append(T("{n} not usable by this tool", n=skipped))
         if refused:
-            extra.append("{} refused as malformed".format(refused))
-        w("  from {} : {} for computer checks{}".format(
-            _basename(entry.get("path", "")), entry.get("usable", 0),
-            " ({})".format("; ".join(extra)) if extra else ""))
+            extra.append(T("{n} refused as malformed", n=refused))
+        w("  " + T("from {file} : {n} for computer checks", file=_basename(entry.get("path", "")),
+                   n=entry.get("usable", 0)) + (" ({})".format("; ".join(extra)) if extra else ""))
     if ioc["stale"]:
-        w("  ** WARNING: this indicator set is more than 30 days old. Update it "
-          "before trusting a clean result. **")
+        w("  ** " + T("WARNING: this indicator set is more than 30 days old. Update it "
+                      "before trusting a clean result.") + " **")
     if ioc.get("freshness_unknown"):
-        w("  ** WARNING: one or more source dates are unknown; copying files does not refresh indicators. **")
+        w("  ** " + T("WARNING: one or more source dates are unknown; copying files does not refresh "
+                      "indicators.") + " **")
     housekeeping = document.get("housekeeping") or {}
     if housekeeping.get("stale_temp_removed"):
-        w("Clean-up      : removed {} leftover temporary folder(s) from an earlier scan that "
-          "did not finish".format(housekeeping["stale_temp_removed"]))
+        w(T("Clean-up      : removed {n} leftover temporary folder(s) from an earlier scan that "
+            "did not finish", n=housekeeping["stale_temp_removed"]))
     for path in housekeeping.get("stale_temp_not_removed", []):
-        w("  ** WARNING: a leftover temporary folder from an earlier scan could not be removed "
-          "and may hold private copies. Delete it yourself: {} **".format(path))
+        w("  ** " + T("WARNING: a leftover temporary folder from an earlier scan could not be removed "
+                      "and may hold private copies. Delete it yourself: {path}", path=path) + " **")
     w("")
 
     # Put the full indicator evidence after the coverage/DNS-history instructions.
     # The concise result and urgent next steps remain visible in the summary.
     _render_reach(w, document)
 
-    w("DETAIL  —  what was examined, and the evidence behind the summary")
+    w(T("DETAIL  —  what was examined, and the evidence behind the summary"))
     w("")
     for name, m in document["modules"].items():
-        took = (" in {:.0f}s".format(m["duration_s"])
+        took = (" " + T("in {seconds}s", seconds="{:.0f}".format(m["duration_s"]))
                 if m.get("duration_s") else "")
-        w("--- {} check  [{}]{} ---".format(name, m["status"], took))
-        w("    examined: {}    could not read: {}".format(
-            _fmt_count(m["checked"]), _fmt_count(m["skipped"])))
+        w("--- " + T("{name} check", name=name) + "  [{}]{} ---".format(m["status"], took))
+        w("    " + T("examined: {checked}    could not read: {skipped}",
+                     checked=_fmt_count(m["checked"]), skipped=_fmt_count(m["skipped"])))
         if m["submetrics"]:
             for line in _describe_metrics(m["submetrics"]):
                 w("    {}".format(line))
         for note in m["notes"]:
-            w("    note   : {}".format(note))
+            w("    " + _field("note   : ") + TX(note))
         if m["hits"]:
             # Strongest evidence first: someone reading this should see a sample
             # on disk or a proven contact before a string that merely appeared in
@@ -632,53 +656,56 @@ def render_human(document: Dict[str, Any]) -> str:
             for h in sorted(m["hits"], key=lambda x: order.get(x.get("evidence", ""), 0)):
                 prov = "{}/{}".format(h["tier"], h["confidence"]) if h["tier"] else "?"
                 ev = h.get("evidence") or "unclassified"
-                w("    !! HIT  {}  [{}]  evidence: {}".format(
-                    _show_indicator(h, document), prov, ev.upper()))
+                w("    !! " + T("HIT") + "  {}  [{}]  ".format(_show_indicator(h, document), prov) +
+                  _field("evidence: ") + ev.upper())
                 gloss = _evidence_gloss(h)
                 if gloss:
-                    w("            meaning: {}".format(gloss))
+                    w("            " + _field("meaning: ") + T(gloss))
                 if h.get("profile"):
-                    w("            account: {}".format(h["profile"]))
-                w("            at     : {}".format(
-                    _defang_text(h["location"], _net_value(h))))
-                w("            detail : {}".format(
-                    _defang_text(h["detail"], _net_value(h))))
+                    w("            " + _field("account: ") + h["profile"])
+                w("            " + _field("at     : ") + _defang_text(h["location"], _net_value(h)))
+                w("            " + _field("detail : ") + _defang_text(TX(h["detail"]), _net_value(h)))
                 if h.get("observed"):
-                    w("            when   : {}".format(
-                        _defang_text(h["observed"], _net_value(h))))
+                    w("            " + _field("when   : ") + _defang_text(h["observed"], _net_value(h)))
                 if h.get("family"):
-                    w("            family : {}".format(h["family"]))
+                    w("            " + _field("family : ") + h["family"])
                 if h.get("source"):
-                    w("            source : {}".format(h["source"]))
+                    w("            " + _field("source : ") + h["source"])
                 for caution in h.get("context_cautions", []):
-                    w("            context: " + caution)
+                    w("            " + _field("context: ") + TX(caution))
         w("")
 
     for group in document.get("correlations", []):
-        w("RELATED RECORDS: {} occurs in {} artifacts.".format(
-            _show_indicator(group, document), group["artifact_count"]))
-        w("  " + group["interpretation"])
+        w(T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
+            indicator=_show_indicator(group, document), n=group["artifact_count"]))
+        w("  " + TX(group["interpretation"]))
     looks = document.get("worth_a_look") or []
     if looks:
-        w("WORTH A LOOK  —  these are NOT findings")
-        w("  Things this scan cannot judge on its own. Each has an ordinary")
-        w("  explanation that is far more common, given below. They do not change")
-        w("  the result.")
+        w(T("WORTH A LOOK  —  these are NOT findings"))
+        _say(w, ["  Things this scan cannot judge on its own. Each has an ordinary",
+                 "  explanation that is far more common, given below. They do not change",
+                 "  the result."])
         w("")
         for item in looks:
-            w("  - {}  ({} check)".format(item.get("what", ""), item.get("module", "")))
-            w("      at     : {}".format(item.get("location", "")))
+            w("  - {}  ({})".format(TX(item.get("what", "")), T("{name} check", name=item.get("module", ""))))
+            w("      " + _field("at     : ") + "{}".format(item.get("location", "")))
             if item.get("observed"):
-                w("      when   : {}".format(item["observed"]))
+                w("      " + _field("when   : ") + "{}".format(item["observed"]))
             if item.get("usual_reason"):
-                for i, line in enumerate(_wrap(item["usual_reason"], 60)):
-                    w("      {} {}".format("usually:" if i == 0 else "        ", line))
+                usual = _field("usually:")
+                if i18n_lang() != "en":
+                    usual = usual.rstrip()
+                for i, line in enumerate(_wrap_any(TX(item["usual_reason"]), 60) if i18n_lang() != "en"
+                                         else _wrap(item["usual_reason"], 60)):
+                    w("      {} {}".format(usual if i == 0 else " " * len(usual), line))
         w("")
     timeline = document.get("timeline") or []
     if timeline:
-        w("IN TIME ORDER  —  local time of this computer")
+        w(T("IN TIME ORDER  —  local time of this computer"))
         for row in timeline:
-            label = {"finding": "FINDING", "reference": "REF    "}.get(row["kind"], "look   ")
+            label = ({"finding": "FINDING", "reference": "REF    "}.get(row["kind"], "look   ")
+                     if i18n_lang() == "en" else
+                     T({"finding": "FINDING", "reference": "REF"}.get(row["kind"], "look")))
             extra = " [{}]".format(row["evidence"]) if row.get("evidence") else ""
             w("  {}  {}  {}{}  ({})".format(row["when"], label, row["what"], extra,
                                           row["module"]))
@@ -687,53 +714,54 @@ def render_human(document: Dict[str, Any]) -> str:
     v = document["verdict"]
     w(_RULE)
     if v["status"] == V_HITS:
-        w("VERDICT: {} indicator match{}.".format(v["hits_total"], "" if v["hits_total"] == 1 else "es"))
+        w(TN("VERDICT: {n} indicator match.", "VERDICT: {n} indicator matches.", v["hits_total"]))
         w("")
         counts = {}
         for m in document["modules"].values():
             for h in m["hits"]:
                 key = h.get("evidence") or "unclassified"
                 counts[key] = counts.get(key, 0) + 1
-        w("  By evidence strength: " + ", ".join(
+        w("  " + T("By evidence strength:") + " " + ", ".join(
             "{} {}".format(n, k) for k, n in sorted(counts.items())))
         w("")
-        w("  Follow the next steps in the summary. The indicator's role and the")
-        w("  evidence type determine those steps; the number of matches does not.")
-        w("  A match means INVESTIGATE, not 'you are compromised'.")
-        w("  A match does not by itself establish that spyware ran on this device.")
+        _say(w, ["  Follow the next steps in the summary. The indicator's role and the",
+                 "  evidence type determine those steps; the number of matches does not."])
+        _say(w, ["  A match means INVESTIGATE, not 'you are compromised'."])
+        _say(w, ["  A match does not by itself establish that spyware ran on this device."])
     elif v["status"] in (V_WITHDRAWN, V_WITHDRAWN_WITH_GAPS):
-        w("VERDICT: every match is to an indicator its publisher has withdrawn;")
-        w("no actionable finding.")
-        w("A withdrawal means the publisher no longer stands behind the indicator. Review")
-        w("its source context and timing. This does not clear the device.")
+        _say(w, ["VERDICT: every match is to an indicator its publisher has withdrawn;",
+                 "no actionable finding."])
+        _say(w, ["A withdrawal means the publisher no longer stands behind the indicator. Review",
+                 "its source context and timing. This does not clear the device."])
         if v["gaps"]:
-            w("Checks that could NOT run (a gap is not a clean result):")
+            w(T("Checks that could NOT run (a gap is not a clean result):"))
             for g in _gap_lines(v["gaps"]):
                 w("  - {}".format(g))
     elif v["status"] in (V_REFERENCES, V_REFERENCES_WITH_GAPS):
-        w("VERDICT: references in saved content only; no actionable finding.")
-        w("A reference does not establish contact or infection. This does not clear the device.")
+        w(T("VERDICT: references in saved content only; no actionable finding."))
+        _say(w, ["A reference does not establish contact or infection. This does not clear the device."])
         if v["gaps"]:
-            w("Checks that could NOT run (a gap is not a clean result):")
+            w(T("Checks that could NOT run (a gap is not a clean result):"))
             for g in _gap_lines(v["gaps"]):
                 w("  - {}".format(g))
     else:
         if v["gaps"]:
-            w("VERDICT: no known indicators found IN WHAT COULD BE CHECKED.")
+            w(T("VERDICT: no known indicators found IN WHAT COULD BE CHECKED."))
             w("")
-            w("Checks that could NOT run (a gap is not a clean result):")
+            w(T("Checks that could NOT run (a gap is not a clean result):"))
             for g in _gap_lines(v["gaps"]):
                 w("  - {}".format(g))
             w("")
         else:
-            w("VERDICT: no known indicators found in any check that ran.")
+            w(T("VERDICT: no known indicators found in any check that ran."))
             w("")
-        # D1: the mandatory closing line, verbatim.
-        w(document["doctrine_line"])
+        # D1: the mandatory closing line, verbatim (translated when another language is chosen).
+        w(TX(document["doctrine_line"]))
         w("")
     w("")
     _support_options(w)
     w(_RULE)
+    out.extend(training_bottom)
     return _defang_report("\n".join(out), document)
 
 
@@ -752,35 +780,34 @@ def overlap_statement(earliest: datetime.date, source: str) -> List[str]:
     Unread or out-of-scope records may be older; an oldest date does not prove
     that records cover every day since then or that missing evidence is gone.
     """
+    values = dict(source=source, date=earliest.isoformat(), period=T(CAMPAIGN_LABEL))
+    out: List[str] = []
     if earliest > CAMPAIGN_TO:
-        return [
-            "** The oldest dated evidence reported by this scan is {} ({}).".format(
-                source,
-                earliest.isoformat()),
-            "   The campaign this tool searches for was active in {}.".format(
-                CAMPAIGN_LABEL),
+        _say(out.append, [
+            "** The oldest dated evidence reported by this scan is {source} ({date}).",
+            "   The campaign this tool searches for was active in {period}.",
             "   Those dates DO NOT OVERLAP. The dates reported here do not reach",
             "   the campaign period. Older or unread records may still exist;",
             "   this scan cannot rule out past contact during that period. **",
-        ]
+        ], **values)
+        return out
     if earliest > CAMPAIGN_FROM:
-        return [
-            "** The oldest dated evidence reported by this scan is {} ({}).".format(
-                source, earliest.isoformat()),
-            "   That reaches PART of the campaign period ({}),".format(CAMPAIGN_LABEL),
-            "   from {} onwards, and only through that one kind of record.".format(
-                earliest.isoformat()),
+        _say(out.append, [
+            "** The oldest dated evidence reported by this scan is {source} ({date}).",
+            "   That reaches PART of the campaign period ({period}),",
+            "   from {date} onwards, and only through that one kind of record.",
             "   This does not establish continuous coverage from that date.",
             "   Older or unread records may still exist. A clean result cannot",
             "   rule out past contact during the campaign period. **",
-        ]
-    return [
-        "** The oldest dated evidence reported by this scan is {} ({}), which predates".format(
-            source, earliest.isoformat()),
+        ], **values)
+        return out
+    _say(out.append, [
+        "** The oldest dated evidence reported by this scan is {source} ({date}), which predates",
         "   the campaign period. This does not establish continuous coverage",
         "   through that period. Surviving records are never everything, and a",
         "   clean result cannot rule out past contact during that period. **",
-    ]
+    ], **values)
+    return out
 
 
 def _render_reach(w, document: Dict[str, Any]) -> None:
@@ -795,10 +822,10 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
         return
 
     w(_RULE)
-    w("HOW FAR BACK THIS SCAN COULD SEE")
+    w(T("HOW FAR BACK THIS SCAN COULD SEE"))
     w("")
-    w("  These dates come from the records examined by this scan. They do not")
-    w("  establish a complete history; older or unread records may still exist:")
+    _say(w, ["  These dates come from the records examined by this scan. They do not",
+             "  establish a complete history; older or unread records may still exist:"])
     w("")
 
     earliest_overall = None
@@ -806,15 +833,15 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
     for mod_name, label, info in entries:
         earliest = info.get("earliest")
         days = info.get("days")
-        when = "unknown (no date established)" if not earliest else earliest[:10]
+        when = T("unknown (no date established)") if not earliest else earliest[:10]
         age = ""
         if isinstance(days, int) and earliest:
-            age = "  ({} days ago)".format(days)
+            age = "  ({})".format(T("{n} days ago", n=days))
         w("  {}/{}".format(mod_name, label))
-        w("      reaches back to : {}{}".format(when, age))
-        w("      basis           : {}".format(info.get("basis", "")))
+        w("      " + _field("reaches back to : ") + "{}{}".format(when, age))
+        w("      " + _field("basis           : ") + TX(info.get("basis", "")))
         if info.get("note"):
-            w("      {}".format(info["note"]))
+            w("      {}".format(TX(info["note"])))
         w("")
         if earliest:
             try:
@@ -864,15 +891,16 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
                 year = int(year)
                 merged[year] = merged.get(year, 0) + count
 
-        w("  Age of the browser cache files searched, by year (cache files only,")
-        w("  not cookies or DNS - those are summarised above):")
+        _say(w, ["  Age of the browser cache files searched, by year (cache files only,",
+                 "  not cookies or DNS - those are summarised above):"])
         w("      " + "   ".join("{}: {:,}".format(y, merged[y])
                                 for y in sorted(merged)))
         w("")
         pct = 100.0 * in_window / total_dated
-        w("  Of those cache files, dating from the campaign period ({}-{}): "
-          "{:,} of {:,} ({:.1f}%).".format(
-              CAMPAIGN_FROM.year, CAMPAIGN_TO.year, in_window, total_dated, pct))
+        _say(w, ["  Of those cache files, dating from the campaign period ({start}-{end}): "
+                 "{n} of {total} ({pct}%)."],
+             start=CAMPAIGN_FROM.year, end=CAMPAIGN_TO.year, n="{:,}".format(in_window),
+             total="{:,}".format(total_dated), pct="{:.1f}".format(pct))
 
         # A per-year floor matters more than the total: the campaign ran across
         # several years, and a year with almost nothing left is a year this scan
@@ -880,18 +908,18 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
         sparse = [y for y in range(CAMPAIGN_FROM.year, CAMPAIGN_TO.year + 1)
                   if merged.get(y, 0) < 100]
         if in_window == 0 and not something_in_window:
-            w("  No dated evidence summarised here reaches the campaign period.")
-            w("  Older or unread records may still exist. A clean result cannot")
-            w("  rule out past contact during that period.")
+            _say(w, ["  No dated evidence summarised here reaches the campaign period.",
+                     "  Older or unread records may still exist. A clean result cannot",
+                     "  rule out past contact during that period."])
         elif in_window == 0 and something_in_window:
-            w("  No browser CACHE file examined dates from the campaign period, though some")
-            w("  older evidence (shown above) does. Cache is the thinnest record;")
-            w("  the window above is the one to read.")
+            _say(w, ["  No browser CACHE file examined dates from the campaign period, though some",
+                     "  older evidence (shown above) does. Cache is the thinnest record;",
+                     "  the window above is the one to read."])
         elif sparse:
-            w("  BUT cache coverage is uneven. These campaign years have almost no")
-            w("  surviving cache, so a clean result says little about them:")
+            _say(w, ["  BUT cache coverage is uneven. These campaign years have almost no",
+                     "  surviving cache, so a clean result says little about them:"])
             for y in sparse:
-                w("      {}: {:,} cache file(s)".format(y, merged.get(y, 0)))
+                w("      {}: {}".format(y, T("{n} cache file(s)", n="{:,}".format(merged.get(y, 0)))))
         w("")
 
     # The actionable part, rendered as its own ruled-off section so the one thing
@@ -903,7 +931,7 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
         w("")
         w(_RULE)
         for line in howto:
-            w(line)
+            w(TX(line))
         w(_RULE)
     w("")
 
@@ -913,6 +941,10 @@ def _render_reach(w, document: Dict[str, Any]) -> None:
 # contact with a command-and-control server are different events, and a report
 # that renders them identically has failed the person reading it.
 TIER_MEANING = {
+    "forensic": ("A trace of Cellebrite, the phone-forensics tool police and security "
+                 "services use to unlock seized phones and copy their contents. It is not "
+                 "spyware: it shows the phone was unlocked, or an unlock was attempted, "
+                 "while it was out of its owner's hands."),
     "stalkerware": ("A commercial phone-monitoring ('stalkerware') app or its company's "
                     "server. Some are sold as family-safety apps and installed knowingly. "
                     "If neither you nor someone you trust installed it, someone may be "
@@ -1050,6 +1082,8 @@ def _headline_for(hit) -> str:
     """The summary headline for one serious hit, chosen by grade AND tier."""
     if hit.get("withdrawn_only"):
         return "HISTORICAL MATCH TO A WITHDRAWN INDICATOR - REVIEW SOURCE CONTEXT"
+    if hit.get("tier") == "forensic":
+        return "SIGNS THIS PHONE WAS UNLOCKED WITH A PHONE-FORENSICS TOOL (CELLEBRITE)"
     if hit.get("tier") == "stalkerware" and _hit_watchware(hit):
         return ("A MONITORING APP THAT DOES NOT HIDE ITSELF (OFTEN A FAMILY-SAFETY APP) "
                 "WAS FOUND - DID YOU, OR SOMEONE YOU TRUST, INSTALL IT?")
@@ -1247,6 +1281,10 @@ def _recommended_action(hit) -> int:
         # The person decides first whether they know about it; the next steps
         # carry the safety advice (removing it can alert whoever installed it).
         return 1
+    if tier == "forensic":
+        # The data was very likely copied, and in documented cases spyware was
+        # installed after such an unlock: expert help, not self-review.
+        return 3
     if evidence == EV_ON_DISK and tier == "vuln-driver":
         return 1
     if evidence in (EV_ON_DISK, EV_PERSISTENCE, EV_ON_DEVICE):
@@ -1258,13 +1296,16 @@ def _recommended_action(hit) -> int:
 
 
 def _advice_paragraph(w, text):
-    for line in _wrap(text, 66):
+    for line in (_wrap(text, 66) if i18n_lang() == "en" else _wrap_any(T(text), 66)):
         w("    " + line)
 
 
 def _next_steps(w, hits):
     action = max(_recommended_action(h) for h in hits)
-    w("  WHAT TO DO")
+    w("  " + T("WHAT TO DO"))
+    if any(h.get("tier") == "forensic" for h in hits):
+        _advice_paragraph(w, "Someone unlocked this phone, or tried to, with Cellebrite: the phone-forensics tool police and security services use to copy everything on a seized phone. Assume what was on the phone then - messages, photos, contacts, saved passwords and the accounts signed in - was copied. Change the passwords of important accounts from another device, sign out other sessions, and tell the people whose conversations were on it. In documented cases spyware was installed after such an unlock, so check the apps installed around that time and get expert help.")
+        w("")
     monitoring = [h for h in hits if h.get("tier") == "stalkerware"]
     if monitoring and all(_hit_watchware(h) for h in monitoring):
         _advice_paragraph(w, "A monitoring app that does not hide itself was found, "
@@ -1340,6 +1381,18 @@ def _next_steps(w, hits):
                              "DNS record does not even establish that connection. "
                              "This finding alone does not call for a spyware "
                              "helpline referral.")
+            if all(h.get("tier") == "delivery" for h in hits):
+                w("")
+                _advice_paragraph(w, "Some spyware has been delivered through "
+                                 "advertising networks, so it is a good idea to block them. "
+                                 "Install a reputable ad blocker in your browser, for "
+                                 "example uBlock Origin. Or use a DNS resolver that "
+                                 "blocks ads and known spyware domains, on your "
+                                 "computer, phone or router; the page "
+                                 "https://archivegenocide.com/scan has a test and setup "
+                                 "steps. This project publishes its own blocklists of "
+                                 "these advertising domains (adblock, hosts and dnsmasq "
+                                 "formats): https://github.com/interplains/Zero-Breach-Toolkit#blocking-advertising-domains")
         if any(h.get("tier") == "vuln-driver" and
                h.get("evidence") == EV_ON_DISK for h in hits):
             w("")
@@ -1357,14 +1410,21 @@ def _next_steps(w, hits):
                              "that question unresolved.")
         configured = [h for h in hits if h.get("evidence") == EV_CONFIGURED]
         if configured:
-            text = "For a configuration entry, check who or what created it and why. "
+            # Whole sentences, one per case, so each translates as written.
+            text = ("For a configuration entry, check who or what created it and why. "
+                    "Do not edit it merely to make this finding disappear.")
             if any(h.get("tier") == "delivery" for h in configured):
                 # Only ad-delivery infrastructure has the ad-impression explanation.
-                where = ("hosts-file entry" if any("hosts" in str(h.get("location", "")).lower()
-                                                   for h in configured) else "configuration entry")
-                text += "An ordinary ad impression does not explain a local " + where + ". "
+                if any("hosts" in str(h.get("location", "")).lower() for h in configured):
+                    text = ("For a configuration entry, check who or what created it and why. "
+                            "An ordinary ad impression does not explain a local hosts-file entry. "
+                            "Do not edit it merely to make this finding disappear.")
+                else:
+                    text = ("For a configuration entry, check who or what created it and why. "
+                            "An ordinary ad impression does not explain a local configuration entry. "
+                            "Do not edit it merely to make this finding disappear.")
             w("")
-            _advice_paragraph(w, text + "Do not edit it merely to make this finding disappear.")
+            _advice_paragraph(w, text)
         w("")
         _advice_paragraph(w, "Keep the report. If you cannot explain a finding, "
                          "ask trusted IT support for help interpreting it. "
@@ -1377,24 +1437,24 @@ def _next_steps(w, hits):
 
 
 def _support_options(w):
-    w("WHEN TO SEEK SUPPORT")
-    w("A credible targeting concern or a genuine security notification warrants")
-    w("qualified help regardless of this scan's result. You do not need to")
-    w("complete self-checks first. Contact your organisation's security team")
-    w("or a qualified incident responder.")
+    w(T("WHEN TO SEEK SUPPORT"))
+    _say(w, ["A credible targeting concern or a genuine security notification warrants",
+             "qualified help regardless of this scan's result. You do not need to",
+             "complete self-checks first. Contact your organisation's security team",
+             "or a qualified incident responder."])
     w("")
-    w("For journalists, activists, human-rights defenders and other civil")
-    w("society members, Access Now offers a Digital Security Helpline:")
+    _say(w, ["For journalists, activists, human-rights defenders and other civil",
+             "society members, Access Now offers a Digital Security Helpline:"])
     w("  https://www.accessnow.org/help/")
-    w("  Eligibility and support: https://www.accessnow.org/help/helpline-faq/")
-    w("Check its intake instructions before sending private evidence.")
+    w("  " + T("Eligibility and support:") + " https://www.accessnow.org/help/helpline-faq/")
+    _say(w, ["Check its intake instructions before sending private evidence."])
     w("")
-    w("Research and further guidance:")
+    w(T("Research and further guidance:"))
     w("  Amnesty International Security Lab  https://securitylab.amnesty.org/")
     w("  The Citizen Lab                     https://citizenlab.ca/")
     w("")
-    w("A saved reference or advertising-network trace alone is not a reason")
-    w("to assume spyware infection. No result from this tool rules it out.")
+    _say(w, ["A saved reference or advertising-network trace alone is not a reason",
+             "to assume spyware infection. No result from this tool rules it out."])
 
 
 def render_summary(document: Dict[str, Any]) -> str:
@@ -1412,81 +1472,83 @@ def render_summary(document: Dict[str, Any]) -> str:
     benign = [h for h in all_hits if not is_serious(h.get("evidence", ""))]
 
     w(_RULE)
-    w("  SUMMARY  —  read this part")
+    w("  " + T("SUMMARY  —  read this part"))
+    if i18n_lang() != "en":
+        _say(w, ["  This translation may contain errors. The English original is saved with the "
+                 "report and is the authoritative record."])
+    if document.get("training"):
+        _say(w, ["  TRAINING EXAMPLE: a made-up phone and made-up indicators, not a real check."])
     w(_RULE)
 
     if not all_hits:
-        w("  RESULT: no known indicator was found in anything that could be")
-        w("          checked.")
+        _say(w, ["  RESULT: no known indicator was found in anything that could be",
+                 "          checked."])
         w("")
-        w("  This is NOT a clean bill of health. See the two sections below for")
-        w("  what was searched and, more importantly, what could not be.")
+        _say(w, ["  This is NOT a clean bill of health. See the two sections below for",
+                 "  what was searched and, more importantly, what could not be."])
     elif serious:
         n = len(serious)
         action = max(_recommended_action(h) for h in serious)
         if all(h.get("withdrawn_only") for h in serious):
-            w("  RESULT: a match to an indicator its publisher has WITHDRAWN - review")
-            w("          the source context. Not an actionable finding.")
+            _say(w, ["  RESULT: a match to an indicator its publisher has WITHDRAWN - review",
+                     "          the source context. Not an actionable finding."])
         elif action == 3:
-            w("  RESULT: SERIOUS FINDING - seek expert help promptly.")
+            _say(w, ["  RESULT: SERIOUS FINDING - seek expert help promptly."])
         elif action == 2:
-            w("  RESULT: potentially SERIOUS finding - qualified review recommended.")
+            _say(w, ["  RESULT: potentially SERIOUS finding - qualified review recommended."])
         else:
             # Count what was found, not how many records repeat it: one app seen
             # in a dozen databases is one thing to review, not twelve.
             k = len({h.get("indicator") for h in serious})
             if k == n:
-                w("  RESULT: {} finding{} to review; start with the saved context.".format(
-                    n, "" if n == 1 else "s"))
+                _say(w, ["  RESULT: {n} finding to review; start with the saved context." if n == 1 else
+                         "  RESULT: {n} findings to review; start with the saved context."], n=n)
             else:
-                w("  RESULT: {} indicator{} to review, recorded in {} places; start with".format(
-                    k, "" if k == 1 else "s", n))
-                w("          the saved context.")
+                _say(w, ["  RESULT: {k} indicator to review, recorded in {n} places; start with" if k == 1 else
+                         "  RESULT: {k} indicators to review, recorded in {n} places; start with",
+                         "          the saved context."], k=k, n=n)
         if benign:
             nb = len(benign)
-            w("          ({} further match{} {} only {} in saved page "
-              "content.)".format(
-                  nb, "" if nb == 1 else "es", "is" if nb == 1 else "are",
-                  "a reference" if nb == 1 else "references"))
+            _say(w, ["          ({n} further match is only a reference in saved page content.)" if nb == 1 else
+                     "          ({n} further matches are only references in saved page content.)"], n=nb)
         w("")
-        w("  WHAT WAS FOUND")
+        w("  " + T("WHAT WAS FOUND"))
         # Strongest grade first; collapse repeats of the same indicator+grade so
         # one domain in three cache files is not three lines.
         for h in sorted(_dedup_serious(serious),
                         key=_recommended_action, reverse=True):
             headline = _headline_for(h)
-            w("    >> {}".format(headline))
+            w("    >> {}".format(T(headline)))
             w("       {}  [{}]".format(_show_indicator(h, document), h["tier"]))
             if h.get("withdrawal_present"):
-                for line in _wrap(MUST_RELAY["withdrawn"], 64):
+                for line in _wrap_t(MUST_RELAY["withdrawn"], 64):
                     w("          " + line)
             # A withdrawn-only match already says "not an actionable finding";
             # the tier's "treat contact as serious" text would contradict it.
             meaning = None if h.get("withdrawn_only") else TIER_MEANING.get(h["tier"])
             if meaning:
-                for line in _wrap(meaning, 64):
+                for line in _wrap_t(meaning, 64):
                     w("          " + line)
             if h.get("profile"):
-                w("          Account: {}".format(h["profile"]))
+                w("          " + T("Account: {value}", value=h["profile"]))
             if h.get("observed"):
-                w("          When: {}".format(h["observed"][:19].replace("T", " ")))
-            w("          Where: {}".format(
-                _defang_text(h["location"], _net_value(h))))
+                w("          " + T("When: {value}", value=h["observed"][:19].replace("T", " ")))
+            w("          " + T("Where: {value}", value=_defang_text(h["location"], _net_value(h))))
             w("")
         _next_steps(w, serious)
         if benign:
             n_b = len(benign)
             w("")
-            w("    The {} reference-only match{} {} listed in DETAIL. Saved text".format(
-                  n_b, "" if n_b == 1 else "es", "is" if n_b == 1 else "are"))
-            w("    can mention an indicator without a connection to it.")
+            _say(w, ["    The {n} reference-only match is listed in DETAIL. Saved text" if n_b == 1 else
+                     "    The {n} reference-only matches are listed in DETAIL. Saved text",
+                     "    can mention an indicator without a connection to it."], n=n_b)
     else:
         n = len(benign)
-        w("  RESULT: {} match{} found, all of them reference-only.".format(
-            n, "" if n == 1 else "es"))
+        _say(w, ["  RESULT: {n} match found, all of them reference-only." if n == 1 else
+                 "  RESULT: {n} matches found, all of them reference-only."], n=n)
         w("")
-        w("  WHAT THIS PROBABLY IS")
-        for line in _wrap(
+        w("  " + T("WHAT THIS PROBABLY IS"))
+        for line in _wrap_t(
                 "These matches are names found in saved content, such as page "
                 "text, an unvisited bookmark or browser storage. A reference "
                 "does not establish a connection, execution or infection. "
@@ -1501,39 +1563,38 @@ def render_summary(document: Dict[str, Any]) -> str:
                          "help directly regardless of this result.")
 
     for group in document.get("correlations", []):
-        w("RELATED RECORDS: {} occurs in {} artifacts.".format(
-            _show_indicator(group, document), group["artifact_count"]))
-        w("  " + group["interpretation"])
+        w(T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
+            indicator=_show_indicator(group, document), n=group["artifact_count"]))
+        w("  " + TX(group["interpretation"]))
     looks = document.get("worth_a_look") or []
     if looks:
         w("")
-        w("  ALSO: {} item{} under \"WORTH A LOOK\" further down. {} NOT".format(
-            len(looks), "" if len(looks) == 1 else "s",
-            "It is" if len(looks) == 1 else "They are"))
-        w("  a finding; each comes with its usual, ordinary explanation.")
+        _say(w, ["  ALSO: {n} item under \"WORTH A LOOK\" further down. It is NOT" if len(looks) == 1 else
+                 "  ALSO: {n} items under \"WORTH A LOOK\" further down. They are NOT",
+                 "  a finding; each comes with its usual, ordinary explanation."], n=len(looks))
     gaps = v.get("gaps") or []
     if gaps:
         w("")
-        w("  WHAT COULD NOT BE CHECKED  ({} gap{}, grouped)".format(
-            len(gaps), "" if len(gaps) == 1 else "s"))
+        w("  " + TN("WHAT COULD NOT BE CHECKED  ({n} gap, grouped)",
+                    "WHAT COULD NOT BE CHECKED  ({n} gaps, grouped)", len(gaps)))
         for g in _gap_lines(gaps):
-            for i, line in enumerate(_wrap(g, 66)):
+            for i, line in enumerate(_wrap(g, 66) if i18n_lang() == "en" else _wrap_any(g, 66)):
                 w("    " + ("- " if i == 0 else "  ") + line)
-        w("    (Each one is listed in full at the end of this report.)")
+        w("    " + T("(Each one is listed in full at the end of this report.)"))
         # The DNS gap is the one a reader can actually close - but only point at
         # the instructions if they were actually rendered (they are not on a
         # non-Windows host), or the pointer dangles.
         if document.get("_dns_howto") and any("dns" in g.lower() for g in gaps):
             w("")
-            w("    -> You can fix the DNS gap for next time, in one command.")
-            w("       See \"HOW TO TURN ON DNS HISTORY\" further down. It tells you")
-            w("       nothing about the past, but it means a future check can")
-            w("       actually answer the question.")
+            _say(w, ["    -> You can fix the DNS gap for next time, in one command."])
+            _say(w, ["       See \"HOW TO TURN ON DNS HISTORY\" further down. It tells you",
+                     "       nothing about the past, but it means a future check can",
+                     "       actually answer the question."])
     # Every report, not only one with findings. A clean or reference-only result
     # is the one people are most relaxed about posting publicly to say "I'm
     # fine" - and it carries the same usernames, profile names and paths.
     w("")
-    for line in _wrap(_PRIVACY_NOTE, 68):
+    for line in _wrap_t(_PRIVACY_NOTE, 68):
         w("  " + line)
     w(_RULE)
     w("")
@@ -1592,28 +1653,41 @@ def _gap_lines(gaps: List[str]) -> List[str]:
         rest[g] = rest.get(g, 0) + 1
     lines = []
     if missing_sources:
-        lines.append("Indicator sources not downloaded — run --update once, then scan again.")
+        lines.append(T("Indicator sources not downloaded — run --update once, then scan again."))
     if locked:
-        lines.append("Open apps kept some of their data locked, so it was not read: {}. "
-                     "Close them and run the check again to include it.".format(
-                         ", ".join(sorted(locked))))
+        lines.append(T("Open apps kept some of their data locked, so it was not read: {apps}. "
+                       "Close them and run the check again to include it.",
+                       apps=", ".join(sorted(T(name) for name in locked))))
     if private:
-        lines.append("macOS privacy protection kept some records from being read: {}. Give "
-                     "Terminal Full Disk Access (System Settings > Privacy & Security > Full Disk "
-                     "Access), then run the check again.".format(", ".join(sorted(private))))
-    fda = (" Full Disk Access for Terminal lets macOS-protected folders be included."
+        if is_packaged():
+            lines.append(T("macOS privacy protection kept some records from being read: {apps}. Give "
+                           "Zero Breach Toolkit Full Disk Access (System Settings > Privacy & Security > Full Disk "
+                           "Access), then run the check again.",
+                           apps=", ".join(sorted(T(name) for name in private))))
+        else:
+            lines.append(T("macOS privacy protection kept some records from being read: {apps}. Give "
+                           "Terminal Full Disk Access (System Settings > Privacy & Security > Full Disk "
+                           "Access), then run the check again.",
+                           apps=", ".join(sorted(T(name) for name in private))))
+    fda = ((" " + (T("Full Disk Access for Zero Breach Toolkit lets macOS-protected folders be included.")
+                   if is_packaged() else
+                   T("Full Disk Access for Terminal lets macOS-protected folders be included.")))
            if full_disk and not private else "")
     if files_missed:
-        lines.append("{:,} program file(s) could not be fingerprinted (in use, protected, "
-                     "or over 120 MB).".format(files_missed)
+        lines.append(T("{n} program file(s) could not be fingerprinted (in use, protected, "
+                       "or over 512 MB; known spyware files are far smaller than that).",
+                       n="{:,}".format(files_missed))
                      + ("" if folders_missed else fda))
     if folders_missed:
-        lines.append("{:,} folder(s) could not be opened, so the program files inside them "
-                     "were not fingerprinted.".format(folders_missed) + fda)
+        lines.append(T("{n} folder(s) could not be opened, so the program files inside them "
+                       "were not fingerprinted.", n="{:,}".format(folders_missed)) + fda)
     for reason, count in rest.items():
+        # "module/check: reason" - the reason is a sentence from a check.
+        where, sep, why = reason.partition(": ")
+        reason = TX(reason) if TX(reason) != reason or not sep else where + sep + TX(why)
         line = reason if len(reason) <= 240 else reason[:237] + "..."
         if count > 1:
-            line += " ({} occurrences)".format(count)
+            line += " ({})".format(T("{n} occurrences", n=count))
         lines.append(line)
     return lines
 
@@ -1652,6 +1726,49 @@ def _wrap(text: str, width: int) -> List[str]:
     if cur:
         lines.append(cur)
     return lines
+
+
+def _wrap_any(text: str, width: int) -> List[str]:
+    """_wrap for any script: a run without spaces (Chinese, Japanese) longer
+    than the width is cut into width-sized pieces."""
+    pieces = []
+    for word in text.split():
+        while len(word) > width:
+            pieces.append(word[:width])
+            word = word[width:]
+        if word:
+            pieces.append(word)
+    return _wrap(" ".join(pieces), width)
+
+
+def _wrap_t(text: str, width: int) -> List[str]:
+    """Wrap a fixed English paragraph, translated when another language is chosen."""
+    return _wrap(text, width) if i18n_lang() == "en" else _wrap_any(T(text), width)
+
+
+def _say(w, lines, **values) -> None:
+    """One sentence or paragraph, given as the English lines it is printed as.
+
+    In English the lines are written exactly as given. In another language the
+    whole paragraph is one catalog entry (so it is translated as a sentence,
+    never in pieces) and is re-wrapped at the same indent."""
+    if i18n_lang() == "en":
+        for line in lines:
+            w(line.format(**values) if values else line)
+        return
+    lead = lines[0][:len(lines[0]) - len(lines[0].lstrip())]
+    cont = lines[1][:len(lines[1]) - len(lines[1].lstrip())] if len(lines) > 1 else lead
+    text = T(" ".join(line.strip() for line in lines), **values)
+    for i, line in enumerate(_wrap_any(text, max(40, 72 - len(cont)))):
+        w((lead if i == 0 else cont) + line)
+
+
+def _field(english: str) -> str:
+    """A field label such as "at     : ". English keeps its column alignment;
+    other languages get the translated word and a colon."""
+    if i18n_lang() == "en":
+        return english
+    return T(english.split(":")[0].strip()) + ": "
 
 
 def _referrals(w) -> None:

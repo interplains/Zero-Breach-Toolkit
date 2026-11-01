@@ -17,6 +17,10 @@ Findings (published indicators):
   device-logs spyware domains, IPs, app ids and file paths in the system
               services' state and logcat                               (device-log)
   crashes     crash records naming a spyware app or path                (device-log)
+  forensic    the fake USB devices Cellebrite's unlocking hardware imitates,
+              in the phone's own logs (Amnesty, 2025)                   (device-log)
+  built-in    published phone settings and file locations that are not in
+              any downloadable list (devicetraces.py)                   (on-device)
   messages    links in SMS messages, from the SMS backup                (received)
 
 'Worth a look' - never findings. Such heuristics flag many harmless things on
@@ -47,6 +51,8 @@ import zlib
 from ..iocs import (TYPE_ANDROID_PROP, TYPE_APP_CERT, TYPE_APP_ID, TYPE_DOMAIN,
                     TYPE_FILE_NAME, TYPE_FILE_PATH, TYPE_PROCESS, TYPE_SHA256, Indicator,
                     IocSet, ioc_exact_identity, ioc_path_mentioned, ios_only, watchware)
+from ..devicetraces import (DT_CELLEBRITE_USB, dt_android_path_indicators,
+                            dt_android_property_indicators, dt_android_usb, dt_usb_indicator)
 from ..localpaths import path_problem
 from ..result import EV_DEVICE_LOG, EV_ON_DEVICE, EV_RECEIVED, EV_REFERENCED, Hit, Lead, ModuleResult
 
@@ -263,6 +269,14 @@ _AN_CONFIG_REGIONS = (
                rb"(?=^(?:GLOBAL|SECURE|SYSTEM) SETTINGS \(user \d+\)|^DUMP OF SERVICE |\Z)",
                re.M | re.S),
 )
+
+# Per-app declaration lines of dumpsys package: the package names an app asks to
+# see in its manifest <queries> (Microsoft apps list com.microsoft.familysafety),
+# and the libraries it asks to use. They say what the app wants to find, not what
+# is installed, so app ids are not searched in them. Domains and paths still are.
+_AN_DECLARATION_LINES = re.compile(
+    rb"^[ \t]*(?:queries(?:Packages|Providers|Intents)|uses(?:Optional|Static|Sdk)?Libraries)="
+    rb"[^\n]*", re.M)
 
 
 def _an_sections(text):
@@ -717,8 +731,9 @@ def _an_properties(r, ctx, props):
     if not props:
         r.could_not_run("android:properties", "no system properties in the collection")
         return
+    builtin = {ind.value: ind for ind in dt_android_property_indicators()}
     for key in props:
-        ind = ctx.iocs.lookup_typed(TYPE_ANDROID_PROP, key)
+        ind = ctx.iocs.lookup_typed(TYPE_ANDROID_PROP, key) or builtin.get(key)
         if ind:
             _an_hit(r, ind, "system property " + key,
                     "a system property the researchers tie to spyware is set")
@@ -802,6 +817,7 @@ def _an_device_security(r, folder, props):
 def _an_files(r, ctx, folder):
     path = os.path.join(folder, "files.json")
     count = invalid = valid = hashed = 0
+    builtin = dt_android_path_indicators()
     try:
         for f in _an_file_records(path):
             count += 1
@@ -810,7 +826,10 @@ def _an_files(r, ctx, folder):
                 continue
             p = str(f.get("path") or "")
             ind = ctx.iocs.lookup_typed(TYPE_FILE_PATH, p)
-            if ind and ioc_exact_identity(ind, p):
+            if not (ind and ioc_exact_identity(ind, p)):
+                # A built-in location is a folder: anything inside it counts too.
+                ind = next((b for b in builtin if p == b.value or p.startswith(b.value + "/")), None)
+            if ind:
                 _an_hit(r, ind, p, "a file at a path the researchers tie to spyware")
             sha = str(f.get("sha256") or "").lower()
             if len(sha) == 64 and all(c in "0123456789abcdef" for c in sha):
@@ -911,7 +930,8 @@ def _an_device_logs(r, ctx, folder, already):
             _an_hit(r, ind, "phone log " + name,
                     "the phone's own system log names it", evidence=EV_DEVICE_LOG)
         if app_set is not None:
-            for shadow in app_set.search_bytes(low):
+            app_low = _AN_DECLARATION_LINES.sub(b"", data).lower() if name == "dumpsys.txt" else low
+            for shadow in app_set.search_bytes(app_low):
                 if shadow.value in already:
                     continue
                 already.add(shadow.value)
@@ -919,7 +939,18 @@ def _an_device_logs(r, ctx, folder, already):
                         "the phone's system records name this app (it may have been "
                         "installed earlier)", evidence=EV_DEVICE_LOG)
         text = data.decode("utf-8", "replace")
-        for ind in ctx.iocs.of_type(TYPE_FILE_PATH):
+        usb = dt_android_usb(text)
+        for vid, pid in sorted({(v, p) for v, p, _n in usb}):
+            lines = [n for v, p, n in usb if (v, p) == (vid, pid)]
+            _an_hit(r, dt_usb_indicator(vid, pid), "phone log " + name,
+                    "the phone recorded {} with device version 12.34 ({} time{}, first at line {}). "
+                    "Cellebrite's unlocking hardware imitates exactly this device to break into "
+                    "locked phones; a real device does not report that version.".format(
+                        DT_CELLEBRITE_USB[(vid, pid)], len(lines), "" if len(lines) == 1 else "s",
+                        lines[0]), evidence=EV_DEVICE_LOG)
+        r.submetrics["android_forensic_usb_records"] = r.submetrics.get(
+            "android_forensic_usb_records", 0) + len(usb)
+        for ind in list(ctx.iocs.of_type(TYPE_FILE_PATH)) + dt_android_path_indicators():
             if ind.value not in already and ioc_path_mentioned(ind, text):
                 already.add(ind.value)
                 _an_hit(r, ind, "phone log " + name,

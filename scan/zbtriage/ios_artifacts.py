@@ -12,8 +12,52 @@ import re
 import sqlite3
 import time
 
+from .devicetraces import DT_IOS_PROCESS, dt_ios_process_indicator, dt_ios_strings_in
 from .ios_sources import _is_plist
 from .result import Lead, EV_REFERENCED, EV_RECEIVED, EV_DEVICE_LOG, EV_CONFIGURED, EV_ON_DEVICE, EV_CONTACTED
+
+# What an installed configuration profile can do, by payload type. A profile is
+# how an employer, a school - or an abusive partner or stalkerware seller -
+# takes control of an iPhone: managing it remotely, trusting their own root
+# certificate (which lets them read encrypted web traffic), or sending traffic
+# through their VPN, proxy or DNS. The payload types are Apple's documented
+# identifiers; MVT reads profiles the same way.
+_IA_PROFILE_POWERS = (
+    ("com.apple.mdm", "lets an organisation manage this phone remotely (device management)"),
+    ("com.apple.security.root", "makes the phone trust a root certificate, which can be used to read encrypted web traffic"),
+    ("com.apple.vpn.managed", "sends traffic through a VPN"),
+    ("com.apple.proxy.http.global", "sends web traffic through a proxy"),
+    ("com.apple.dnsSettings.managed", "sets which DNS server the phone uses"),
+    ("com.apple.dnsProxy.managed", "sends DNS lookups to an app"),
+    ("com.apple.webcontent-filter", "filters web content through an app"),
+)
+_IA_PROFILE_USUAL = (
+    "Normal on a work or school phone, and for a DNS or ad filter you set up yourself (for example "
+    "AdGuard DNS). If nobody who uses this phone installed it, see Settings > General > VPN & Device "
+    "Management, do not remove it yet (it is evidence), and get expert help.")
+
+
+def _ia_profile_lead(doc):
+    """(what, observed) describing an installed profile that can control the
+    phone or its traffic, or None for one that cannot."""
+    if not isinstance(doc, dict):
+        return None
+    payloads = doc.get("PayloadContent")
+    types = {str(p.get("PayloadType", "")) for p in payloads if isinstance(p, dict)} if isinstance(payloads, list) else set()
+    types.add(str(doc.get("PayloadType", "")))
+    powers = [text for kind, text in _IA_PROFILE_POWERS if any(t == kind or t.startswith(kind + ".") for t in types)]
+    locked = doc.get("PayloadRemovalDisallowed") is True
+    if not powers and not locked:
+        return None
+    name = str(doc.get("PayloadDisplayName") or doc.get("PayloadIdentifier") or "unnamed profile")[:120]
+    org = str(doc.get("PayloadOrganization") or "")[:120]
+    installed = doc.get("InstallDate")
+    observed = installed.isoformat(timespec="seconds") if isinstance(installed, datetime.datetime) else ""
+    what = "Installed configuration profile \"{}\"{} that {}.".format(
+        name, " from " + org if org else "", "; ".join(powers) if powers else "cannot be removed by the user")
+    if powers and locked:
+        what += " It cannot be removed by the user."
+    return what, observed
 
 _IA_ARTIFACT_LIMIT = 2048
 # When a cap is reached, what was already read should be what matters most:
@@ -250,6 +294,10 @@ def _ia_artifact_kind(domain, path, kind):
         return "webkit-origins"
     if ("webkit" in low or "safari" in low) and base.endswith(".plist") and "resource" in base.lower():
         return "webkit-session"
+    # The phone's records of computers it was connected to and trusted. Citizen Lab
+    # found the Host ID and System BUID of a Cellebrite computer in them.
+    if kind != "backup" and "/library/lockdown/" in "/" + low and base.endswith(".plist"):
+        return "lockdown"
     if re.fullmatch(r"shutdown\.log(?:\.\d+)?", base, re.I):
         return "shutdown"
     if kind == "sysdiagnose" and base == "ps.txt":
@@ -337,6 +385,10 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
     def typed(value, types, key, check, record_id, detail, grade, observed="", raw_time=""):
         if not isinstance(value, str) or len(value) > 65536:
             return
+        if "process" in types and value == DT_IOS_PROCESS:
+            emit(dt_ios_process_indicator(), key, check, record_id,
+                 "a process named 'mnm' ran: Citizen Lab attributes this process to Cellebrite's "
+                 "phone-unlocking tool with high confidence", grade, observed, raw_time)
         for typ in types:
             for ind in ctx.iocs.of_type(typ):
                 if typ in ("file-path", "file-name", "process"):
@@ -620,6 +672,10 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         if not isinstance(doc, (dict, list)):
             raise ValueError("unsupported property-list root")
         recognized = 0
+        if kind == "profiles":
+            lead = _ia_profile_lead(doc)
+            if lead:
+                r.add_lead(Lead("ios:configuration-profiles", key[1], lead[0], _IA_PROFILE_USUAL, lead[1]))
         # ADDaily's process map stores a plist date first in each usage tuple.
         # Treat other layouts as unsupported, rather than guessing an epoch.
         if kind == "analytics" and isinstance(doc, dict) and "netUsageBaseline" in doc:
@@ -730,6 +786,24 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         if not recognized and not empty_cache and kind not in ("profile-settings", "preferences"):
             gap(check, "unrecognized typed property-list schema; only literal references were searched")
 
+    def forensic_strings(text, key, check, where):
+        for ind, what in dt_ios_strings_in(text):
+            emit(ind, key, check, ind.type, "this " + where + " contains " + what + " ('" + ind.value
+                 + "'), which Citizen Lab attributes to Cellebrite's phone-unlocking tool",
+                 EV_DEVICE_LOG)
+
+    def lockdown_artifact(key, check):
+        raw = source.artifact(*key)
+        if len(raw) > 8 * 1024 * 1024:
+            raise ValueError("lockdown record byte limit reached")
+        # Binary and XML property lists both keep these identifiers as plain text.
+        text = raw.decode("latin-1")
+        for ind, what in dt_ios_strings_in(text):
+            emit(ind, key, check, ind.type, "the phone's record of a computer it was connected to "
+                 "names " + what + " ('" + ind.value + "'): the phone was plugged into a Cellebrite "
+                 "computer", EV_ON_DEVICE)
+        r.checked += 1
+
     def process_name(value, key, check, record_id, detail, observed="", raw_time="", truncated_at=0,
                      grade=EV_DEVICE_LOG):
         typed(value, ("process",), key, check, record_id, detail, grade, observed, raw_time)
@@ -744,6 +818,7 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
     def ips_report(text, key, check, binary_body=False):
         """Apple .ips: one JSON metadata line, then a JSON or text body that
         depends on bug_type (crash, Jetsam memory event, stackshot, CPU use...)."""
+        forensic_strings(text, key, check, "diagnostic report")
         decoder = json.JSONDecoder()
         meta, pos = decoder.raw_decode(text, len(text) - len(text.lstrip()))
         if not isinstance(meta, dict):
@@ -900,6 +975,7 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                 ips_report(text, key, check)
             return
         text = raw.decode("utf-8", "strict")
+        forensic_strings(text, key, check, "diagnostic log")
         if kind == "process-list":
             process_list(text, key, check)
             return
@@ -974,6 +1050,8 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                 continue
             if kind in ("shutdown", "crashes", "process-list", "installations"):
                 log_artifact(key, kind, check)
+            elif kind == "lockdown":
+                lockdown_artifact(key, check)
             elif kind == "browser-connections":
                 connection_artifact(key, check)
             elif kind == "webkit-origins":

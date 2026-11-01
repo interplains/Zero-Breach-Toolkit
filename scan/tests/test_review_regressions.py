@@ -68,7 +68,7 @@ class TestHashRootThatCouldNotBeRead(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_root_where_every_file_is_unreadable_is_a_gap_not_clean(self):
-        def unreadable(_full):
+        def unreadable(_full, *_rest):
             raise PermissionError(13, "in use by another process")
 
         hashscan._sha256 = unreadable

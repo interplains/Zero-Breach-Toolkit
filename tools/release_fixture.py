@@ -313,6 +313,7 @@ def main():
                 # The hosts file is read on every platform; keep it in the fixture.
                 (host, "_hosts_path", lambda: str(inputs / "System32" / "drivers" / "etc" / "hosts")),
                 (host, "_enum_com_registrations", lambda r: (entries, [])),
+                (host, "_dt_class_server", lambda hive, clsid: None),
                 (host, "_network_drive_letters", lambda: (set(), True)),
                 (host, "_user_writable_dirs", lambda: [str(inputs)]),
                 (traces, "_tr_motw_roots", lambda: [str(files)]),

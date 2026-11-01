@@ -96,6 +96,7 @@ READER_SPECS = (
             "hosts-file": "the hosts file",
             "known-paths": "published file locations",
             "known-path:<path>": "one published file location",
+            "devilstongue-traces": "file locations and hijacked COM classes published for Candiru's DevilsTongue (leads to check, not findings)",
             "host": "the module as a whole (error)",
         },
         "blind_spots": ["Windows does not keep DNS history unless it was turned on",
@@ -149,6 +150,17 @@ READER_SPECS = (
                         "Executable names are not file-content identification; inventory does not prove execution.",
                         "Compressed Prefetch requires the Windows system decompressor; no registry hive mounting or transaction-log replay."]
     }, helpers=("winrecords.py",)),
+    ReaderSpec('exploited-software', 'exploited', 'exploited', ('win32', 'darwin'), ('desktop',), {
+        "platforms": ["Windows", "macOS"],
+        "reads": "Installed program versions (Windows' list of installed programs and the Windows build; "
+                 "macOS version and apps in /Applications), compared offline with CISA's Known Exploited "
+                 "Vulnerabilities list and the fixed versions in each CVE record, saved by the indicator update.",
+        "check_kinds": {"exploited-software": "installed programs older than the fix for an actively exploited "
+                                              "vulnerability (prevention advice, never a finding)"},
+        "blind_spots": ["Only a short list of common programs is checked.",
+                        "Where a CVE record gives no comparable fixed version, only update advice is given.",
+                        "Linux is not checked: distributions patch these programs through their own updates."]
+    }),
     ReaderSpec('unix-host', 'posix', 'posix', ('linux', 'darwin'), ('desktop',), {
         "platforms": ["Linux", "macOS"],
         "reads": "Linux autostart entries, systemd units and one-level overrides, cron files/scripts; macOS launchd property lists; both platforms' standard shell profiles, saved shell history and current readable text logs. No commands are executed.",

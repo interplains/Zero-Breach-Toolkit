@@ -32,6 +32,7 @@ _build_reader_spec.loader.exec_module(_build_readers)
 _build_readers.reader_validate()
 IOC = os.path.join(SRC, "iocs", "adfection_iocs.txt")
 IOC2 = os.path.join(SRC, "iocs", "curated_mercenary.txt")
+IOC3 = os.path.join(SRC, "iocs", "curated_targeted.txt")
 
 # Single source of truth for the version. Read it from the package rather than
 # repeating it here: the two silently drifted once and the download shipped
@@ -69,7 +70,7 @@ def strip_imports(text):
         line = lines[i]
         s = line.strip()
         is_future = s.startswith("from __future__")
-        is_local = bool(re.match(r"^from \.+[A-Za-z_. ]* import ", s)
+        is_local = bool(re.match(r"^from \.+[A-Za-z0-9_. ]* import ", s)
                         or re.match(r"^from \.+ import ", s))
         if is_future or is_local:
             # If the import opens a parenthesis that does not close on this line,
@@ -256,13 +257,22 @@ A('# The hand-curated mercenary-vendor set (iocs/curated_mercenary.txt), e.g. Pa
 A("IOC_DATA_2 = r'''")
 A(_embeddable(read(IOC2), "the curated indicator file"))
 A("'''")
+A('# Spyware used against journalists, activists and minorities (iocs/curated_targeted.txt).')
+A("IOC_DATA_3 = r'''")
+A(_embeddable(read(IOC3), "the targeted-surveillance indicator file"))
+A("'''")
 A('')
 
 for label, fname in (("result", "result.py"),
+                     ("i18n_data", "i18n_data.py"),
+                     ("i18n", "i18n.py"),
+                     ("bidi", "bidi.py"),
                      ("iocs", "iocs.py"),
                      ("stix", "stix.py"),
+                     ("devicetraces", "devicetraces.py"),
                      ("netguard", "netguard.py"),
                      ("localpaths", "localpaths.py"),
+                     ("kevdata", "kevdata.py"),
                      ("feeds", "feeds.py"),
                      ("heuristics", "heuristics.py"),
                      ("context", "context.py"),
@@ -273,13 +283,16 @@ for label, fname in (("result", "result.py"),
                      ("candiru_rules", "candiru_rules.py"),
                      ("banner", "banner.py"),
                      ("menu", "menu.py"),
+                     ("training", "training.py"),
                      ("readers", "readers.py"),
                      ("contract", "contract.py"),
                      ("evidence", "evidence.py"),
                      ("report", "report.py"),
                      ("workflow", "workflow.py"),
                      ("handoff", "handoff.py"),
-                     ("shelllinks", "shelllinks.py")):
+                     ("shelllinks", "shelllinks.py"),
+                     ("netconns", "netconns.py"),
+                     ("gui", "gui.py")):
     A('# --- {} {}'.format(label, '-' * max(0, 72 - len(label))))
     A(strip_imports(read(os.path.join(PKG, fname))))
     A('')
@@ -329,7 +342,17 @@ def _load_embedded_iocs(path=None):
         shutil.rmtree(tmp2, ignore_errors=True)
     second.source_mtime = IOC_BUILD_EPOCH
     second.source_path = "(embedded in this script)"
-    return merge([ioc_set, second])
+    tmp3 = tempfile.mkdtemp(prefix="zbt_ioc3_", dir=local_temp_dir())
+    try:
+        p3 = os.path.join(tmp3, "curated_targeted.txt")
+        with io.open(p3, "w", encoding="utf-8", newline="\\n") as fh:
+            fh.write(IOC_DATA_3)
+        third = load(p3)
+    finally:
+        shutil.rmtree(tmp3, ignore_errors=True)
+    third.source_mtime = IOC_BUILD_EPOCH
+    third.source_path = "(embedded in this script)"
+    return merge([ioc_set, second, third])
 
 
 def _hold(args):
@@ -363,8 +386,7 @@ def _force_utf8_io():
             pass
 
 
-def _bundle_main(argv=None):
-    _force_utf8_io()
+def _bundle_parser():
     p = WorkflowParser(
         prog="zero-breach-toolkit",
         description="Read-only check for known mercenary spyware "
@@ -411,6 +433,8 @@ def _bundle_main(argv=None):
     p.add_argument("--pattern-path", action="append", default=[], metavar="PATH",
                    help="file or folder for --patterns (repeatable). Limits only "
                         "the pattern check, not the other checks")
+    p.add_argument("--lang", metavar="CODE", default=None, choices=I18N_CODES,
+                   help="report and window language: " + ", ".join(I18N_CODES) + ". The terminal report is English unless this is given; the window follows the computer's language. The JSON report and the sharing summary are always English")
     p.add_argument("--no-banner", action="store_true",
                    help="do not show the welcome banner")
     p.add_argument("--no-menu", action="store_true",
@@ -419,16 +443,52 @@ def _bundle_main(argv=None):
                         "who has not chosen a check on the command line)")
     scope_arguments(p)
     workflow_arguments(p)
-    raw = sys.argv[1:] if argv is None else argv
+    training_arguments(p)
+    return p
+
+
+def _bundle_parse(raw):
+    p = _bundle_parser()
     args = p.parse_args(raw)
     scope_validate(p, args)
     workflow_validate(p, args)
+    training_validate(p, args)
     if args.pattern_path and not args.patterns:
         p.error("--pattern-path requires --patterns")
     if args.share_json and args.update:
         p.error("--share-json is for scan summaries, not --update")
     if args.share_json and args.json and os.path.normcase(os.path.abspath(args.share_json)) == os.path.normcase(os.path.abspath(args.json)):
         p.error("--share-json and --json must name different files")
+    return args
+
+
+def _bundle_iocs(args):
+    if args.iocs:
+        ioc_set = merge([load_any(v, allow_empty=len(args.iocs) > 1) for v in args.iocs])
+        ioc_set.feeds = {"used": False, "reason": "--iocs given"}
+    elif args.no_feeds:
+        ioc_set = _load_embedded_iocs()
+        ioc_set.feeds = {"used": False, "reason": "--no-feeds"}
+    else:
+        cached, feed_status = cached_sets(args.indicator_cache, args.latest)
+        feed_status["used"] = True
+        ioc_set = merge([_load_embedded_iocs()] + cached)
+        ioc_set.feeds = feed_status
+    return ioc_set
+
+
+def _bundle_gui_hooks():
+    def run_readers(ctx):
+        with no_network():
+            reader_run(ctx, lambda spec: globals()["run_" + spec.suffix])
+    return {"parse": _bundle_parse, "load_iocs": _bundle_iocs, "run_readers": run_readers,
+            "update": lambda: update_command(None, None), "version": __version__}
+
+
+def _bundle_main(argv=None):
+    _force_utf8_io()
+    raw = sys.argv[1:] if argv is None else argv
+    args = _bundle_parse(raw)
     if args.phone_guide:
         print(scope_guide(args.phone_guide))
         return 0
@@ -442,6 +502,13 @@ def _bundle_main(argv=None):
     if args.describe:
         print(json.dumps(describe_document(), indent=2, ensure_ascii=False))
         return 0
+    if args.lang:
+        i18n_set(args.lang)
+    if gui_wanted(raw, args):
+        code = gui_main(dict(_bundle_gui_hooks(), lang=args.lang))
+        if code is not None:
+            return code
+        print("No window can be shown here; continuing in the terminal.", file=sys.stderr)
     if not args.no_banner:
         show_banner(__version__)
     if args.indicator_cache and path_problem(os.path.abspath(args.indicator_cache)):
@@ -453,6 +520,9 @@ def _bundle_main(argv=None):
     if menu_wanted(raw, args) and not choose_scan(
             args, lambda: update_command(args.indicator_cache, None)):
         return EXIT_NOT_SCANNED
+    # --training (or the menu's practice entry): a made-up phone and made-up
+    # indicators, deleted by main() when the tool exits.
+    training_prepare(args)
     try:
         workflow_check_outputs(args)
     except (OSError, ValueError) as exc:
@@ -502,18 +572,7 @@ def _bundle_main(argv=None):
             print("error: {}".format(exc), file=sys.stderr)
             return 1
     try:
-        if args.iocs:
-            ioc_set = merge([load_any(v, allow_empty=len(args.iocs) > 1)
-                             for v in args.iocs])
-            ioc_set.feeds = {"used": False, "reason": "--iocs given"}
-        elif args.no_feeds:
-            ioc_set = _load_embedded_iocs()
-            ioc_set.feeds = {"used": False, "reason": "--no-feeds"}
-        else:
-            cached, feed_status = cached_sets(args.indicator_cache, args.latest)
-            feed_status["used"] = True
-            ioc_set = merge([_load_embedded_iocs()] + cached)
-            ioc_set.feeds = feed_status
+        ioc_set = _bundle_iocs(args)
     except IocError as exc:
         print("error: {}".format(exc), file=sys.stderr)
         _hold(args)
@@ -550,6 +609,8 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1
+    finally:
+        training_cleanup()
 
 
 if __name__ == "__main__":
