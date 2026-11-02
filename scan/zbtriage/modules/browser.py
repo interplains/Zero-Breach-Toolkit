@@ -1120,13 +1120,19 @@ _FILTER_LIST_PATHS = tuple((h, p.lower()) for h, p in (
     ("raw.githubusercontent.com", "/ublockorigin/"), ("raw.githubusercontent.com", "/uBlockOrigin/"),
     ("raw.githubusercontent.com", "/adguardteam/"), ("raw.githubusercontent.com", "/easylist/"),
     ("raw.githubusercontent.com", "/stevenblack/hosts/"), ("raw.githubusercontent.com", "/hagezi/"),
-    ("raw.githubusercontent.com", "/dandelionsprout/"), ("raw.githubusercontent.com", "/interplains/"),
+    ("raw.githubusercontent.com", "/dandelionsprout/"),
+    # This project's own published blocklists, and nothing else of ours.
+    ("raw.githubusercontent.com", "/interplains/zero-breach/main/dist/"),
+    ("raw.githubusercontent.com", "/interplains/zero-breach-toolkit/main/dist/"),
     ("cdn.jsdelivr.net", "/gh/ublockorigin/"), ("cdn.jsdelivr.net", "/gh/easylist/"),
     ("cdn.jsdelivr.net", "/gh/hagezi/"), ("cdn.statically.io", "/gh/ublockorigin/"),
     ("gitlab.com", "/hagezi/"), ("codeberg.org", "/hagezi/"),
-    ("archivegenocide.com", "/scan/"), ("archivegenocide.org", "/scan/"),
-    ("archivegenocide.is", "/scan/"),
 ))
+# The /scan page carries the same lists, in these exact files. Anything else on
+# our own sites is searched like any other page.
+_FILTER_LIST_FILES = frozenset((host, path) for host in (
+    "archivegenocide.com", "archivegenocide.org", "archivegenocide.is")
+    for path in ("/scan/", "/scan/index.html", "/scan/scan.js"))
 # Chrome Web Store / Edge Add-ons ids of content blockers that keep filter lists.
 _FILTER_LIST_EXTENSIONS = {
     "cjpalhdlnbpafiamejdnhcphjbkeiagm": "uBlock Origin",
@@ -1150,7 +1156,7 @@ def _filter_list_url(url):
         return False
     host = (parts.hostname or "").lower()
     path = (parts.path or "").lower()
-    if host in _FILTER_LIST_HOSTS:
+    if host in _FILTER_LIST_HOSTS or (host, path) in _FILTER_LIST_FILES:
         return True
     return any(host == h and path.startswith(p) for h, p in _FILTER_LIST_PATHS)
 

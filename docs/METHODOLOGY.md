@@ -279,6 +279,13 @@ launchd overrides are not resolved, and activation or execution is not establish
 Arbitrary arguments and network strings are references. Managed login items, binary
 journal and unified logs, and memory are outside these readers.
 
+**macOS download record.** `~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2`
+holds the addresses of files that apps downloaded. Only the file address, page address and date
+are read, from a temporary copy, and only rows matching an indicator reach the report. A file
+address on an indicator's host is contact; a page address or a mention elsewhere in an address is
+a reference. Applications write these rows themselves and they can be cleared, so a missing or
+unreadable record is reported as not checked, and no match says nothing about older downloads.
+
 **Shell history, hosts and logs (both).** Standard Bash/Zsh/fish startup files and saved
 history are read, including macOS Terminal's per-session files (`~/.zsh_sessions/*.history`,
 `~/.bash_sessions/*.history`), which replace a single history file on current macOS.

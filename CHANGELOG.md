@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.5 (unreleased)
+
+- macOS: indicators are also searched in the system's record of downloaded files. A missing or
+  unreadable record is reported as not checked. Contributed by s3ba-b.
+- The actively exploited software list has the same protection as the indicator lists: a list
+  below half the largest this computer has held is refused and the previous copy kept.
+- Only this project's published blocklist files are treated as filter lists on its own sites; anything
+  else cached from them is searched like any other page.
+- Tests no longer run twice for the same branch. Contributed by zaccromero.
+- `docs/VERIFYING.md` explains the signed checksums for the programs.
+
 ## 2.0.4 (unreleased)
 
 - Macs no longer get a false warning that macOS is out of date: a CVE record's `lessThan: "2021"` was read as a version number. Thanks to the Mac tester who found it.

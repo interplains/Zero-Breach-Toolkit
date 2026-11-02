@@ -142,9 +142,21 @@ def kev_ranges(record, target):
     return out
 
 
-def kev_update(cache, emit=lambda _m: None, fetch=None):
+def _kev_peak(cache):
+    """The largest list this cache has held; 0 if there is no readable copy."""
+    doc, _problem = kev_load(cache)
+    peak = doc.get("peak_catalog_size") if isinstance(doc, dict) else 0
+    return peak if type(peak) is int and peak > 0 else 0
+
+
+def kev_update(cache, emit=lambda _m: None, fetch=None, accept_shrink=False):
     """Download the KEV list and the CVE records for the checked programs, and
-    write the summary into the indicator cache. Returns a short status dict."""
+    write the summary into the indicator cache. Returns a short status dict.
+
+    The list is live, so it cannot be pinned to a reviewed copy. As with the
+    indicator sources, a list that falls below half the largest this cache has
+    held is refused and the previous copy kept: a truncated or altered download
+    would otherwise remove update advice without anyone seeing why."""
     fetch = fetch or _kev_fetch
     raw = fetch(KEV_URL, KEV_MAX_BYTES)
     try:
@@ -154,6 +166,12 @@ def kev_update(cache, emit=lambda _m: None, fetch=None):
             raise ValueError("implausible vulnerability list")
     except (ValueError, KeyError, UnicodeError) as exc:
         raise KevError("the exploited-vulnerability list could not be read: {}".format(exc))
+    peak = _kev_peak(cache)
+    if peak and len(vulns) < peak // 2 and not accept_shrink:
+        raise KevError("the list fell from {:,} to {:,} entries; the previous copy was kept. Check the source; "
+                       "if the change is genuine, accept it with --update --accept-shrink kev".format(
+                           peak, len(vulns)))
+    peak = len(vulns) if accept_shrink else max(peak, len(vulns))
     wanted = []
     for entry in vulns:
         if not isinstance(entry, dict) or str(entry.get("dateAdded", "")) < KEV_SINCE:
@@ -187,6 +205,7 @@ def kev_update(cache, emit=lambda _m: None, fetch=None):
            "catalogVersion": str(catalog.get("catalogVersion", ""))[:40],
            "dateReleased": str(catalog.get("dateReleased", ""))[:40],
            "downloaded_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "catalog_size": len(vulns), "peak_catalog_size": peak,
            "entries": rows}
     data = json.dumps(doc, ensure_ascii=False, indent=1).encode("utf-8")
     _kev_write(cache, KEV_FILE, data)

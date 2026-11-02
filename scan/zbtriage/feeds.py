@@ -762,7 +762,7 @@ def update_command(cache: Optional[str], json_path: Optional[str],
     try:
         if json_path and path_problem(os.path.abspath(json_path)):
             raise IocError("--json must be a path on a local disk")
-        unknown = sorted(set(accept_shrink or ()) - {src["id"] for src in SOURCES})
+        unknown = sorted(set(accept_shrink or ()) - {src["id"] for src in SOURCES} - {"kev"})
         if unknown:
             raise IocError("--accept-shrink: unknown source id {}; the ids are listed in "
                            "manifest.json in the indicator cache".format(", ".join(unknown)))
@@ -791,7 +791,8 @@ def update_command(cache: Optional[str], json_path: Optional[str],
     # indicators. A failure here is reported but never fails the indicator update.
     from .kevdata import KevError, kev_update
     try:
-        kev = kev_update(summary["cache"], emit=lambda s: _report_console(s, sys.stderr))
+        kev = kev_update(summary["cache"], emit=lambda s: _report_console(s, sys.stderr),
+                         accept_shrink="kev" in (accept_shrink or ()))
         _report_console("Actively exploited software list ({}): {:,} entries for the checked programs{}.".format(
             kev["catalogVersion"], kev["entries"],
             "; {} record(s) unavailable, advice only for those".format(kev["records_missing"])

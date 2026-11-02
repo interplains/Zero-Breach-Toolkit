@@ -66,7 +66,13 @@ the [GitHub CLI](https://cli.github.com/):
 
     gh attestation verify zero-breach-toolkit-windows-x64.exe --repo interplains/Zero-Breach-Toolkit
 
-A passing check means the file is byte-for-byte what that public workflow built from that
+From 2.0.4 on, the programs' checksums are also signed with the release key, which does not
+depend on GitHub. Download `SHA256SUMS-programs.txt` and its `.asc` file beside the programs:
+
+    gpg --verify SHA256SUMS-programs.txt.asc SHA256SUMS-programs.txt
+    sha256sum --ignore-missing -c SHA256SUMS-programs.txt
+
+A passing attestation check means the file is byte-for-byte what that public workflow built from that
 tagged commit. The programs are not code-signed, so Windows SmartScreen and macOS
 Gatekeeper warn the first time they are opened, and some antivirus products may object to
 any new unsigned program. PyInstaller output is not byte-reproducible, so the rebuild
