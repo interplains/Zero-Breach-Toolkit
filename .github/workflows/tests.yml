@@ -1,9 +1,11 @@
 name: tests
 
-# Runs the unit suite and the offline release gate on every push and pull
-# request. Read-only: no secrets, no publishing, actions pinned by commit.
+# Runs the unit suite and offline release gate on pull requests and main pushes.
+# Branch pushes are covered by their PR run, avoiding a duplicate seven-job matrix.
+# Read-only: no secrets, no publishing, actions pinned by commit.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
