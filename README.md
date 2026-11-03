@@ -491,8 +491,10 @@ published with each release are authoritative. The build is deterministic, so a 
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
 
-There is no signed Windows program, and none is planned while the project stays anonymous:
-code-signing certificates require a named legal identity. An `.exe` you build yourself with
+The Windows program is being set up for signing through the SignPath Foundation, whose
+certificate is issued to the Foundation rather than to a person, so the project stays
+anonymous; see [docs/CODE-SIGNING.md](docs/CODE-SIGNING.md). Until that is in place the
+program is unsigned. An `.exe` you build yourself with
 PyInstaller is unsigned, has no download reputation and is not byte-reproducible, so
 SmartScreen will warn, some antivirus products will flag it, and the comparison above does
 not apply. Running from source avoids all of that.
