@@ -314,7 +314,9 @@ folders, `.local/bin`, XDG configuration and data locations and temporary direct
 includes ordinary user folders, application and support locations, launch directories and
 temporary directories. Besides the Windows candidate extensions, Unix candidates include
 extensionless files, executable files, `.so` and versioned shared libraries, `.dylib` and
-supported script extensions. They are never executed or loaded. Full and targeted scans
+supported script extensions. They are never executed or loaded. Each file is read once; its
+SHA-1 is computed in the same read, over the whole file, only when samples published only as
+SHA-1 are loaded. Full and targeted scans
 accept every extension; the 512 MiB limit and access restrictions still apply. Arbitrary
 file-system links are refused; the exact root-owned macOS `/var`, `/tmp` and `/etc` aliases
 are validated against their `/private` locations, and the `/System/Cryptexes/App` and `OS`
@@ -327,7 +329,9 @@ assertions; case differences and longer path prefixes do not become exact matche
 Structured crash command paths are matched as complete identities; generic device-log path
 strings need token boundaries and keep the log reader's evidence grade.
 
-App files are compared by SHA-256 fingerprint and by signing certificate. Certificate
+App files are compared by SHA-256 fingerprint (and by SHA-1, for samples published only that
+way) and by signing certificate. A file fingerprint missing from the collection counts only
+for the digest kinds that are loaded. Certificate
 indicators may be SHA-256 or SHA-1 digests, and an app file covers only the digests it
 records, so missing SHA-256 and SHA-1 certificate digests are counted separately. A
 user-installed app whose fingerprint or certificate digest is missing from the collection

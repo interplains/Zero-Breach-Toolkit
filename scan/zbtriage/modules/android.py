@@ -7,11 +7,11 @@ system services' state (dumpsys), logs, a bug report and optionally an SMS backu
 This module reads that folder - it never talks to the phone.
 
 Findings (published indicators):
-  packages    app id, APK SHA-256, signing-certificate SHA-1/SHA-256  (on-device)
+  packages    app id, APK SHA-256/SHA-1, signing-certificate SHA-1/SHA-256 (on-device)
   processes   running apps by app id - on Android a process is named after
               its app                                                  (on-device)
   properties  system property names researchers tie to spyware        (on-device)
-  files       file paths and SHA-256 fingerprints of collected files  (on-device)
+  files       file paths and SHA-256/SHA-1 fingerprints of collected files (on-device)
   history     apps installed, updated or REMOVED, from the battery
               history - a spyware app deleted after use still shows    (device-log)
   device-logs spyware domains, IPs, app ids and file paths in the system
@@ -49,7 +49,7 @@ import zipfile
 import zlib
 
 from ..iocs import (TYPE_ANDROID_PROP, TYPE_APP_CERT, TYPE_APP_ID, TYPE_DOMAIN,
-                    TYPE_FILE_NAME, TYPE_FILE_PATH, TYPE_PROCESS, TYPE_SHA256, Indicator,
+                    TYPE_FILE_NAME, TYPE_FILE_PATH, TYPE_PROCESS, TYPE_SHA1, TYPE_SHA256, Indicator,
                     IocSet, ioc_exact_identity, ioc_path_mentioned, ios_only, watchware)
 from ..devicetraces import (DT_CELLEBRITE_USB, dt_android_path_indicators,
                             dt_android_property_indicators, dt_android_usb, dt_usb_indicator)
@@ -613,8 +613,11 @@ def _an_packages(r, ctx, folder, info):
     # are not compared at all; counting them keeps that from reading as checked.
     # A certificate indicator is a SHA-256 or a SHA-1 digest, and an app file
     # covers only the digests it actually records, so each is counted apart.
-    fp = {"files": 0, "no_hash": 0, "no_cert_sha256": 0, "no_cert_sha1": 0, "no_files": 0,
-          "builtin_no_hash": 0, "builtin_no_cert_sha256": 0, "builtin_no_cert_sha1": 0}
+    # The same holds for the file's own fingerprint (SHA-256, and SHA-1 for the
+    # publishers that give only that).
+    fp = {"files": 0, "no_hash": 0, "no_sha1": 0, "no_cert_sha256": 0, "no_cert_sha1": 0,
+          "no_files": 0, "builtin_no_hash": 0, "builtin_no_sha1": 0,
+          "builtin_no_cert_sha256": 0, "builtin_no_cert_sha1": 0}
     valid = 0
     for pkg in packages:
         if not isinstance(pkg, dict) or not isinstance(pkg.get("name"), str) or not pkg["name"]:
@@ -653,6 +656,7 @@ def _an_packages(r, ctx, folder, info):
             fp["files"] += 1
             if not isinstance(f, dict):
                 fp[prefix + "no_hash"] += 1
+                fp[prefix + "no_sha1"] += 1
                 fp[prefix + "no_cert_sha256"] += 1
                 fp[prefix + "no_cert_sha1"] += 1
                 continue
@@ -664,6 +668,14 @@ def _an_packages(r, ctx, folder, info):
             if ind:
                 _an_hit(r, ind, "{} ({})".format(where, apk),
                         "this app's file has the fingerprint of a published sample")
+            sha1 = str(f.get("sha1") or "").lower()
+            if not _AN_SHA1_RE.fullmatch(sha1):
+                fp[prefix + "no_sha1"] += 1
+                sha1 = ""
+            ind = iocs.lookup_typed(TYPE_SHA1, sha1) if sha1 else None
+            if ind:
+                _an_hit(r, ind, "{} ({})".format(where, apk),
+                        "this app's file has the SHA-1 fingerprint of a published sample")
             cert = f.get("certificate") if isinstance(f.get("certificate"), dict) else {}
             for key, pattern in (("Sha256", _AN_SHA256_RE), ("Sha1", _AN_SHA1_RE)):
                 value = str(cert.get(key) or "").replace(":", "").lower()
@@ -718,13 +730,20 @@ def _an_fingerprint_coverage(r, iocs, fp):
     fp["no_cert"] = max(fp["no_cert_sha256"], fp["no_cert_sha1"])
     fp["builtin_no_cert"] = max(fp["builtin_no_cert_sha256"], fp["builtin_no_cert_sha1"])
     needed = " and ".join(name for name, size in (("SHA-256", 64), ("SHA-1", 40)) if size in certs)
-    for kind, check, missing, what, against in (
-            (TYPE_SHA256, "android:app-fingerprints", "no_hash", "valid SHA-256 fingerprint",
+    # The file fingerprint works the same way: only the digest kinds that are loaded count.
+    samples = [(name, key) for name, key, kind in (("SHA-256", "no_hash", TYPE_SHA256),
+                                                   ("SHA-1", "no_sha1", TYPE_SHA1))
+               if iocs.of_type(kind)]
+    fp["no_fp"] = max([fp[key] for _name, key in samples] or [0])
+    fp["builtin_no_fp"] = max([fp["builtin_" + key] for _name, key in samples] or [0])
+    for loaded, check, missing, what, against in (
+            (bool(samples), "android:app-fingerprints", "no_fp",
+             "valid " + " and ".join(name for name, _key in samples) + " fingerprint",
              "published spyware sample fingerprints"),
-            (TYPE_APP_CERT, "android:app-certificates", "no_cert",
+            (bool(iocs.of_type(TYPE_APP_CERT)), "android:app-certificates", "no_cert",
              "signing-certificate " + (needed or "fingerprint"),
              "certificates tied to spyware")):
-        if not iocs.of_type(kind):
+        if not loaded:
             continue
         if fp["builtin_" + missing]:
             r.note("{}: {} built-in app file(s) on the system partitions had no {} in the "
@@ -929,8 +948,9 @@ def _an_device_security(r, folder, props):
 
 def _an_files(r, ctx, folder):
     path = os.path.join(folder, "files.json")
-    count = invalid = valid = hashed = 0
+    count = invalid = valid = hashed = some_digest = 0
     builtin = dt_android_path_indicators()
+    need_sha1 = bool(ctx.iocs.of_type(TYPE_SHA1))
     try:
         for f in _an_file_records(path):
             count += 1
@@ -945,13 +965,24 @@ def _an_files(r, ctx, folder):
             if ind:
                 _an_hit(r, ind, p, "a file at a path the researchers tie to spyware")
             sha = str(f.get("sha256") or "").lower()
-            if len(sha) == 64 and all(c in "0123456789abcdef" for c in sha):
-                hashed += 1
-            else:
+            if not _AN_SHA256_RE.fullmatch(sha):
                 sha = ""
+            sha1 = str(f.get("sha1") or "").lower()
+            if not _AN_SHA1_RE.fullmatch(sha1):
+                sha1 = ""
+            # Counted as fingerprinted only if it carries every digest kind the
+            # loaded indicators need: a file with a SHA-256 but no SHA-1 was not
+            # compared with the SHA-1-only samples.
+            if sha and (sha1 or not need_sha1):
+                hashed += 1
+            if sha or (sha1 and need_sha1):
+                some_digest += 1
             ind = ctx.iocs.lookup_typed(TYPE_SHA256, sha) if sha else None
             if ind:
                 _an_hit(r, ind, p, "this file has the fingerprint of a published sample")
+            ind = ctx.iocs.lookup_typed(TYPE_SHA1, sha1) if sha1 else None
+            if ind:
+                _an_hit(r, ind, p, "this file has the SHA-1 fingerprint of a published sample")
             base = p.rsplit("/", 1)[-1]
             ind = ctx.iocs.lookup_typed(TYPE_FILE_NAME, base) if base else None
             if ind and ioc_exact_identity(ind, base):
@@ -972,12 +1003,15 @@ def _an_files(r, ctx, folder):
         # recorded them (its "hash files" option), so say how many.
         if hashed == valid:
             r.ran("android:file-hashes")
-        elif not hashed:
+        elif not some_digest:
             r.could_not_run("android:file-hashes", "the collection has no file fingerprints (AndroidQF's "
                             "\"hash files\" option was off), so files were checked by path and name only")
         else:
-            r.could_not_run("android:file-hashes", "{} of {} listed file(s) have no valid fingerprint, so "
-                            "they were checked by path and name only".format(valid - hashed, valid))
+            r.could_not_run("android:file-hashes", (
+                "{} of {} listed file(s) lack a valid SHA-256 or SHA-1 fingerprint, so they were "
+                "not compared with every published sample fingerprint" if need_sha1 else
+                "{} of {} listed file(s) have no valid fingerprint, so "
+                "they were checked by path and name only").format(valid - hashed, valid))
     r.submetrics["android_files_listed"] = valid
     r.submetrics["android_files_hashed"] = hashed
 

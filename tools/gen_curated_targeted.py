@@ -3,8 +3,8 @@ journalists, activists, human-rights defenders and minorities, from researchers'
 own indicator files.
 
 The values live in curated_targeted_values.txt beside this file. Each block there
-names the publisher file it was copied from; only SHA-256 file fingerprints and
-Android package names are taken. Network addresses from these reports are left out
+names the publisher file it was copied from; only SHA-256 file fingerprints (SHA-1
+where the publisher gives no SHA-256) and Android package names are taken. Network addresses from these reports are left out
 on purpose: most are several years old, and an old domain or address may now
 belong to someone innocent."""
 import io
@@ -14,14 +14,16 @@ import sys
 OUT = sys.argv[1]
 
 header = """# Spyware used against journalists, activists, human-rights defenders and minorities
-# as-of: 2026-11-01
+# as-of: 2026-11-02
 # ^ Curated date; the staleness reference for this file.
 # Licence: the selection is CC0 1.0 (as iocs/LICENSE.md). The values are facts published by
 #   the researchers named below. Where a publisher's repository carries a licence, its notice
 #   is kept here and its terms still apply to the values copied from it.
 # Method: every value was copied from the publisher's own indicator file (or, for the package
-#   names marked so, the report's own sample table) and checked for shape. Only SHA-256 file
+#   names marked so, the report's own sample table) and checked for shape. Only file
 #   fingerprints and Android package names are included: no domains, no IP addresses.
+#   Fingerprints are SHA-256, or SHA-1 where the publisher gives no SHA-256 (matched only
+#   against digests of the whole file).
 #   Package names that another developer could plausibly use, or that belong to a real app
 #   the spyware imitated, are left out; those samples are still matched by fingerprint.
 # Format: indicator <TAB> tier <TAB> confidence <TAB> source-tag <TAB> family [<TAB> kind]
@@ -59,7 +61,22 @@ header = """# Spyware used against journalists, activists, human-rights defender
 #       https://github.com/lookout/threat-intelligence/blob/main/2024/bonespy_dec_2024.csv
 #   lookout-plaingnome-2024-12  Lookout, PlainGnome (December 2024).
 #       https://github.com/lookout/threat-intelligence/blob/main/2024/plaingnome_dec_2024.csv
-#       Lookout values: Apache License 2.0, https://github.com/lookout/threat-intelligence/blob/main/LICENSE
+#   lookout-moonshine-2022-11  Lookout, MOONSHINE (November 2022). SHA-1 only.
+#       https://github.com/lookout/threat-intelligence/blob/main/2022/moonshine_nov_2022.csv
+#   lookout-hermit-2022-06  Lookout, Hermit, RCS Lab's spyware (June 2022). SHA-1 only.
+#       https://github.com/lookout/threat-intelligence/blob/main/2022/hermit_june_2022.csv
+#   lookout-bouldspy-2023-04  Lookout, BouldSpy (April 2023). SHA-1 only.
+#       https://github.com/lookout/threat-intelligence/blob/main/2023/bouldspy_april_2023.csv
+#   lookout-kospy-2025-03  Lookout, KoSpy, attributed to APT37 (2025-03-12). SHA-256 from
+#       https://github.com/lookout/threat-intelligence/blob/main/2025/kospy_march_2025.json;
+#       three further SHA-1 values and the package name from the article,
+#       https://security.lookout.com/threat-intelligence/article/lookout-discovers-new-spyware-by-north-korean-apt37
+#       Lookout repository values: Apache License 2.0, https://github.com/lookout/threat-intelligence/blob/main/LICENSE
+#   lookout-dchspy-2025-07  Lookout, DCHSpy, attributed to MuddyWater (2025-07-21). SHA-1 only.
+#       https://security.lookout.com/threat-intelligence/article/lookout-discovers-iranian-dchsy-surveillanceware
+#   lookout-massistant-2025-07  Lookout, Massistant, a phone-extraction tool used by Chinese
+#       police (2025-07-16). SHA-1 only.
+#       https://security.lookout.com/threat-intelligence/article/massistant-chinese-mobile-forensics
 #   eset-ghostchat-2026-01  ESET, 'Love? Actually: Fake dating app used as lure in targeted spyware
 #       campaign in Pakistan' (January 2026). https://github.com/eset/malware-ioc/tree/master/ghostchat
 #   eset-kamran-2023-11  ESET, 'Unlucky Kamran: Android malware spying on Urdu-speaking residents of
@@ -96,7 +113,7 @@ header = """# Spyware used against journalists, activists, human-rights defender
 # NOT included, deliberately:
 #   - domains, IP addresses, URLs and e-mail addresses from these reports (old ones may now
 #     belong to someone innocent);
-#   - SHA-1 and MD5 values (the check computes SHA-256 only);
+#   - MD5 values, and SHA-1 values where the publisher also gives the SHA-256;
 #   - Volexity BrazenBamboo rows named after ordinary Windows or Chromium libraries, and the
 #     rows of a second actor in the 2026-09-09 Chrome file.
 #"""

@@ -94,7 +94,8 @@ class TestGuideWindow(WindowCase):
             for child in widget.winfo_children():
                 walk(child)
         walk(guide)
-        self.assertIn("TScrollbar", classes)
+        # Apple's Tk 8.5 (Aqua) reports a ttk.Scrollbar as "Scrollbar".
+        self.assertTrue({"TScrollbar", "Scrollbar"} & set(classes), classes)
         self.assertIn("TButton", classes)
         button = [w for w in guide.winfo_children() if w.winfo_class() == "TButton"][0]
         self.assertEqual(button.pack_info()["side"], "bottom")

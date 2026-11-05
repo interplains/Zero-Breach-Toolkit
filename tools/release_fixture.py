@@ -322,6 +322,9 @@ def main():
                 (browser, "FIREFOX_ROOTS", []),
                 (hashes, "_roots", lambda: [str(files)]),
                 (patterns, "_pattern_roots", lambda: [str(files)]),
+                # The engine's trial run starts a separate Python, which this sealed
+                # fixture refuses; it is covered by tests/test_fixes_206.py.
+                (patterns, "_pattern_probe", lambda: None),
                 (host, "winreg", object()),
                 (host, "_ps_json", ps_json),
                 # The hosts file is read on every platform; keep it in the fixture.

@@ -1628,7 +1628,11 @@ def run(ctx) -> ModuleResult:
                 raise ValueError("unsupported bookmark roots")
         except FileNotFoundError:
             return
-        except (OSError, ValueError, UnicodeError, RecursionError) as exc:
+        except OSError as exc:
+            # A refusal gets the same plain explanation as the databases, not a raw error.
+            mark_fail(label, kind, _locked_note(path, exc))
+            return
+        except (ValueError, UnicodeError, RecursionError) as exc:
             mark_fail(label, kind, "bookmark file unreadable or unsupported: " + type(exc).__name__)
             return
         pending = [(node, 0) for node in doc["roots"].values()]
@@ -1894,7 +1898,11 @@ def run(ctx) -> ModuleResult:
                 cookies = _safari_cookie_domains(_browser_read_small(path, 64 * 1024 * 1024))
             except FileNotFoundError:
                 continue
-            except (OSError, ValueError, UnicodeError, struct.error) as exc:
+            except OSError as exc:
+                # A refusal gets the same plain explanation as the databases, not a raw error.
+                mark_fail(label, kind, _locked_note(path, exc))
+                continue
+            except (ValueError, UnicodeError, struct.error) as exc:
                 mark_fail(label, kind, os.path.basename(path) + " unreadable or unsupported: " + str(exc))
                 continue
             for domain, when in cookies:

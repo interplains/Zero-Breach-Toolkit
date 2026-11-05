@@ -312,7 +312,7 @@ def describe_document() -> Dict[str, Any]:
         "indicator_inputs": {
             "curated": "tab-separated: indicator, tier, confidence[, source[, family]]",
             "stix2": ("STIX 2.x bundles (.stix2 / .json) as published by Amnesty, the "
-                      "MVT project and others; domain, IP and SHA-256 indicators are "
+                      "MVT project and others; domain, IP, SHA-256 and SHA-1 indicators are "
                       "used, phone-only kinds are counted as not applicable"),
             "flag": "--iocs PATH (repeatable)",
         },
@@ -1131,7 +1131,7 @@ def _evidence_gloss(hit) -> str:
 
 # Indicator kinds that are not network addresses: shown as written.
 _NOT_ADDRESSES = {"app-id", "app-cert", "file-path", "file-name", "android-property",
-                  "process", "profile-id", "sha256"}
+                  "process", "profile-id", "sha256", "sha1"}
 
 
 def _net_value(hit) -> str:

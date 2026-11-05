@@ -52,7 +52,7 @@ import sys
 from urllib.parse import urlsplit
 
 from ..heuristics import CRADLE_GET, CRADLE_RUN, REMOTE, RUNNER
-from ..iocs import TYPE_SHA256
+from ..iocs import TYPE_SHA1, TYPE_SHA256
 from ..localpaths import (path_problem, walk_local, WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED,
                           WALK_CLOUD_SKIPPED)
 from ..result import (EV_ATTEMPTED, EV_COMMAND, EV_CONTACTED, EV_ON_DISK, Hit, Lead,
@@ -701,7 +701,8 @@ def _tr_check_ran_programs(r, ctx):
         r.could_not_run("ran-programs", "skipped by --quick. Files Windows "
                         "recorded were not fingerprinted")
         return
-    targets = {i.value: i for i in ctx.iocs.of_type(TYPE_SHA256)}
+    targets = {i.value: i for i in ctx.iocs.of_type(TYPE_SHA256) + ctx.iocs.of_type(TYPE_SHA1)}
+    with_sha1 = bool(ctx.iocs.of_type(TYPE_SHA1))
     if not targets:
         r.could_not_run("ran-programs", "no sample fingerprints in the indicator set")
         return
@@ -743,14 +744,19 @@ def _tr_check_ran_programs(r, ctx):
                 unreadable += 1
                 continue
             digest = hashlib.sha256()
+            digest1 = hashlib.sha1() if with_sha1 else None
             with open(path, "rb") as fh:
                 for chunk in iter(lambda: fh.read(1024 * 1024), b""):
                     digest.update(chunk)
+                    if digest1 is not None:
+                        digest1.update(chunk)
         except OSError:
             unreadable += 1
             continue
         hashed += 1
         ind = targets.get(digest.hexdigest())
+        if ind is None and digest1 is not None:
+            ind = targets.get(digest1.hexdigest())
         if ind is not None:
             r.add_hit(Hit(indicator=ind.value, location=path,
                           detail="a file listed by Windows ({}) has the "

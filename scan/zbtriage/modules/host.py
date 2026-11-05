@@ -950,6 +950,7 @@ def _check_known_paths(r: ModuleResult, ctx) -> None:
     import hashlib
     root = os.environ.get("SystemRoot", r"C:\Windows")
     known_hashes = {h.value for h in ctx.iocs.hashes}
+    with_sha1 = any(len(value) == 40 for value in known_hashes)
     found = 0
     unavailable = 0
     for parts, why in _KNOWN_DROPS:
@@ -968,13 +969,17 @@ def _check_known_paths(r: ModuleResult, ctx) -> None:
                             "could not inspect this path: {}".format(exc))
             continue
         found += 1
-        digest = ""
+        digest = digest1 = ""
         try:
             h = hashlib.sha256()
+            h1 = hashlib.sha1() if with_sha1 else None
             with io.open(path, "rb") as fh:
                 for chunk in iter(lambda: fh.read(1024 * 1024), b""):
                     h.update(chunk)
+                    if h1 is not None:
+                        h1.update(chunk)
             digest = h.hexdigest()
+            digest1 = h1.hexdigest() if h1 is not None else ""
         except OSError as exc:
             unavailable += 1
             r.skipped += 1
@@ -982,8 +987,10 @@ def _check_known_paths(r: ModuleResult, ctx) -> None:
                             "file exists but its fingerprint is unavailable: {}"
                             .format(exc))
             continue
-        if digest and digest in known_hashes:
-            ind = ctx.iocs.lookup(digest)
+        matched, algorithm = (digest, "SHA-256") if digest in known_hashes else (
+            (digest1, "SHA-1") if digest1 and digest1 in known_hashes else ("", ""))
+        if digest and matched:
+            ind = ctx.iocs.lookup(matched)
             tier = ind.tier if ind else "sample"
             # A `vuln-driver` match is legitimate signed software this actor
             # abuses - present on clean machines too. Calling that "KNOWN-BAD"
@@ -997,10 +1004,10 @@ def _check_known_paths(r: ModuleResult, ctx) -> None:
                           "was installed. Do not delete it.".format(path, why))
             else:
                 detail = ("the file at {} is the KNOWN-BAD build - {}. Its "
-                          "SHA-256 matches a published indicator. Do not delete "
-                          "it; it is evidence.".format(path, why))
+                          "{} matches a published indicator. Do not delete "
+                          "it; it is evidence.".format(path, why, algorithm))
             r.add_hit(Hit(
-                indicator=digest, location=path, detail=detail,
+                indicator=matched, location=path, detail=detail,
                 tier=tier,
                 confidence=ind.confidence if ind else "secondary",
                 source=ind.source if ind else "", evidence=EV_ON_DISK,
@@ -1128,6 +1135,98 @@ def _check_devilstongue(r: ModuleResult, ctx) -> None:
         len(_DT_PATHS), len(_DT_CLASSES), present + changed))
 
 
+# --- 7. Memento Labs Dante traces --------------------------------------------
+#
+# Kaspersky, 'Mem3nt0 mori - The Hacking Team is back!' (2025-10-27). The loader
+# that starts LeetAgent and Dante persists by registering a per-user copy of the
+# Windows class below, which normally loads twinapi.dll, so system processes and
+# browsers load the loader instead. Dante keeps its modules in %LocalAppData%, in
+# a folder named with an eight-byte Base64 string that holds extensionless files
+# with Base64 names of the same length, one of them named like the folder; the
+# report gives that layout as the way to recognise an active infection.
+
+_DANTE_CLASS = "{AA509086-5CA9-4C25-8F95-589D3C07B48A}"
+_DANTE_CLASS_FILE = "twinapi.dll"
+# "Eight bytes" is read both ways: eight characters, or Base64 of eight bytes
+# (eleven characters, twelve with padding). '/' cannot appear in a file name, so
+# the URL-safe letters are accepted too. A name of this shape alone is common
+# (ordinary words such as "Discovery"); the file layout is what is distinctive.
+_DANTE_NAME = re.compile(r"^[A-Za-z0-9+=_-]{8,12}$")
+
+_DANTE_USUAL_CLASS = ("No ordinary program needs a per-user copy of this Windows component. If you "
+                      "did not install system tools recently, keep the computer as it is and get "
+                      "expert help.")
+_DANTE_USUAL_FOLDER = ("Some programs keep data in folders with random-looking names, but this one "
+                       "also has the file layout the report describes. Do not delete it; it is "
+                       "evidence. Get expert help to check it.")
+
+
+def _dante_module_folders(base):
+    """Folders directly under `base` laid out like Dante's module folder, and
+    how many name-matching folders could not be opened."""
+    found, unopened = [], 0
+    with os.scandir(base) as entries:
+        candidates = [e for e in entries
+                      if _DANTE_NAME.match(e.name) and e.is_dir(follow_symlinks=False)]
+    for entry in candidates:
+        try:
+            with os.scandir(entry.path) as inner:
+                files = [f.name for f in inner if f.is_file(follow_symlinks=False)]
+        except OSError:
+            unopened += 1
+            continue
+        if entry.name in files and all(
+                len(f) == len(entry.name) and _DANTE_NAME.match(f) for f in files):
+            found.append(entry.path)
+    return found, unopened
+
+
+def _check_dante(r: ModuleResult, ctx) -> None:
+    leads = 0
+    machine = _dt_class_server("HKLM", _DANTE_CLASS)
+    user = _dt_class_server("HKCU", _DANTE_CLASS)
+    if machine and os.path.basename(machine).lower() != _DANTE_CLASS_FILE:
+        leads += 1
+        r.add_lead(Lead("dante-traces", "HKLM\\Software\\Classes\\CLSID\\" + _DANTE_CLASS,
+                        "A Windows component that the loader used with Memento Labs' Dante spyware "
+                        "is documented hijacking loads {} instead of {}.".format(machine, _DANTE_CLASS_FILE),
+                        _DANTE_USUAL_CLASS))
+    if user:
+        leads += 1
+        r.add_lead(Lead("dante-traces", "HKCU\\Software\\Classes\\CLSID\\" + _DANTE_CLASS,
+                        "A per-user copy of a Windows component that the loader used with Memento "
+                        "Labs' Dante spyware is documented hijacking loads {}.".format(user),
+                        _DANTE_USUAL_CLASS))
+    base = os.environ.get("LOCALAPPDATA", "")
+    if not base:
+        r.could_not_run("dante-traces", "the LocalAppData folder is not set, so Dante's module "
+                        "folder was not looked for")
+        return
+    problem = path_problem(base)
+    if problem:
+        r.could_not_run("dante-traces", "could not inspect {}: {}".format(base, problem))
+        return
+    try:
+        folders, unopened = _dante_module_folders(base)
+    except OSError as exc:
+        r.could_not_run("dante-traces", "could not list {}: {}".format(base, exc))
+        return
+    for folder in folders:
+        leads += 1
+        r.add_lead(Lead("dante-traces", folder,
+                        "A folder laid out like the module store of Memento Labs' Dante spyware "
+                        "(extensionless files with random-looking names, one named like the folder).",
+                        _DANTE_USUAL_FOLDER))
+    r.checked += 2
+    if unopened:
+        r.could_not_run("dante-traces", "{} folder(s) in {} with a name of the shape Dante uses could "
+                        "not be opened, so they were not compared with its layout".format(unopened, base))
+        return
+    r.ran("dante-traces")
+    ctx.emit("[host] Dante traces: 1 component and the LocalAppData folders checked, {} to look at"
+             .format(leads))
+
+
 # --- module entry point -----------------------------------------------------
 
 def run(ctx) -> ModuleResult:
@@ -1153,7 +1252,7 @@ def run(ctx) -> ModuleResult:
         # Never a fake CLEAN on a platform where nothing was observed.
         reason = "not supported on {}".format(system or "unknown platform")
         for name in ("com-persistence", "dns-cache", "dns-log", "hosts-file",
-                     "known-paths", "devilstongue-traces"):
+                     "known-paths", "devilstongue-traces", "dante-traces"):
             r.could_not_run(name, reason)
         return r
 
@@ -1163,7 +1262,8 @@ def run(ctx) -> ModuleResult:
                      ("dns-log", _check_dns_log),
                      ("hosts-file", _check_hosts),
                      ("known-paths", _check_known_paths),
-                     ("devilstongue-traces", _check_devilstongue)):
+                     ("devilstongue-traces", _check_devilstongue),
+                     ("dante-traces", _check_dante)):
         try:
             fn(r, ctx)
         except Exception as exc:

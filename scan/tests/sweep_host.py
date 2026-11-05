@@ -496,6 +496,19 @@ _case(UNUSABLE, "devilstongue-traces", "a path is refused", _devilstongue_refuse
 NOT_FILE_BASED["devilstongue-traces"] = "probes fixed Windows paths and registry classes; absence is the clean answer (refusal is swept above)"
 
 
+def _dante_refused(tmp):
+    result = ModuleResult("host")
+    with patch.dict(os.environ, {"LOCALAPPDATA": str(tmp)}), \
+            patch.object(host, "_dt_class_server", lambda hive, clsid: None), \
+            patch.object(host, "path_problem", lambda p: "refused for the fixture"):
+        host._check_dante(result, _ctx())
+    return result
+
+
+_case(UNUSABLE, "dante-traces", "LocalAppData is refused", _dante_refused)
+NOT_FILE_BASED["dante-traces"] = "probes one registry class and the folders directly under LocalAppData; absence is the clean answer (refusal is swept above)"
+
+
 # --- File fingerprints and patterns -----------------------------------------------------------------
 
 def _hash_root(tmp, outcome):

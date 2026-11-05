@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.6 (unreleased)
+
+- With the optional pattern check (`--patterns`), the pattern engine is first tried in a separate process. On
+  some Macs yara-x stops Python with no message; the check is now skipped with an explanation and the rest of
+  the scan finishes. Found by s3ba-b.
+- When macOS refuses Safari's cookie file or a browser's bookmarks, the report gives the Full Disk Access advice
+  instead of a raw error. Found by s3ba-b.
+- Two tests no longer fail on Apple's Python: its Tk names the scrollbar differently, and one test now sets
+  every value the Apple-Python check reads. Found by s3ba-b.
+- Sample fingerprints published only as SHA-1 are now used. The file check, the record of programs Windows
+  ran, and Android app files and file lists compare SHA-1 as well as SHA-256, from the same read of each
+  file; the SHA-1 is only computed when such samples are loaded. Published feeds (STIX and MISP) now
+  contribute their SHA-1 sample hashes too.
+- New built-in indicators from Lookout: MOONSHINE (58), Hermit (8), BouldSpy (22), KoSpy (11 SHA-256,
+  3 SHA-1 and its package name), DCHSpy (9) and Massistant (23), a phone-extraction tool used by Chinese
+  police on seized phones.
+- Memento Labs' Dante spyware (formerly Hacking Team), from Kaspersky: three sample fingerprints, and on
+  Windows a check for the Windows component its loader hijacks and for the module folder layout the report
+  describes. Both are reported as leads to check, not findings.
+
 ## 2.0.5 (unreleased)
 
 - macOS: indicators are also searched in the system's record of downloaded files. A missing or

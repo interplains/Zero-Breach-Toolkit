@@ -38,7 +38,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .iocs import (_ipv4_leading_zero, COMPUTER_TYPES, TYPE_ANDROID_PROP, TYPE_APP_CERT, TYPE_APP_ID,
                    TYPE_DOMAIN, TYPE_EMAIL, TYPE_FILE_NAME, TYPE_FILE_PATH, TYPE_IP,
-                   TYPE_PROCESS, TYPE_PROFILE, TYPE_SHA256, Indicator, IocError,
+                   TYPE_PROCESS, TYPE_PROFILE, TYPE_SHA1, TYPE_SHA256, Indicator, IocError,
                    _value_problem, _ioc_checked_contexts, idna_deviation, infer_type)
 
 TIER_ARTIFACT = "artifact"           # a device artefact (app, process, profile, path ...)
@@ -64,6 +64,7 @@ _PATTERN_RE = re.compile(
     r"^\[\s*([a-z0-9-]+)\s*:\s*([a-z0-9_.'-]+?)\s*=\s*'([^'\\]*)'\s*\]$", re.I)
 
 _SHA256_PROPS = {"hashes.sha256", "hashes.'sha-256'", "hashes.sha-256", "hashes.'sha256'"}
+_SHA1_PROPS = {"hashes.sha1", "hashes.'sha-1'", "hashes.sha-1", "hashes.'sha1'"}
 
 
 _DEVICE_KINDS = {
@@ -89,6 +90,8 @@ def _classify(obj_type: str, prop: str) -> Optional[str]:
         return TYPE_IP
     if obj_type == "file" and prop in _SHA256_PROPS:
         return TYPE_SHA256
+    if obj_type == "file" and prop in _SHA1_PROPS:
+        return TYPE_SHA1
     return _DEVICE_KINDS.get((obj_type, prop))
 
 
@@ -167,6 +170,10 @@ def _normalise(kind: str, raw: str) -> Tuple[str, str]:
     if kind == TYPE_SHA256:
         if not re.match(r"^[0-9a-f]{64}$", value):
             return value, "not a 64-digit SHA-256"
+        return value, ""
+    if kind == TYPE_SHA1:
+        if not re.match(r"^[0-9a-f]{40}$", value):
+            return value, "not a 40-digit SHA-1"
         return value, ""
     return value, _device_problem(kind, value)
 
@@ -277,7 +284,7 @@ def load_stix(path: str, source: str = "", confidence: str = "primary",
         # A linked name that cleans to nothing must not block the fallback family.
         family_names = {name for name in linked.get(str(o.get("id")), []) if name} or {default_family}
         family = "; ".join(sorted(name for name in family_names if name))
-        if kind == TYPE_SHA256:
+        if kind in (TYPE_SHA256, TYPE_SHA1):
             tier = TIER_SAMPLE
         elif kind == TYPE_IP:
             tier = TIER_INFRA_IP

@@ -411,13 +411,16 @@ file-system extraction can.
 About 13,300 published indicators from 29 downloadable sources and two built-in sets: Amnesty International's Security Lab,
 the [Mobile Verification Toolkit](https://github.com/mvt-project/mvt-indicators) project,
 the Citizen Lab and Echap's stalkerware research, and a hand-curated set from Citizen Lab
-reports (Candiru / DevilsTongue and Paragon's Graphite) with every line cited. The curated
+reports (Candiru / DevilsTongue and Paragon's Graphite, and Memento Labs' Dante from
+Kaspersky) with every line cited. The curated
 set works offline; `--update` downloads the rest from a fixed list of official sources.
-A second built-in set holds about 900 file fingerprints and Android package names of
+A second built-in set holds about 1,040 file fingerprints and Android package names of
 spyware used against journalists, activists and minorities (Arid Viper against Palestinians,
-EvilBamboo, HenBox, DoNot, OceanLotus and others), copied from the indicator files of ESET,
-Volexity, Cisco Talos, Meta, Unit 42, Lookout and Amnesty International (and two package
-names from a SentinelLabs report), every line cited.
+EvilBamboo, MOONSHINE, HenBox, DoNot, OceanLotus, KoSpy and others, and the Massistant
+phone-extraction tool), copied from the indicator files and reports of ESET, Volexity, Cisco
+Talos, Meta, Unit 42, Lookout and Amnesty International (and two package names from a
+SentinelLabs report), every line cited. Fingerprints are SHA-256, or SHA-1 where a publisher
+gives only that.
 A few published phone traces that are not addresses or fingerprints (Cellebrite's, and the
 Android settings and folder of Variston's Heliconia framework, published by Google) are
 built into the phone checks, each with its source.

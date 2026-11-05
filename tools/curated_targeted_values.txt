@@ -970,3 +970,158 @@ de302a61e5f07b0e65753355d44d22181a2742ac3a92aa058bdcd00cc4dab788	sample	primary	
 b09ca9d48a0455ed5e02a56aabeb397c41fb63320244719749e0741da72e79c4	sample	primary	amnesty-netwire-india-2020-06	NetWire
 095ec879f323a0a3eceb97013125880d49ac701eef568e3b010fdddb1333941f	sample	primary	amnesty-netwire-india-2020-06	NetWire
 ac4d5d938009fd44b2f7587986862ab2278887a17d32f748278445b625b3efd9	sample	primary	amnesty-netwire-india-2020-06	NetWire
+#
+# Lookout 2022/moonshine_nov_2022.csv (SHA1 rows; the file publishes no SHA-256).
+# MOONSHINE, used against Uyghurs.
+8afe90ebb4666565891fcc33e12fad410996d4d1	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+ac235440a738938c2218e2608ea229dd3584701b	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+437f5e0aa400372a6e98de7aca32f6cf916040a0	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+16125c5ecd29bb1d359fdbbfc127341cafbae6bf	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+79fb6f43885df2a058a7aa9d60c88db6b44226dd	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+66b0972bfd0786baa0076575db19b22c56d871ad	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+047dee43dda8c09c46773d323968886d9af6b49d	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+aa4eede30b2aa975f691b6d002ca047520f2c86f	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+724f41af93abcc7c7625a8814e43398ccbbddf2c	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+26b2bf522a6759390a7155250ddb3ee3512bec7a	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+02977d77c801136da581864152b80a9d6568651e	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+12097cf566fbc31b94adf2d2a3c25617609faf68	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+75ffd57282d23326430bc3ad789a7f3f4e643027	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+f721db78c57993bed75af77e30ba284b314de05c	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+9a120fce59a51c09d23b5f7274c7c0e22f2747b5	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+9eafa52a74741bb738c20823d4b78035149ea5e0	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+6f9203d950ed18da7251aa6c4257921b04852fb5	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+12202d87b30bb92bf3f52eae6e93308a1829f988	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+38be047b29b3ac19e74b9943f981b00f87a2e141	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+f70e6d6240ee8405214d9690c1d9b55c1c7d80c3	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+9541853c7e85cb1789945e4f9f185247d95c202d	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+47c070b0244633536b2731062f22a86238b8d649	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+e825e6f09ff7479d45fc35bbd6e0d662f93e93c7	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+509cf8ccdd336ede1e8a0dcaafcec3a981c9bf12	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+fce2190c1bd0d65d26a134980ab339af160b5880	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+5cefce22565ffb69459fecbeeaea531ce053bd2b	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+5b32db300ad7ed54149df3234d7b9782d762c1bd	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+8790a91c4dd2870734eb1e7d49d2d5c24a41925f	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+69bb842270dcfe777e50b81faf72962a2456062c	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+a443e448416375fb777b2523f5efd4addabc1ab3	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+1fe3d295c3525b3acb7498df9b72dc80c6ca08f5	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+166958184998ad53152634cb6a339310ee22d0d8	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+8ff73d504bba6fedf923f5f2f9b54fbdd4c53a22	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+d8f360971d04c3b623f1d7296339e1702142f135	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+dc692fc09316d9af6e299f15f22e5368ffc32a47	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+1ed74af5ec4c53e1b1090decf2c5c92907ff83ac	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+ab0248870abf3f2bb750f92e8af3da97b71ca74a	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+37cad98b7810d8fa205b3ce901a405a575ce2bc3	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+91bedfd5bd8f7a071c9024890a699fb6566e9ae5	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+5c04e843f797a08b0754821e17eb773919ec3622	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+fac660cb450a39cc1d422323aaf654c2bd23415d	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+c57bb036b996d8afdb0c6867b7c65970f69207be	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+23c2aa2059487f1960e8bdb0c4cfc8808bc6733b	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+8bd9825c07f4a4e0e7f537b6ea33ddfa4e1fff49	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+f3ae46ac2465e09b7ff54d55540bd6f0e567759b	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+8c3051e83d2448046443692e070c81d3ba6b7be0	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+55db0f43e9a72431b627c3f9752d24b3d2364555	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+be95c5ef09697412f39a7fa85e13e79a21c87826	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+1fead5107758b6d284ce908bc221f90e6ac37744	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+df42714a12957d239bc09b2306063a4728cf403f	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+f31c0f9cc5b2d31e465d138f928835b5fc9f4daf	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+3b18385cf280477c3fb603617eb242d39b6cc248	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+eab8863ce4a9c9c4fcc02d4ce170bbe2cd6602fb	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+4e8e5571d60f029ebc2b2017931f4f70279d2036	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+13c39737329aa5bb4ed95b38c70b857677949ff3	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+f0cc8ee3ce1d835a825103672c9fcaf874c3a965	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+5b76cd64b3463f7209e3771c131b29f247fa0205	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+c58ff582349fb8406cb98194c44393c000b0eb1d	sample	primary	lookout-moonshine-2022-11	MOONSHINE
+#
+# Lookout 2022/hermit_june_2022.csv (SHA1 rows; the file publishes no SHA-256).
+ca101ddfcf6746ffa171dc3a0545ebd017bf689a	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+b1dfb2be760d209846f2147ce32560954d2f71b5	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+cf610aae906ffcfd52c08d6ba03d9ce2c9996ac8	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+22f49fa7fe1506d2639f08e9ae198e262396c052	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+97ead8dec0bf601ba452b9e45bb33cb4a3bf830f	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+527141e1ee5d76b55b7c7640f7dcf222cb93e010	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+4f8145805eec0c4d8fc32b020744d4f3f1e39ccb	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+9f949b095c2ab4b305b2ea168ae376adbba72ffb	sample	primary	lookout-hermit-2022-06	Hermit (RCS Lab)
+#
+# Lookout 2023/bouldspy_april_2023.csv (SHA1 rows; the file publishes no SHA-256).
+5168610b73f50661b998e95a74be25bfe749b6ef	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+af999714aec75a64529c59f1e8de4c669adfa97a	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+965d118cb80ccdbc6e95e530a314cb4b85ae1b42	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+f3b135555ae731b5499502f3b69724944ab367d5	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+02ac97b090a6b2a1b14bad839deec7d966f5642c	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+da3c0cfd432b53a602ce7dc5165848b88411d9c9	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+75a6c724f43168346b177a60c81ca179a436246f	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+08fd24e4514793b29b7bd2c29f9e5c15ffc9bada	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+73c93be188f88755ed690266063223e141fdb9ff	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+7537ac1658100efaf6558eed4a3f732208b393ab	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+7208dc915a800fe5c5eaf599084147a8afeba991	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+8afc495b6632ce9ef812a971f71ae82d39d7e7e9	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+43f5506b960914ab76ffaf531cdd51dd86df22f2	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+dd66dcb8db678d10f9589a12745ec2e575e4f5eb	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+69894818ba1dc8bfffe9fb384abf77d991379aaa	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+db650b0eaffa21b63ce84d31b2bd09720da9491e	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+67a3def7ad736df94c8c50947f785c0926142b69	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+63ff362f58c7b6dec8ea365a5dbc6a88ec09dacf	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+bc826967c90acc08f1f70aa018f5d13f31521b92	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+02c4969c45fd7ac913770f9db075eadf9785d3a7	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+5446e0cf2de0a888571ef1d521b9ada7b34ef33e	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+43a92743c8264a8d06724ab80139c0d31e8292ee	sample	primary	lookout-bouldspy-2023-04	BouldSpy
+#
+# Lookout 2025/kospy_march_2025.json: the SHA256 of each sample (the file pairs it with its SHA1).
+90ec29bafccc540dcb171a020e1216da2233b2ce8e9b5e4ff1f510e14f09f4b5	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+da56b0416b205b36337af22738967445ff310ca0f6051b243f00b83baa67aa09	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+b0c0f38551a119d0b633c1b65e61b493574ed7083e3e003c83aa19dff7a0524b	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+fe1fb1eaf852085c0d1d9e87a49d04722da64c47f8cba75548002c44113c1a7e	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+0374615eeca4eaa4a9d97c0de82b7e36b0c60cd40332b61c86fa0b29f7712115	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+bf0150e1e31f655978a74e126b973f2cbd6555e970130f8fafef25b884cfb442	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+aa2bbdde656674f2e62d41a3bae7597b2b5102982d97a0fd9410d9055f65e536	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+3ca78cecb854ac65760f875c726a062c3dbfd9570adbaed473125c5c61c2ab21	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+75d9353c8fd8f0f88769bca71cf2eaaafee35f1f713ca28bd99c66546f056071	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+d937ea795b97a6f6b99dad10b31557c54d91e95f13c851371796ff06ec65dda9	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+cbcfcb8089eded5a9d4541a79e7fb1b099761602ab7f0be29fbc00faa30ce9b0	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+#
+# Lookout KoSpy article, 'Indicators of Compromise': the three SHA1 values the article lists
+# that the repository file does not.
+911d9f05e1c57a745cb0c669f3e1b67ac4a08601	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+cd62a9ab320b4f6be49be11c9b1d2d5519cc4860	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+2d1537e92878a3a14b5b3f55b32c91b099513ae0	sample	primary	lookout-kospy-2025-03	KoSpy (APT37)
+#
+# Lookout KoSpy article: package name of the File Manager app it describes on Google Play.
+com.file.exploer	artifact	primary	lookout-kospy-2025-03	KoSpy (APT37)	app-id
+#
+# Lookout DCHSpy article, 'Indicators of Compromise (IoCs)', SHA1s. Its command-and-control
+# addresses are not included.
+556d7ac665fa3cc6e56070641d4f0f5c36670d38	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+7010e2b424eadfa261483ebb8d2cca4aac34670c	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+8f37a3e2017d543f4a788de3b05889e5e0bc4b06	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+9dec46d71289710cd09582d84017718e0547f438	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+6c291b3e90325bea8e64a82742747d6cdce22e5b	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+7267f796581e4786dbc715c6d62747d27df09c61	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+67ab474e08890c266d242edaca7fab1b958d21d4	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+f194259e435ff6f099557bb9675771470ab2a7e3	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+cb2ffe5accc89608828f5c1cd960d660aac2971d	sample	primary	lookout-dchspy-2025-07	DCHSpy (MuddyWater)
+#
+# Lookout Massistant article, 'Indicators of Compromise', SHA1. Massistant is a phone-extraction
+# tool installed by hand on a seized phone; a match means the phone was examined with it.
+895ad87f382de53f7323117b47150eaf0550cbf4	sample	primary	lookout-massistant-2025-07	Massistant
+7a6d81b19425d985270121c46368c9ac12ed1b26	sample	primary	lookout-massistant-2025-07	Massistant
+14c29a0e44076c88b177193650a9d4567291d0ea	sample	primary	lookout-massistant-2025-07	Massistant
+256c357f884f33c032d2352ee6ff73fe94da83a8	sample	primary	lookout-massistant-2025-07	Massistant
+91a6e8769be93f625f239f9c8bad82545c936f20	sample	primary	lookout-massistant-2025-07	Massistant
+ceb3b0c6dc703c76d274f4862d98b4f054536518	sample	primary	lookout-massistant-2025-07	Massistant
+66ef2c18178d8988a210d09b17f3b23394306b40	sample	primary	lookout-massistant-2025-07	Massistant
+4cc68d1538c372a31d2989e04f1c0726a66ebb7a	sample	primary	lookout-massistant-2025-07	Massistant
+e5d4685ceedc44184ae0d249269a94018c88a4ff	sample	primary	lookout-massistant-2025-07	Massistant
+0275f283ce280f717a2674d82aaf1cb562c3b90c	sample	primary	lookout-massistant-2025-07	Massistant
+215bd2972c5598787addad911915b9a04932d68d	sample	primary	lookout-massistant-2025-07	Massistant
+990004827ec2b08b52afd0df5750cfed502dbc1c	sample	primary	lookout-massistant-2025-07	Massistant
+df4c8bccadf71d5c29a7a92d40fee4629fe7a384	sample	primary	lookout-massistant-2025-07	Massistant
+93c5cd3a0bb04012927ccd29e505772492fcfbee	sample	primary	lookout-massistant-2025-07	Massistant
+8659920f99a96c294c9857a761ce0729f3a8f2f7	sample	primary	lookout-massistant-2025-07	Massistant
+71fc752af7d108b7aede7d17ec7dae3a9cbb3470	sample	primary	lookout-massistant-2025-07	Massistant
+4b30d1d9d4a1e4571d4cd7aaeb91aee192a7a512	sample	primary	lookout-massistant-2025-07	Massistant
+1c6e67c6f1c9b6a332d844b772af3ef9e5e8d8dd	sample	primary	lookout-massistant-2025-07	Massistant
+f22eea7248d023f74f631a8812115bf4981df2e7	sample	primary	lookout-massistant-2025-07	Massistant
+2458fa6f7b0faf662a940ab92a1f144b2c384ce4	sample	primary	lookout-massistant-2025-07	Massistant
+f514f711b4b83d3cf2a4b4c602483a120b448f63	sample	primary	lookout-massistant-2025-07	Massistant
+7ec4f46df0bb9fca801719b7f67f642bdd0a9e97	sample	primary	lookout-massistant-2025-07	Massistant
+c17e9325a6932ff8b725b18e4ddcb6dadab99457	sample	primary	lookout-massistant-2025-07	Massistant

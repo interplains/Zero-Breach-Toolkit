@@ -19,7 +19,7 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 from zbtriage import cli  # noqa: E402
-from zbtriage.iocs import (IocError, TYPE_APP_ID, TYPE_DOMAIN, TYPE_SHA256, load,  # noqa: E402
+from zbtriage.iocs import (IocError, TYPE_APP_ID, TYPE_DOMAIN, TYPE_SHA1, TYPE_SHA256, load,  # noqa: E402
                            load_any, merge)
 
 TARGETED = os.path.join(REPO, "iocs", "curated_targeted.txt")
@@ -48,6 +48,17 @@ ONE_HASH_PER_SOURCE = {
     "amnesty-donot-togo-2021-10": "000ddbb75d10a939b54a7ceea5f12563b855daec971a9da0f2b4d5f935e195a3",
     "amnesty-oceanlotus-vietnam-2021-02": "952c16674bde3c16aa3935b3e01f3f0fb4cbac7ffa130143cbf6ccaa72733068",
     "amnesty-netwire-india-2020-06": "e3dea449bf74434ee1c9cdc04ca68b8f3c9bac357768e07df303433f257d3b9a",
+    "lookout-kospy-2025-03": "90ec29bafccc540dcb171a020e1216da2233b2ce8e9b5e4ff1f510e14f09f4b5",
+}
+
+# Sources that publish only SHA-1: one value each, copied from the publisher.
+ONE_SHA1_PER_SOURCE = {
+    "lookout-moonshine-2022-11": "8afe90ebb4666565891fcc33e12fad410996d4d1",
+    "lookout-hermit-2022-06": "ca101ddfcf6746ffa171dc3a0545ebd017bf689a",
+    "lookout-bouldspy-2023-04": "5168610b73f50661b998e95a74be25bfe749b6ef",
+    "lookout-kospy-2025-03": "911d9f05e1c57a745cb0c669f3e1b67ac4a08601",
+    "lookout-dchspy-2025-07": "556d7ac665fa3cc6e56070641d4f0f5c36670d38",
+    "lookout-massistant-2025-07": "895ad87f382de53f7323117b47150eaf0550cbf4",
 }
 
 # Rows per source and kind. A change here is a reviewed decision, not a quiet edit.
@@ -70,6 +81,11 @@ EXPECTED_COUNTS = {
     ("amnesty-donot-togo-2021-10", TYPE_SHA256): 228,
     ("amnesty-oceanlotus-vietnam-2021-02", TYPE_SHA256): 14,
     ("amnesty-netwire-india-2020-06", TYPE_SHA256): 12,
+    ("lookout-moonshine-2022-11", TYPE_SHA1): 58, ("lookout-hermit-2022-06", TYPE_SHA1): 8,
+    ("lookout-bouldspy-2023-04", TYPE_SHA1): 22,
+    ("lookout-kospy-2025-03", TYPE_SHA256): 11, ("lookout-kospy-2025-03", TYPE_SHA1): 3,
+    ("lookout-kospy-2025-03", TYPE_APP_ID): 1,
+    ("lookout-dchspy-2025-07", TYPE_SHA1): 9, ("lookout-massistant-2025-07", TYPE_SHA1): 23,
 }
 
 # SHA-256 of identifiers of sources that were reviewed and not taken. No token of
@@ -113,7 +129,7 @@ class TestCuratedTargeted(unittest.TestCase):
         self.assertEqual(io.open(out, encoding="utf-8").read(), self.text)
 
     def test_has_an_as_of_date(self):
-        self.assertEqual(self.set.asof, "2026-11-01")
+        self.assertEqual(self.set.asof, "2026-11-02")
 
     def test_every_row_is_cited_and_has_a_family(self):
         documented = set(re.findall(r"^#\s{3}([a-z][a-z0-9-]+)\s{2}", self.text, re.M))
@@ -128,14 +144,17 @@ class TestCuratedTargeted(unittest.TestCase):
         for ind in self.set.indicators:
             got[(ind.source, ind.type)] = got.get((ind.source, ind.type), 0) + 1
         self.assertEqual(got, EXPECTED_COUNTS)
-        self.assertEqual(len(self.set.indicators), 909)
+        self.assertEqual(len(self.set.indicators), 1044)
 
     def test_only_fingerprints_and_package_names(self):
         for ind in self.set.indicators:
             with self.subTest(indicator=ind.value):
-                self.assertIn(ind.type, (TYPE_SHA256, TYPE_APP_ID))
+                self.assertIn(ind.type, (TYPE_SHA256, TYPE_SHA1, TYPE_APP_ID))
                 if ind.type == TYPE_SHA256:
                     self.assertRegex(ind.value, r"^[0-9a-f]{64}$")
+                    self.assertEqual(ind.tier, "sample")
+                elif ind.type == TYPE_SHA1:
+                    self.assertRegex(ind.value, r"^[0-9a-f]{40}$")
                     self.assertEqual(ind.tier, "sample")
                 else:
                     self.assertRegex(ind.value, r"^[a-z0-9_]+(\.[a-z0-9_]+)+$")
@@ -156,12 +175,23 @@ class TestCuratedTargeted(unittest.TestCase):
                 self.assertIsNotNone(ind)
                 self.assertEqual(ind.source, source)
 
+    def test_a_published_sha1_from_each_sha1_source_is_matched(self):
+        self.assertEqual(set(ONE_SHA1_PER_SOURCE),
+                         {src for src, kind in EXPECTED_COUNTS if kind == TYPE_SHA1})
+        for source, value in ONE_SHA1_PER_SOURCE.items():
+            with self.subTest(source=source):
+                ind = self.set.lookup_typed(TYPE_SHA1, value)
+                self.assertIsNotNone(ind)
+                self.assertEqual(ind.source, source)
+                self.assertIsNone(self.set.lookup_typed(TYPE_DOMAIN, value))
+
     def test_package_names_are_matched_as_package_names_not_domains(self):
         for name, family in (("com.chat.lapiza", "Arid Viper (AridSpy)"),
                              ("com.teleram.app", "Arid Viper (SpyC23)"),
                              ("com.android.henbox", "HenBox"),
                              ("com.kamran.hunzanews", "Kamran"),
-                             ("eu.siacs.bingechat", "GravityRAT")):
+                             ("eu.siacs.bingechat", "GravityRAT"),
+                             ("com.file.exploer", "KoSpy (APT37)")):
             with self.subTest(name=name):
                 ind = self.set.lookup_typed(TYPE_APP_ID, name)
                 self.assertIsNotNone(ind)

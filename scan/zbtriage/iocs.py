@@ -15,6 +15,7 @@ without a citation is unusable, so the provenance (confidence) column is require
 
 Indicator *type* is inferred from shape, not stored, so the file stays 3 columns:
   - 64 hex chars            -> sha256 sample hash
+  - 40 hex chars            -> sha1 sample hash (for publishers that give no SHA-256)
   - looks like an IPv4/IPv6 -> ip
   - otherwise               -> domain
 An Android package name is shaped exactly like a domain, so a row that holds one
@@ -111,6 +112,12 @@ _HEX_COLON = _HEX | {":"}
 TYPE_DOMAIN = "domain"
 TYPE_IP = "ip"
 TYPE_SHA256 = "sha256"
+# Some publishers (Lookout, for several of its mobile sets) give only SHA-1. A
+# whole-file SHA-1 identifies the same bytes as the SHA-256 would; it is matched
+# only against digests this tool computes over the whole file, never against a
+# partial digest such as Amcache's (first 31,457,280 bytes only).
+TYPE_SHA1 = "sha1"
+FILE_HASH_TYPES = (TYPE_SHA256, TYPE_SHA1)
 
 # Kinds that only phone, backup and mail checks can use. They are kept in the
 # set (not dropped) but never take part in the network-string matching, which
@@ -127,11 +134,12 @@ TYPE_ANDROID_PROP = "android-property"
 TYPE_EMAIL = "email"                # sender / account address used by the operators
 
 NETWORK_TYPES = {TYPE_DOMAIN, TYPE_IP}
-COMPUTER_TYPES = {TYPE_DOMAIN, TYPE_IP, TYPE_SHA256}
+COMPUTER_TYPES = {TYPE_DOMAIN, TYPE_IP, TYPE_SHA256, TYPE_SHA1}
 DEVICE_TYPES = {TYPE_APP_ID, TYPE_APP_CERT, TYPE_PROCESS, TYPE_PROFILE,
                 TYPE_FILE_PATH, TYPE_FILE_NAME, TYPE_ANDROID_PROP, TYPE_EMAIL}
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
 
 # Kinds a curated row may declare in its 6th column, with the exact shape each
 # must have (the same shapes the STIX importer accepts for them).
@@ -147,6 +155,8 @@ def infer_type(indicator: str) -> str:
     s = indicator.strip().lower()
     if _SHA256_RE.match(s):
         return TYPE_SHA256
+    if _SHA1_RE.match(s):
+        return TYPE_SHA1
     if _IPV4_RE.match(s) or (":" in s and all(c in "0123456789abcdef:" for c in s)):
         return TYPE_IP
     return TYPE_DOMAIN
@@ -517,7 +527,9 @@ class IocSet:
 
     @property
     def hashes(self) -> List[Indicator]:
-        return [i for i in self.indicators if i.type == TYPE_SHA256]
+        """Whole-file sample hashes: SHA-256 and SHA-1. The two never collide (64
+        and 40 hex digits), so one table keyed by digest serves both."""
+        return [i for i in self.indicators if i.type in FILE_HASH_TYPES]
 
     @property
     def network_strings(self) -> List[str]:
@@ -996,7 +1008,7 @@ def _value_problem(value, kind):
             if not 1 <= len(label) <= 63 or not _DOMAIN_LABEL_RE.match(label):
                 return "label {!r} is not a valid hostname label".format(label[:70])
         return ""
-    return ""   # hashes are already pinned to 64 hex digits by infer_type
+    return ""   # hashes are already pinned to 64 or 40 hex digits by infer_type
 
 
 def _ioc_curated_lines(path):

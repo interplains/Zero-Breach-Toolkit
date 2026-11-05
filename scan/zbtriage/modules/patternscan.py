@@ -192,9 +192,52 @@ def _pattern_read(path):
         raise
 
 
+_PATTERN_PROBE = ("import yara_x\n"
+                  "c = yara_x.Compiler()\n"
+                  "c.add_source('rule probe { condition: true }')\n"
+                  "s = yara_x.Scanner(c.build())\n"
+                  "s.scan(b'probe')\n"
+                  "print('probe-ok')\n")
+
+
+def _pattern_probe():
+    """Run one tiny yara-x scan in a separate process first.
+
+    On some Macs (Apple's Python 3.9, Apple Silicon) yara-x kills the Python
+    process at its first scan with no message. Loading it in this process would
+    take the whole scan down with it, so a crash here only skips this check.
+    """
+    if getattr(_pattern_sys, "frozen", False):
+        return  # the built programs do not include yara-x; the import below reports that
+    import shutil
+    import subprocess
+    import tempfile
+    work = tempfile.mkdtemp(prefix="zb-pattern-probe-")
+    try:
+        # A fresh empty directory, so nothing in the user's folder can shadow yara_x.
+        result = subprocess.run([_pattern_sys.executable, "-c", _PATTERN_PROBE], cwd=work,
+                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("the pattern engine did not finish a one-line test scan within 60 seconds")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    if result.returncode == 0 and "probe-ok" in result.stdout:
+        return
+    if "No module named" in result.stderr:
+        return  # not installed; the import below gives the usual message
+    if result.returncode < 0 or result.returncode in (137, 134, 139):
+        raise RuntimeError("the pattern engine crashed during a one-line test scan (exit code {}); "
+                           "this is a known problem with yara-x on some Macs. The rest of the scan "
+                           "is unaffected".format(result.returncode))
+    raise RuntimeError("the pattern engine failed a one-line test scan (exit code {}): {}"
+                       .format(result.returncode, (result.stderr.strip().splitlines() or [""])[-1][:200]))
+
+
 def _pattern_engine():
     if _pattern_sys.version_info < (3, 9):
         raise RuntimeError("optional Candiru patterns require Python 3.9 or newer")
+    _pattern_probe()
     engine = _pattern_importlib.import_module("yara_x")
     metadata = _pattern_importlib.import_module("importlib.metadata")
     version = metadata.version("yara-x")

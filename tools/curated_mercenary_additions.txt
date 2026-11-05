@@ -173,3 +173,9 @@ www.anglesyen.org	infrastructure	primary	google-tag-spyware-vendors-2023-03	Vari
 cdn.cutlink.site	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor
 api.cutlink.site	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor
 imjustarandomsite.3utilities.com	infrastructure	primary	google-tag-spyware-vendors-2023-03	Unnamed commercial spyware vendor
+#
+# --- Added 2026-11-02: Memento Labs (formerly Hacking Team) Dante and the ForumTroll toolset
+#     (Kaspersky). SHA-256 values from the report's 'Indicators of compromise' section.
+2e39800df1cafbebfa22b437744d80f1b38111b471fa3eb42f2214a5ac7e1f13	sample	primary	kaspersky-dante-2025-10	ForumTroll loader (Dante toolset)
+388a8af43039f5f16a0673a6e342fa6ae2402e63ba7569d20d9ba4894dc0ba59	sample	primary	kaspersky-dante-2025-10	LeetAgent (ForumTroll)
+07d272b607f082305ce7b1987bfa17dc967ab45c8cd89699bcdced34ea94e126	sample	primary	kaspersky-dante-2025-10	Memento Labs Dante

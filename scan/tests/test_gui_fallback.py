@@ -85,11 +85,18 @@ class FallbackCase(unittest.TestCase):
             self.assertFalse(gui.gui_available())
 
     def test_apple_system_python_gets_the_python_org_hint(self):
-        for exe, want in (("/Library/Developer/CommandLineTools/usr/bin/python3", True),
-                          ("/usr/bin/python3", True),
-                          ("/Library/Frameworks/Python.framework/Versions/3.13/bin/python3", False)):
+        # base_prefix is patched too: run under Apple's own Python, the real value
+        # points at Xcode and would mark every case as Apple's Python.
+        for exe, prefix, want in (
+                ("/Library/Developer/CommandLineTools/usr/bin/python3",
+                 "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9", True),
+                ("/usr/bin/python3",
+                 "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9", True),
+                ("/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+                 "/Library/Frameworks/Python.framework/Versions/3.13", False)):
             err = io.StringIO()
             with patch.object(sys, "platform", "darwin"), patch.object(sys, "executable", exe), \
+                    patch.object(sys, "base_prefix", prefix), \
                     patch.object(sys, "frozen", False, create=True), patch.object(sys, "stderr", err):
                 gui.gui_fallback_notice()
             self.assertIn(MESSAGE, err.getvalue())

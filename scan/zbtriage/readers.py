@@ -68,8 +68,8 @@ READER_SPECS = (
     }),
     ReaderSpec('hash', 'hashscan', 'hash', ('all',), ('desktop', 'targeted'), {
         "platforms": ["Windows", "macOS", "Linux"],
-        "reads": "SHA-256 of candidate files in user-writable locations, compared with "
-                 "published sample hashes.",
+        "reads": "SHA-256 (and SHA-1, when samples are published only that way) of candidate "
+                 "files in user-writable locations, compared with published sample hashes.",
         "check_kinds": {
             "root:<folder>": "one folder that was fingerprinted",
             "hash-compare": "comparison against the published sample hashes",
@@ -97,6 +97,7 @@ READER_SPECS = (
             "known-paths": "published file locations",
             "known-path:<path>": "one published file location",
             "devilstongue-traces": "file locations and hijacked COM classes published for Candiru's DevilsTongue (leads to check, not findings)",
+            "dante-traces": "the hijacked COM class and module-folder layout published for Memento Labs' Dante (leads to check, not findings)",
             "host": "the module as a whole (error)",
         },
         "blind_spots": ["Windows does not keep DNS history unless it was turned on",
@@ -201,7 +202,7 @@ READER_SPECS = (
             "android": "the folder as a whole (not an AndroidQF collection)",
             "android:packages": "installed apps vs app ids, APK fingerprints, signing certs; "
                                 "sideloaded apps with what they can do and when installed",
-            "android:app-fingerprints": "user-installed app files that had no valid SHA-256 fingerprint in the collection",
+            "android:app-fingerprints": "user-installed app files that had no valid SHA-256 (or, for SHA-1 samples, SHA-1) fingerprint in the collection",
             "android:app-certificates": "user-installed app files that had no readable signing certificate in the collection",
             "android:processes": "running apps from processes.txt or AndroidQF processes.json pid/command_line records; arguments are not app identities",
             "android:history": "apps installed, updated or removed, from the battery history",

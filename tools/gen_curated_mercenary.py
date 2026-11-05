@@ -1,9 +1,9 @@
 """Generate iocs/curated_mercenary.txt (tab-separated). Every value below was read
 from the raw text of the cited Citizen Lab report (2026-10-25), not a summary.
 Later additions (2026-10-29: Candiru DevilsTongue and Intellexa Predator from
-Microsoft, ESET, Google, Talos, Amnesty and Recorded Future) live in
-curated_mercenary_additions.txt beside this file, each value checked verbatim
-against its source, and are appended unchanged."""
+Microsoft, ESET, Google, Talos, Amnesty and Recorded Future; 2026-11-02: Memento
+Labs Dante from Kaspersky) live in curated_mercenary_additions.txt beside this
+file, each value checked verbatim against its source, and are appended unchanged."""
 import io
 import sys
 
@@ -13,7 +13,7 @@ P2 = "citizenlab-paragon-2025-06"   # 'Graphite Caught: First Forensic Confirmat
 FAM = "Paragon Graphite"
 
 header = """# Curated mercenary-spyware indicators not available in any machine-readable feed
-# as-of: 2026-10-29
+# as-of: 2026-11-02
 # ^ Curated date; the staleness reference for this file.
 # Licence: CC0 1.0 (as iocs/LICENSE.md). Indicators are facts; the citations below
 #   name the researchers who published them.
@@ -49,6 +49,9 @@ header = """# Curated mercenary-spyware indicators not available in any machine-
 #   google-tag-spyware-vendors-2023-03  Google Threat Analysis Group, 'Spyware vendors use 0-days and
 #       n-days against popular platforms' (2023-03-29), 'Related IOCs' of both campaigns.
 #       https://blog.google/threat-analysis-group/spyware-vendors-use-0-days-and-n-days-against-popular-platforms/
+#   kaspersky-dante-2025-10  Kaspersky GReAT, 'Mem3nt0 mori - The Hacking Team is back!' (2025-10-27):
+#       Memento Labs' Dante spyware and the ForumTroll loader and LeetAgent used with it.
+#       https://securelist.com/forumtroll-apt-hacking-team-dante-spyware/117851/
 #
 # NOT included, deliberately:
 #   - customer-deployment IPs the report publishes only partially (e.g. 67.69.21.xxx);

@@ -73,8 +73,9 @@ a crisis helpline.
 - **Names that can change owner go in `reclaimable`:** hostnames on shared cloud platforms
   (`*.herokuapp.com`, `*.cloudapp.azure.com`) and domains registered again after their
   report. Check registry (RDAP) records, never the domain itself.
-- **Hashes must be SHA-256.** The scanner computes SHA-256; a SHA-1 would be misread as a
-  domain.
+- **Hashes are SHA-256, or SHA-1 when the publisher gives no SHA-256.** The scanner computes
+  both over the whole file. Never use a partial-file digest (such as Amcache's), and leave out
+  MD5.
 - **Update the `# as-of:` date** in the indicator file header when you change the set, and
   rerun `build/build.py`.
 

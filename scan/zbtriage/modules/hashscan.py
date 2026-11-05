@@ -4,7 +4,8 @@ Citizen Lab (and others) publish SHA-256 hashes for the Windows payloads this
 infrastructure delivers. Hashing every file on C: would take hours, so this
 scans the locations an implant DLL actually lands in, plus anything the user
 downloaded, and compares each file's digest against the sample hashes carried in
-the IOC set.
+the IOC set. Samples are matched by SHA-256, and by SHA-1 where a publisher gave
+only that; both come from the same single read of the whole file.
 
 A clean result means "none of these exact files are in these locations" - nothing
 more. Each sample is one build; another victim's payload would hash differently,
@@ -23,6 +24,7 @@ import os
 import stat
 import sys
 
+from ..iocs import TYPE_SHA1
 from ..result import Hit, ModuleResult, EV_ON_DISK
 from ..localpaths import (is_packaged, mac_has_full_disk_access, path_problem, path_problem_cached, walk_local, WALK_LINK_REFUSED,
                           WALK_SPECIAL_REFUSED, WALK_CLOUD_SKIPPED, SF_DATALESS)
@@ -166,8 +168,9 @@ def _hs_scope_note(root):
 _WORKERS = max(2, min(8, (os.cpu_count() or 2)))
 
 
-def _hash_one(full, folder_checked=None):
-    """(path, hex digest or None, size, reason). With no digest, reason says why:
+def _hash_one(full, folder_checked=None, with_sha1=False):
+    """(path, digests or None, size, reason). digests is (sha256_hex, sha1_hex),
+    the SHA-1 being None unless with_sha1 asks for it. With no digests, reason says why:
     "link" and "special" are aliases and device/socket entries, not files that
     can hold a program, and are not gaps (a link's target is fingerprinted
     where it lies inside a scanned folder); "large", "denied" and "unreadable"
@@ -187,8 +190,8 @@ def _hash_one(full, folder_checked=None):
             return full, None, 0, "cloud"
         if info.st_size > MAX_BYTES:
             return full, None, 0, "large"
-        digest, size = _sha256(full, folder_checked)
-        return full, digest, size, ""
+        digest, size, sha1 = _sha256(full, folder_checked, with_sha1)
+        return full, (digest, sha1), size, ""
     except PermissionError:
         return full, None, 0, "denied"
     except OSError as exc:
@@ -223,10 +226,11 @@ def _hs_reasons(reasons, fix=True):
     return text
 
 
-def _sha256(full, folder_checked=None):
+def _sha256(full, folder_checked=None, with_sha1=False):
     """SHA-256 of a file, read in 1 MiB chunks so a large file never loads whole
-    into memory. Returns (hex_digest, size) or raises OSError for the caller to
-    count as skipped."""
+    into memory, and its SHA-1 from the same read when with_sha1 is set (some
+    publishers give only SHA-1). Returns (sha256_hex, size, sha1_hex or None) or
+    raises OSError for the caller to count as skipped."""
     problem = (path_problem(full) if folder_checked is None
                else path_problem_cached(full, folder_checked))
     if problem:
@@ -236,6 +240,7 @@ def _sha256(full, folder_checked=None):
         raise OSError("not a regular file")
     size = info.st_size
     h = hashlib.sha256()
+    h1 = hashlib.sha1() if with_sha1 else None
     read_bytes = 0
     # Opened without following a link and without blocking, then checked to be
     # the same regular file: a FIFO swapped in after the stat (in /tmp, say)
@@ -262,15 +267,19 @@ def _sha256(full, folder_checked=None):
             if read_bytes > MAX_BYTES:
                 raise OSError("file exceeded hash read limit")
             h.update(chunk)
-    return h.hexdigest(), read_bytes
+            if h1 is not None:
+                h1.update(chunk)
+    return h.hexdigest(), read_bytes, (h1.hexdigest() if h1 is not None else None)
 
 
 def _hash_outcomes(candidates, ctx):
+    # SHA-1 is computed in the same read, and only when the set holds SHA-1 samples.
+    with_sha1 = bool(ctx.iocs.of_type(TYPE_SHA1))
     folder_checked = [None]
     with ThreadPoolExecutor(max_workers=_WORKERS) as pool:
         for start in range(0, len(candidates), 128):
             ctx.emit("[hash] fingerprinted {} / {} candidates".format(start, len(candidates)))
-            yield from pool.map(lambda full: _hash_one(full, folder_checked),
+            yield from pool.map(lambda full: _hash_one(full, folder_checked, with_sha1),
                                 candidates[start:start + 128])
 
 
@@ -354,13 +363,13 @@ def run(ctx) -> ModuleResult:
         # Python's interpreter lock, so several files are done at once. Results
         # are consumed in the original walk order, so the report is identical to
         # the one-at-a-time version (2026-10-25: 7 min for 45k files before).
-        for full, digest, size, reason in _hash_outcomes(candidates, ctx):
+        for full, digests, size, reason in _hash_outcomes(candidates, ctx):
             if reason in ("link", "special"):
                 tally["candidates"] -= 1
                 key = "links_not_followed" if reason == "link" else "special_entries"
                 r.submetrics[key] = r.submetrics.get(key, 0) + 1
                 continue
-            if digest is None:
+            if digests is None:
                 # Locked, permission-denied, refused or over the size cap:
                 # skipped, never clean (D3).
                 r.skipped += 1
@@ -373,7 +382,10 @@ def run(ctx) -> ModuleResult:
             r.submetrics["files_hashed"] = r.submetrics.get("files_hashed", 0) + 1
             r.submetrics["bytes_hashed"] = r.submetrics.get("bytes_hashed", 0) + size
 
-            ind = targets.get(digest)
+            sha256, sha1 = digests
+            ind, algorithm, digest = targets.get(sha256), "SHA-256", sha256
+            if ind is None and sha1:
+                ind, algorithm, digest = targets.get(sha1), "SHA-1", sha1
             if ind is not None:
                 # EV_ON_DISK is the whole point: a file whose fingerprint
                 # matches a published sample is conclusive. Without an
@@ -383,7 +395,7 @@ def run(ctx) -> ModuleResult:
                 r.add_hit(Hit(
                     indicator=digest,
                     location=full,
-                    detail="this file's SHA-256 matches a published sample: "
+                    detail="this file's " + algorithm + " matches a published sample: "
                            + ind.value,
                     tier=ind.tier,
                     confidence=ind.confidence,

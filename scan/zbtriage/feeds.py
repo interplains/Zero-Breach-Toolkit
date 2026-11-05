@@ -44,7 +44,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from . import __version__
 from .iocs import (SHARED_SERVICE_HOSTS, SHARED_SERVICE_REASON, TYPE_DOMAIN, TYPE_IP,
-                   TYPE_SHA256, Indicator, IocError, IocSet, infer_type, load_any,
+                   TYPE_SHA1, TYPE_SHA256, Indicator, IocError, IocSet, infer_type, load_any,
                    shared_service_domain)
 from .i18n import T
 from .localpaths import path_problem, tls_context, is_packaged
@@ -219,11 +219,10 @@ MANIFEST = "manifest.json"
 _EXT = {"stix2": ".stix2", "csv-domain-ip": ".csv", "domains-txt": ".txt",
         "misp-csv": ".misp.csv"}
 
-# MISP attribute types -> our kinds. URLs contribute their host name. MD5 and
-# SHA-1 sample hashes are counted as not applicable: the file check computes
-# SHA-256 only.
+# MISP attribute types -> our kinds. URLs contribute their host name. MD5 sample
+# hashes are counted as not applicable: the file checks compute SHA-256 and SHA-1.
 _MISP_KINDS = {"domain": TYPE_DOMAIN, "hostname": TYPE_DOMAIN, "ip-dst": TYPE_IP,
-               "ip-src": TYPE_IP, "sha256": TYPE_SHA256, "url": "url"}
+               "ip-src": TYPE_IP, "sha256": TYPE_SHA256, "sha1": TYPE_SHA1, "url": "url"}
 
 # A malicious LINK on a shared public service (a URL shortener, a file or page
 # host) condemns that one link, not the service: Citizen Lab's Mexico sets list
@@ -273,7 +272,7 @@ def load_list(path: str, fmt: str, source: str, family: str) -> IocSet:
             not_applicable[SHARED_SERVICE_REASON] = not_applicable.get(SHARED_SERVICE_REASON, 0) + 1
             return
         tier = (TIER_INFRA_IP if kind == TYPE_IP else
-                TIER_SAMPLE if kind == TYPE_SHA256 else TIER_INFRA)
+                TIER_SAMPLE if kind in (TYPE_SHA256, TYPE_SHA1) else TIER_INFRA)
         found.setdefault((kind, value), Indicator(value, tier, "primary", kind, source, family))
 
     with io.open(path, encoding="utf-8-sig", errors="replace") as fh:

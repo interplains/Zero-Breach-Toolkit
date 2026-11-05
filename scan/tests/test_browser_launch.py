@@ -36,6 +36,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -217,6 +218,20 @@ class TestOneProfileSucceedsRollsUpToRan(BrowserLaunchBase):
 
 
 class TestTempCopyIsAlwaysCleanedUp(BrowserLaunchBase):
+    def setUp(self):
+        super().setUp()
+        # A private temp folder: with tests running in parallel, other browser
+        # scans create bscan_* folders in the shared one at the same moment.
+        private = tempfile.mkdtemp(prefix="zb-bscan-test-")
+        self.addCleanup(shutil.rmtree, private, True)
+        saved = tempfile.tempdir
+        tempfile.tempdir = private
+        self.addCleanup(setattr, tempfile, "tempdir", saved)
+        # The scanner picks its folder from TMPDIR/TEMP/TMP (localpaths.local_temp_dir).
+        env = mock.patch.dict(os.environ, {"TMPDIR": private, "TEMP": private, "TMP": private})
+        env.start()
+        self.addCleanup(env.stop)
+
     def _bscan_dirs(self):
         return set(glob.glob(os.path.join(tempfile.gettempdir(), "bscan_*")))
 
