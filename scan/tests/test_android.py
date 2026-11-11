@@ -109,6 +109,21 @@ class TestWorthALook(unittest.TestCase):
         self.assertEqual(len(whats), 1, whats)
         self.assertIn("com.example.launcher", whats[0])
 
+    def test_honor_store_install_is_not_a_sideload(self):
+        # Honor split from Huawei in 2020: its store is com.hihonor.appmarket,
+        # not com.huawei.appmarket. An app it installed is a store install.
+        d = collection(spy=False)
+        path = os.path.join(d, "packages.json")
+        pkgs = json.load(open(path, encoding="utf-8"))
+        pkgs.append({"name": "com.example.honorapp", "installer": "com.hihonor.appmarket",
+                     "third_party": True, "system": False, "disabled": False,
+                     "uid": 9, "files": []})
+        json.dump(pkgs, open(path, "w"))
+        whats = [l.what for l in check(d).leads]
+        self.assertEqual(len(whats), 1, whats)
+        self.assertIn("com.example.launcher", whats[0])
+        self.assertFalse(any("honorapp" in w for w in whats))
+
     def test_accessibility_verification_and_old_patch(self):
         d = collection(spy=False, enabled_accessibility_services="com.x/.Svc:com.y/.Svc",
                        package_verifier_enable="0", patch="2020-01-05")
