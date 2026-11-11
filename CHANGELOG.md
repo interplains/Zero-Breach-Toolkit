@@ -1,6 +1,20 @@
 # Changelog
 
-## 2.0.6 (unreleased)
+## 2.0.7
+
+- A single malformed `.plist` no longer costs the whole out-of-date-program check. On a Mac holding one
+  loosely-written `Info.plist`, the check stopped with "module error: XML declaration not well-formed" and no
+  installed program was examined at all; such a file is now skipped and the rest are checked as usual. Found
+  by Natha.
+- Honor's App Market (`com.hihonor.appmarket`) is recognised as an app store, so apps installed from it are no
+  longer reported as hand-installed. On one Honor phone 56 of the 65 such leads were ordinary store apps,
+  burying the ones worth looking at. Honor split from Huawei in 2020, and `com.huawei.appmarket` is not
+  present on these phones at all. Contributed by dhruv1220; reported by Verchiel666.
+- The instructions for checking a release now say to import the signing key before verifying the checksums,
+  and link the full steps. The key has always been published alongside every release, but the verify command
+  on its own could never have worked without importing it first. Found by Natha.
+
+## 2.0.6
 
 - With the optional pattern check (`--patterns`), the pattern engine is first tried in a separate process. On
   some Macs yara-x stops Python with no message; the check is now skipped with an explanation and the rest of
