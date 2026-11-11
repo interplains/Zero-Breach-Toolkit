@@ -68,6 +68,7 @@ _AN_STORES = {
     "com.amazon.venezia",
     "com.sec.android.app.samsungapps",
     "com.huawei.appmarket",
+    "com.hihonor.appmarket",           # Honor App Market, since the 2020 split from Huawei
     "com.xiaomi.market", "com.xiaomi.mipicks",
     "com.heytap.market", "com.oppo.market",
     "com.vivo.appstore",
