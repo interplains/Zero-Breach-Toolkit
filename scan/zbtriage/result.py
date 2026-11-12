@@ -46,6 +46,26 @@ EVIDENCE_ORDER = [EV_ON_DISK, EV_ON_DEVICE, EV_FILE_PATTERN, EV_PERSISTENCE, EV_
                   EV_CONTACTED, EV_RECEIVED, EV_DEVICE_LOG, EV_DNS, EV_ATTEMPTED,
                   EV_CONFIGURED, EV_REFERENCED]
 
+# Indicator kinds that are not network addresses: rendered as written (never # defanged) and excluded from blocklist export. Single source of truth — the
+# report renders with this set and export.py filters with it, so a future kind
+# added here cannot silently start appearing in a DNS sinkhole.
+NOT_ADDRESSES = {"app-id", "app-cert", "file-path", "file-name", "android-property",
+                 "process", "profile-id", "sha256"}
+
+
+def net_value(hit) -> str:
+    """The hit's indicator if it is (or may be) a network address, else ''.
+
+    Empty kind is treated as network: an unknown kind from a future module is
+    more dangerous rendered as a clickable address than as inert text.
+    """
+    if isinstance(hit, dict):
+        kind, value = hit.get("kind"), hit.get("indicator", "")
+    else:
+        kind, value = getattr(hit, "kind", ""), getattr(hit, "indicator", "")
+    return "" if kind in NOT_ADDRESSES else value
+
+
 # Everything except `referenced` is a finding that needs a person to look at it.
 # This is deliberately a DENY-list of the one benign grade rather than an
 # allow-list of serious ones: a hit whose grade is missing or misspelled is then
