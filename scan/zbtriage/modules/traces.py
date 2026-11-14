@@ -629,8 +629,9 @@ def _tr_parse_shimcache(blob):
 
 def _tr_parse_pca(raw):
     """(path, launch time) from PcaAppLaunchDic.txt: one 'path|YYYY-MM-DD
-    HH:MM:SS.fff' per line. Published research reads the time as UTC; it is
-    converted to local time like every other time in the report."""
+    HH:MM:SS.fff' per line. Published research reads the time as UTC; keep it in
+    UTC instead of converting to the host's local timezone, so the observation is
+    stable across machines and matches the value recorded in the source file."""
     text = (raw.decode("utf-16", "replace") if raw[:2] in (b"\xff\xfe", b"\xfe\xff")
             else raw.decode("utf-8-sig", "replace"))
     out = []
@@ -641,8 +642,7 @@ def _tr_parse_pca(raw):
         when = ""
         try:
             when = datetime.datetime.strptime(stamp.strip()[:19], "%Y-%m-%d %H:%M:%S").replace(
-                tzinfo=datetime.timezone.utc).astimezone().replace(
-                tzinfo=None).isoformat(timespec="seconds")
+                tzinfo=datetime.timezone.utc).isoformat(timespec="seconds")
         except ValueError:
             pass
         out.append((path.strip(), when))
