@@ -1,7 +1,6 @@
 """iPhone readers: unusable input is a gap, never a clean read (2.0.3).
 
-Reproduces the findings of private-notes/REVIEW-30-ITEMS-VERIFIED.md (item 3,
-R5 and the 'source opened is not proof' flaw behind R1) for the iPhone readers.
+Reproduces the 'source opened is not proof' problem for the iPhone readers.
 Each test fails on the 2.0.2 code. Fixture layouts and their sources are cited
 at the top of sweep_ios.py (MVT parsers, Apple documentation, Chromium and
 WebKit source); values are synthetic .invalid names and are never contacted.

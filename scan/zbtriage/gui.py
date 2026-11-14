@@ -104,6 +104,26 @@ GUI_STEP_SECONDS = {"browser": 600, "hash": 200, "traces": 35, "windows-executio
                     "android": 60, "android-intrusion": 10, "ios": 90, "patterns": 120, "dns-logs": 30}
 
 
+def gui_background_priority(on: bool) -> bool:
+    """While a check runs, let everything else on the computer go first: Windows' background mode lowers this
+    program's CPU, disk and memory priority (and lifts it again afterwards); macOS and Linux get a lower nice
+    value for the rest of the session (it cannot be raised back without administrator rights). The check takes
+    longer only when the computer is busy with something else. True when the change was made."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            mode = 0x00100000 if on else 0x00200000          # PROCESS_MODE_BACKGROUND_BEGIN / _END
+            return bool(kernel32.SetPriorityClass(kernel32.GetCurrentProcess(), mode))
+        if on and hasattr(os, "nice"):
+            if os.nice(0) < 10:
+                os.nice(10 - os.nice(0))
+            return True
+    except (OSError, AttributeError, ValueError):
+        pass
+    return False
+
+
 def gui_progress_smooth(state, now=None):
     """The bar's position (0-100) for a running check: finished steps by their usual length, plus the share of
     the current one - its own count when it gives one (program files), otherwise an estimate from how long it
@@ -546,7 +566,62 @@ def gui_stoppable_emit(stop, put):
     return emit
 
 
+def gui_found_line(document):
+    """"6 found - Predator: graph[.]example[.]com, app com.x.y, a file 3f2a9c1e... and 3 more." - what the checks
+    matched, for the result card, so it says how many and which without opening the report. Addresses are
+    defanged (never clickable), file fingerprints shortened, each family named once. Without matches, the first
+    worth-a-look items."""
+    import re
+    groups, count = {}, 0
+    for h in (h for m in document.get("modules", {}).values() for h in m.get("hits", [])):
+        if h.get("withdrawn_only"):
+            continue
+        raw = str(h.get("indicator") or "")
+        if not raw:
+            continue
+        if re.fullmatch(r"[0-9a-fA-F]{32,128}", raw):
+            name = T("a file {fingerprint}...", fingerprint=raw[:10])
+        elif re.search(r"[a-z0-9-]\.[a-z]{2,}$", raw, re.I) and " " not in raw:
+            name = raw.replace(".", "[.]")
+        else:
+            name = raw[:60]
+        family = str(h.get("family") or "").strip()
+        names = groups.setdefault(family, [])
+        if name not in names:
+            names.append(name)
+            count += 1
+    if count:
+        parts, shown = [], 0
+        for family, names in groups.items():
+            take = names[:max(0, 4 - shown)]
+            shown += len(take)
+            if take:
+                parts.append((family + ": " if family else "") + ", ".join(take))
+        more = count - shown
+        text = TN("{n} found - {names}", "{n} found - {names}", count, names="; ".join(parts))
+        return text + (" " + TN("and {n} more", "and {n} more", more) if more > 0 else "") + "."
+    leads = []
+    for m in document.get("modules", {}).values():
+        for lead in m.get("leads", []):
+            what = str(lead.get("what") or lead.get("check") or "").strip()
+            if what and what not in leads:
+                leads.append(what)
+    if leads:
+        text = T("Worth a look: {items}", items="; ".join(x[:80] for x in leads[:3]))
+        return text + (" " + TN("and {n} more", "and {n} more", len(leads) - 3) if len(leads) > 3 else "") + "."
+    return ""
+
+
 def gui_headline(document):
+    """(colour, title, subtitle) for the result card; the subtitle starts with what was found, by name."""
+    colour, title, note = _gui_headline(document)
+    found = gui_found_line(document)
+    if found and found not in note:
+        note = found + " " + note
+    return colour, title, note
+
+
+def _gui_headline(document):
     """(colour, title, subtitle) for the result card."""
     verdict = document["verdict"]
     status = verdict.get("status", "")
@@ -2659,6 +2734,7 @@ class GuiApp:
         threading.Thread(target=self._run_check, args=(self.check.get(), phone, training), daemon=True).start()
 
     def _run_check(self, scan_type, phone=None, training=None, argv_override=None):
+        lowered = gui_background_priority(True)
         try:
             password = ""
             if argv_override:
@@ -2699,6 +2775,8 @@ class GuiApp:
                                          error="{}: {}".format(type(exc).__name__, exc))))
         finally:
             training_cleanup()
+            if lowered:
+                gui_background_priority(False)
 
     def _show_result(self, document, select=True):
         self._finish_busy()
@@ -2755,12 +2833,17 @@ class GuiApp:
         self.status.set(T("Copied: {url}", url=HELPLINE))
 
     def toggle_view(self):
+        """The full report in a window of its own: in the Result tab's box it was out of sight on a small screen
+        (the box is what is left under the advice, one line on a 1000x680 window), so the button seemed to do
+        nothing."""
         if not self.document:
             return
-        self.showing_full = not self.showing_full
-        text = render_human(self.document) if self.showing_full else render_summary(self.document)
-        self._set_text(_defang_report(text, self.document))
-        self.view_button.configure(text=gui_dir(T("Show summary") if self.showing_full else T("Show full report")))
+        document = self.document
+        # Off the window thread: a real result can take a while to write out, and the window froze meanwhile
+        # (hourglass, nothing happening).
+        self._in_background(T("Preparing the full report..."),
+                            lambda: _defang_report(render_human(document), document),
+                            lambda text: self._text_window(T("Full report"), text))
 
     def _ask_path(self, title, name, extension):
         from tkinter import filedialog

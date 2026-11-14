@@ -1,6 +1,6 @@
 """No check may report "ran" from input it could not use.
 
-Why this file exists (2.0.3, private-notes/LESSONS-FALSE-CLEAN-20261102.md): a
+Why this file exists (2.0.3): a
 check that calls ``ran`` without proof that anything was read reads, in a
 report, as "looked and found nothing". Most of the older tests feed in a trace
 and assert it is found; few feed in unusable input and assert the check does not

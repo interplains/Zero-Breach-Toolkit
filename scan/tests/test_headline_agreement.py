@@ -1,7 +1,6 @@
 """The window and the command-line summary work out their headline separately.
 They must agree on the meaning, and neither may read as clean when the other
-says incomplete or not checked (2.0.3; see private-notes/LESSONS-FALSE-CLEAN-
-20261102.md, "we trusted two outputs to agree").
+says incomplete or not checked (2.0.3).
 
 The same documents go through both: findings, a withdrawn match, references
 only, nothing found, nothing found with gaps, and a phone nothing was read from.

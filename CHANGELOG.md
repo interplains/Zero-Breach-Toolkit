@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.1
+
+- The result card now says what was found - how many, and which addresses, apps or files (addresses written so
+  they cannot be clicked) - before you open the report. On a small screen the summary underneath could be out
+  of sight.
+- "Show full report" opens the report in its own window, prepared in the background. On a small screen it
+  changed a box that was out of sight, and on a large result the window froze while it was written.
+- The plain-words advice after an advertising-network trace no longer assumes an ad blocker is already
+  installed, and the related-records note is indented and wrapped like the rest of the report.
+
 ## 3.0.0
 
 **Doors to close.** Besides looking for spyware that is already there, every check now lists the ways in that

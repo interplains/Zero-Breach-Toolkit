@@ -693,9 +693,11 @@ def render_human(document: Dict[str, Any]) -> str:
         w("")
 
     for group in document.get("correlations", []):
-        w(T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
-            indicator=_show_indicator(group, document), n=group["artifact_count"]))
-        w("  " + TX(group["interpretation"]))
+        import textwrap as _tw
+        w("  " + T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
+                   indicator=_show_indicator(group, document), n=group["artifact_count"]))
+        for line in _tw.wrap(TX(group["interpretation"]), 66) or [""]:
+            w("    " + line)
     looks = document.get("worth_a_look") or []
     if looks:
         w(T("WORTH A LOOK  —  these are NOT findings"))
@@ -1677,9 +1679,11 @@ def render_summary(document: Dict[str, Any]) -> str:
                          "help directly regardless of this result.")
 
     for group in document.get("correlations", []):
-        w(T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
-            indicator=_show_indicator(group, document), n=group["artifact_count"]))
-        w("  " + TX(group["interpretation"]))
+        import textwrap as _tw
+        w("  " + T("RELATED RECORDS: {indicator} occurs in {n} artifacts.",
+                   indicator=_show_indicator(group, document), n=group["artifact_count"]))
+        for line in _tw.wrap(TX(group["interpretation"]), 66) or [""]:
+            w("    " + line)
     looks = document.get("worth_a_look") or []
     if looks:
         w("")
@@ -2126,7 +2130,8 @@ def plain_summary(document: Dict[str, Any]) -> List[Tuple[str, str]]:
                               "delivered through."))
         out.append(("What it means", "This happens through ordinary ads and does NOT mean this device is infected - "
                                      "no spyware file or app was found."))
-        out.append(("Do this next", protect_line or "Nothing urgent. Keep your ad blocker and protective DNS on."))
+        out.append(("Do this next", protect_line or "Nothing urgent. If you do not use one yet, an ad blocker or a "
+                                                    "protective DNS blocks these ads - see WHAT TO DO."))
         return out
     if live:
         if all(h.get("evidence") in PLAIN_CONTACT for h in live):
