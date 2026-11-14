@@ -9,6 +9,8 @@
   changed a box that was out of sight, and on a large result the window froze while it was written.
 - The plain-words advice after an advertising-network trace no longer assumes an ad blocker is already
   installed, and the related-records note is indented and wrapped like the rest of the report.
+- Parts of Windows itself that keep their data locked are no longer listed as "open apps" to close, and the
+  one-door summary no longer reads "It is NOT a a finding".
 
 ## 3.0.0
 

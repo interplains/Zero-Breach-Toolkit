@@ -961,8 +961,8 @@ python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v3.0.1 the file is 7,861,765 bytes, SHA-256
-`524f395a014ab233140a661bbc6e39809f9572f579b7eced5b1adb15a042142f`. The size and SHA-256
+For v3.0.1 the file is 7,864,051 bytes, SHA-256
+`e7f8d66ce22c171f3c0f741ce0c0e6f74ffb644b79072f2406725750b9d84639`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).

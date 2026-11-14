@@ -1705,7 +1705,7 @@ def render_summary(document: Dict[str, Any]) -> str:
     open_doors = [d for d in document.get("doors") or [] if d.get("state") == "open"]
     if open_doors:
         w("")
-        _say(w, ["  DOORS TO CLOSE: {n} way in is left open on this device. It is NOT a" if len(open_doors) == 1 else
+        _say(w, ["  DOORS TO CLOSE: {n} way in is left open on this device. It is NOT" if len(open_doors) == 1 else
                  "  DOORS TO CLOSE: {n} ways in are left open on this device. They are NOT",
                  "  a finding, but closing it makes spying harder - see \"DOORS TO CLOSE\"." if len(open_doors) == 1 else
                  "  a finding, but closing them makes spying harder - see \"DOORS TO CLOSE\"."], n=len(open_doors))
@@ -1829,6 +1829,7 @@ def _gap_lines(gaps: List[str]) -> List[str]:
     full list stays in the JSON and at the end of the report; here, one line
     per kind of gap."""
     locked, files_missed, folders_missed, rest = [], 0, 0, {}
+    windows_locked = False
     private, full_disk = [], False
     missing_sources = False
     for g in gaps:
@@ -1847,6 +1848,11 @@ def _gap_lines(gaps: List[str]) -> List[str]:
         app = _GAP_APP.match(g)
         if app and any(word in low for word in _GAP_LOCKED):
             name = app.group(1).strip()
+            if name.lower().startswith(("microsoftwindows.", "microsoft.windows.", "windows.")):
+                # A part of Windows itself (MicrosoftWindows.Client.CBS and the like): nobody can close it, so it
+                # is not listed as an app to close.
+                windows_locked = True
+                continue
             name = _APP_NAMES.get(name, name.title())
             if name not in locked:
                 locked.append(name)
@@ -1862,6 +1868,9 @@ def _gap_lines(gaps: List[str]) -> List[str]:
     lines = []
     if missing_sources:
         lines.append(T("Indicator sources not downloaded — run --update once, then scan again."))
+    if windows_locked:
+        lines.append(T("Parts of Windows itself kept some of their data locked while they ran, so it was not read. "
+                       "That is normal and cannot be avoided."))
     if locked:
         lines.append(T("Open apps kept some of their data locked, so it was not read: {apps}. "
                        "Close them and run the check again to include it.",
