@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.0.2
+
+From the first testers' reports:
+- The window opens within the screen on small laptops (1366x768, or 1080p at 150%); the Live connections table
+  and the phone panel fit the narrowest window, and empty cells in the table say "no" or "unknown".
+- On a Mac, a folder that waits for a permission answer (Downloads, Documents) no longer holds the check for
+  minutes: it is skipped after a few seconds and reported as not checked.
+- The Mac app shows its real version in Get Info, and says why it asks for location (hidden Wi-Fi) and the
+  local network (home network check).
+- `--lang` now applies to the separate tools in the terminal too.
+- Input and setup errors (a missing file, an unknown service) exit with 1, never with a code that means
+  "something was found".
+- The household report is saved readable by you only; practice examples are shown as training examples, not as
+  real devices with spyware. `--combine ... --report PATH` writes a text version.
+- `--online` without a key says how to add one.
+- The phone guide shows the command as it works from the downloaded file.
+- A message with no link says there was no link to check, and warns never to share a login or one-time code.
+- The accounts checklist says "Nothing checked yet" when nothing was answered.
+- "Worth a look" items on the result card end at a word; the drop tip says to drop onto the program's icon.
+- German: a grammar slip in the safety sentence is corrected.
+
 ## 3.0.1
 
 - The result card now says what was found - how many, and which addresses, apps or files (addresses written so

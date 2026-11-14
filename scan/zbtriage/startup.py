@@ -778,7 +778,7 @@ def su_render(result, show_all=False) -> str:
             continue
         groups.setdefault(e["where"], []).append(e)
     lines.append("  " + T("EVERYTHING THAT STARTS") + ("" if show_all else " " + T(
-        "(signed Windows / system components hidden; --startup-all shows them)")))
+        "(signed system components hidden; --startup-all shows them)")))
     for where, items in groups.items():
         lines.append("    " + TX(where))
         for e in items[:300]:

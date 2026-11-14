@@ -914,7 +914,15 @@ def hl_command(args, load_iocs, out=print) -> int:
         services = hl_parse_services(getattr(args, "online", "") or "")
     except HlError as exc:
         out(TX(str(exc)))
-        return 2
+        return 1                       # an unknown service is an argument error
+    keys = hl_keys()
+    for service in services:
+        need = HL_SERVICES[service][2]
+        if need and not keys.get(need):
+            # Otherwise the look-up quietly skips it and the result just says "not looked up online".
+            out(T("No {name} key is saved, so {name} will not be asked. Add your free key with "
+                  "--set-lookup-key {key}, or in the window: More checks > Keys for online look-ups.",
+                  name=HL_SERVICES[service][0], key=need))
     try:
         iocs = load_iocs(args)
     except Exception as exc:  # noqa: BLE001

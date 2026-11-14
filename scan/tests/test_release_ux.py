@@ -339,3 +339,136 @@ def test_the_progress_bar_moves_smoothly_and_never_back():
     after = gui.gui_progress_smooth(st, now=600)
     gui.gui_progress("[*] running check: hash", st)
     assert gui.gui_progress_smooth(st, now=600) >= after               # never backwards across a step change
+
+
+# 3.0.2: Mac tester's report
+def test_phone_guides_print_the_released_file_name():
+    """4.8: the guides told release users to run scan/zero-breach-toolkit.py, which exists only in the source."""
+    from zbtriage import scope
+    for platform in ("android", "ios"):
+        text = scope.scope_guide(platform)
+        assert "scan/zero-breach-toolkit.py" not in text
+    assert "zero-breach-toolkit.py --phone" in scope.scope_guide("android")
+
+
+def test_accounts_headline_with_nothing_answered():
+    """4.11: 'Nothing found in what you checked' when nothing was checked; 'step(s)'."""
+    from zbtriage import accounts as a
+    assert a.ac_headline(a.ac_result({})) == "Nothing checked yet"
+    some = a.ac_result({"whatsapp": a.AC_CHECKED})
+    assert a.ac_headline(some).endswith("steps not checked yet") and "(s)" not in a.ac_headline(some)
+    one = a.ac_result({"whatsapp": a.AC_FOUND})
+    assert a.ac_headline(one).startswith("1 thing to fix")
+
+
+def test_a_message_without_a_link_is_not_called_nothing_known():
+    """4.12: 'Send me the code you just got' was NOTHING KNOWN / 'nothing matched common tricks'."""
+    from zbtriage import linkcheck as lc
+    result = lc.lc_check_text("Send me the code you just got", None)
+    assert lc.lc_headline(result) == "NO LINK TO CHECK"
+    text = lc.lc_render(result)
+    assert "one-time code" in text and "common tricks" not in text
+    with_link = lc.lc_check_text("see https://example.org", None)
+    assert lc.lc_headline(with_link) != "NO LINK TO CHECK"
+
+
+def test_startup_heading_is_not_windows_only():
+    """P3: macOS/Linux showed 'signed Windows / system components hidden'."""
+    import inspect
+    from zbtriage import startup
+    assert "signed Windows / system" not in inspect.getsource(startup)
+
+
+def test_mac_bundle_gets_its_version_and_permission_texts():
+    """4.6 / 4.17: Info.plist said 0.0.0 and had no location or local-network usage text."""
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    src = open(os.path.join(root, "build", "build_exe.py"), encoding="utf-8").read()
+    for key in ("CFBundleShortVersionString", "CFBundleVersion", "NSLocationWhenInUseUsageDescription",
+                "NSLocalNetworkUsageDescription", "NSBluetoothAlwaysUsageDescription"):
+        assert '"{}"'.format(key) in src, key
+
+
+def test_german_safety_sentence_grammar():
+    """4.10: 'KEIN Unbedenklichkeitsbescheinigung' (feminine noun needs KEINE)."""
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    de = open(os.path.join(root, "locales", "de.json"), encoding="utf-8").read()
+    assert "KEIN Unbedenklichkeitsbescheinigung" not in de and "KEINE Unbedenklichkeitsbescheinigung" in de
+
+
+def test_a_folder_that_does_not_answer_is_skipped_not_waited_on(monkeypatch, tmp_path):
+    """Mac tester 4.9: a folder macOS guards blocked the doors check for ~10 minutes."""
+    import os
+    import time
+    from zbtriage.modules import doors
+    real = os.scandir
+
+    def slow(path):
+        if str(path) == str(tmp_path):
+            time.sleep(5)
+        return real(path)
+    monkeypatch.setattr(doors.os, "scandir", slow)
+    monkeypatch.setattr(doors, "_DR_DL_SECONDS", 0.5)
+    started = time.monotonic()
+    found, seen, capped, opened, refused = doors.dr_scan_downloads([(str(tmp_path), 2)])
+    assert time.monotonic() - started < 3 and opened == 0 and refused == 1
+
+
+# 3.0.2 (Mac tester's report)
+def test_lang_reaches_the_separate_tools(tmp_path, capsys):
+    """4.4: --lang was set only after the separate tools had already returned."""
+    from zbtriage import cli
+    from zbtriage.i18n import i18n_lang, i18n_set
+    f = tmp_path / "note.txt"
+    f.write_text("hello")
+    try:
+        cli.main(["--no-banner", "--no-menu", "--lang", "de", "--check-file", str(f)])
+        assert i18n_lang() == "de"
+    finally:
+        i18n_set("en")
+    capsys.readouterr()
+
+
+def test_input_errors_exit_1_not_2(tmp_path, capsys):
+    """4.5: a missing file exited 2, the code for "a match was found"."""
+    from zbtriage import cli
+    assert cli.main(["--no-banner", "--no-menu", "--check-file", str(tmp_path / "missing.bin")]) in (1,)
+    capsys.readouterr()
+
+
+def test_household_outputs_are_private_and_training_stays_out(tmp_path):
+    """4.7: the page was world-readable, and a practice report set off the red alarm."""
+    import json
+    import os
+    import sys
+    from types import SimpleNamespace
+    from zbtriage import household as h
+    real = tmp_path / "wifi.json"
+    real.write_text(json.dumps({"tool": "zero-breach-toolkit wifi nearby", "level": "clean"}))
+    practice = tmp_path / "practice.json"
+    practice.write_text(json.dumps({"tool": {"name": "zero-breach-toolkit"}, "scope": {"phone": True},
+                                    "verdict": {"status": "INDICATORS_FOUND"}, "modules": {},
+                                    "training": {"synthetic": True}}))
+    doc = h.hh_combine([str(real), str(practice)])
+    assert doc["overall"] == h.GREEN
+    assert any(e.get("training") for e in doc["entries"])
+    out = tmp_path / "house.html"
+    args = SimpleNamespace(combine=[str(real), str(practice)], json=None, html=str(out),
+                           report=str(tmp_path / "house.txt"))
+    assert h.combine_command(args, out=lambda *_: None) == 0
+    assert "Training example" in (tmp_path / "house.txt").read_text(encoding="utf-8")      # 4.15
+    if sys.platform != "win32":
+        assert (os.stat(out).st_mode & 0o777) == 0o600
+
+
+def test_online_without_a_key_says_how_to_add_one(tmp_path, monkeypatch):
+    """4.14: --online virustotal without a key quietly did nothing."""
+    from types import SimpleNamespace
+    from zbtriage import hashlook as hl
+    monkeypatch.setattr(hl, "hl_keys", lambda *a, **k: {})
+    f = tmp_path / "a.bin"
+    f.write_bytes(b"x")
+    said = []
+    args = SimpleNamespace(set_lookup_key=None, online="virustotal", hash_lookup=[str(f)], lookup_all=False,
+                           json=None)
+    hl.hl_command(args, lambda a: None, out=said.append)
+    assert any("--set-lookup-key virustotal" in s for s in said)

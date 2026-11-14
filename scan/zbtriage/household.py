@@ -178,9 +178,23 @@ def _hit_line(hit, module):
     return "{}{} ({}{})".format(family + ": " if family else "", what, module, ", " + grade if grade else "")
 
 
+def hh_is_training(doc) -> bool:
+    training = doc.get("training") if isinstance(doc, dict) else None
+    return bool(training) and (not isinstance(training, dict) or training.get("synthetic", True) is not False)
+
+
 def hh_entry(doc, label="", source=""):
     """One normalised line of the household report from a loaded document."""
     kind = hh_kind(doc)
+    if hh_is_training(doc):
+        # A practice report (made-up phone, made-up spyware): shown, but never as a real device's result.
+        when = _parse_time(doc.get("timestamp"))
+        return {"label": _clean(label, 80) or T("Training example"), "kind": kind, "kind_label": T(HH_KINDS[kind]),
+                "source": _clean(source, 260), "when": when.strftime("%Y-%m-%d %H:%M") if when else "",
+                "age_days": None, "colour": GREY, "result": T("Training example - not a real device"),
+                "findings": [], "more_findings": 0, "worth_a_look": [], "gaps": [],
+                "notes": [T("Made-up data for practice: it is left out of this page's verdict.")],
+                "summary_only": False, "training": True}
     entry = {"label": _clean(label, 80) or _default_label(kind, doc), "kind": kind,
              "kind_label": T(HH_KINDS[kind]), "source": _clean(source, 260), "when": "", "age_days": None,
              "colour": GREY, "result": "", "findings": [], "more_findings": 0, "worth_a_look": [],
@@ -270,11 +284,12 @@ def hh_combine(args_list):
                                "reason": _clean("has an unexpected shape, so it could not be summarised ({})".format(
                                    type(exc).__name__), 200)})
     entries.sort(key=lambda e: (HH_ORDER[e["colour"]], e["label"].lower()))
-    kinds = {e["kind"] for e in entries}
+    real = [e for e in entries if not e.get("training")]
+    kinds = {e["kind"] for e in real}
     present = kinds | ({"phone"} if kinds & {"iphone", "android", "phone"} else set())
     missing = [T(text) for kind, text in HH_MISSING if kind not in present]
-    old = [e["label"] for e in entries if e["age_days"] is not None and e["age_days"] > HH_OLD_DAYS]
-    worst = min((HH_ORDER[e["colour"]] for e in entries), default=HH_ORDER[GREY])
+    old = [e["label"] for e in real if e["age_days"] is not None and e["age_days"] > HH_OLD_DAYS]
+    worst = min((HH_ORDER[e["colour"]] for e in real), default=HH_ORDER[GREY])
     overall = next(c for c, o in HH_ORDER.items() if o == worst)
     if unreadable and overall == GREEN:
         overall = AMBER
@@ -375,6 +390,14 @@ def hh_html(doc):
     return "".join(parts)
 
 
+def hh_save_private(path, text):
+    """Write a new file readable by this user only (it holds every device's findings); never replaces one.
+    Raises OSError (FileExistsError included) for the window to show."""
+    fd = os.open(os.path.abspath(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
+        fh.write(text)
+
+
 def _write_new(path, text, out):
     path = os.path.abspath(path)
     problem = path_problem(path)
@@ -382,7 +405,9 @@ def _write_new(path, text, out):
         out("[not written: {}]".format(problem))
         return False
     try:
-        with open(path, "x", encoding="utf-8") as fh:    # never replaces an existing file
+        # never replaces an existing file; readable by this user only (it holds every device's findings)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
             fh.write(text)
     except FileExistsError:
         out("[not written: {} already exists - choose a new name]".format(path))
@@ -403,6 +428,8 @@ def combine_command(args, out=print):
         ok &= _write_new(args.json, json.dumps(doc, indent=2, ensure_ascii=False), out)
     if getattr(args, "html", None):
         ok &= _write_new(args.html, hh_html(doc), out)
+    if getattr(args, "report", None):
+        ok &= _write_new(args.report, hh_render(doc) + "\n", out)
     if not ok:
         return 1
     return {RED: 2, AMBER: 3, GREY: 3, GREEN: 0}[doc["overall"]]

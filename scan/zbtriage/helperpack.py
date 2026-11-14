@@ -383,19 +383,19 @@ def hp_command(args, out=print) -> int:
             result = hp_verify(args.verify_package)
         except (HpError, zipfile.BadZipFile) as exc:
             out(T("Could not check that package: {why}", why=TX(str(exc))))
-            return 2
+            return 1
         out(hp_render_verify(result))
         return 0 if result["ok"] else 2
     if not args.helper_key and not args.no_encryption:
         out(T("A helper key is needed to seal the package (--helper-key age1...).") + "\n\n" + T(HP_HOW) +
             "\n\n  " + T("To make an unencrypted package instead, add --no-encryption."))
-        return 2
+        return 1
     try:
         result = hp_build(args.add, args.package_for_helper, None if args.no_encryption else args.helper_key,
                           progress=lambda text: out(text))
     except (AgError, HpError) as exc:
         out(T("The package was not made: {why}", why=TX(str(exc))))
-        return 2
+        return 1
     out("\n" + hp_render(result))
     if getattr(args, "json", None):
         with open(args.json, "x", encoding="utf-8") as fh:

@@ -64,7 +64,7 @@ class TestMoreChecks(WindowCase):
         result = self._toplevels()[-1]
         self.assertEqual(result.title(), "Your online accounts")
         text = [c for c in result.winfo_children() if isinstance(c, tk.Label)][0].cget("text")
-        self.assertIn("1 thing(s) to fix", text)
+        self.assertIn("1 thing to fix", text)
 
     def test_link_check_window_opens_with_a_paste_box(self):
         self.app.link_check()

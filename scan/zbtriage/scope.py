@@ -375,7 +375,7 @@ SCOPE_BUGREPORT_GUIDE = """No USB debugging? Use a bug report the phone makes it
     If your accounts may be watched, do not email it to yourself or put it in a
     cloud folder - it holds private details about your phone.
  4. Check the .zip itself - do not unzip it:
-      python -X utf8 scan/zero-breach-toolkit.py --phone "PATH TO THE BUG REPORT .zip"
+      python -X utf8 zero-breach-toolkit.py --phone "PATH TO THE BUG REPORT .zip"
     Or in the window: A phone > What is it? > Android bug report, then Choose...
 
 A bug report holds the phone's system state, settings, logs and recently removed
@@ -430,9 +430,9 @@ def scope_guide(platform):
     The phone will ask you to confirm the backup: tap "Back up my data"
     (leave the password empty).
  5. When AndroidQF finishes, it leaves a .zip file next to itself. Unzip it.
- 6. Check the unzipped folder. Run this from inside the Zero-Breach-Toolkit
-    folder, and keep the quotes around the folder path:
-      python -X utf8 scan/zero-breach-toolkit.py --phone "PATH TO THE UNZIPPED FOLDER"
+ 6. Check the unzipped folder. Run this from the folder that holds
+    zero-breach-toolkit.py, and keep the quotes around the folder path:
+      python -X utf8 zero-breach-toolkit.py --phone "PATH TO THE UNZIPPED FOLDER"
     Or open the menu (run the tool with no options), choose the phone check, and
     drag the unzipped folder into the window.
  7. Afterwards, turn USB debugging off again on the phone.
@@ -453,8 +453,8 @@ Things the collection did not include are listed in the report as not checked.
       Mac:     ~/Library/Application Support/MobileSync/Backup/
       Windows: %USERPROFILE%\\Apple\\MobileSync\\Backup\\
                (older iTunes: %APPDATA%\\Apple Computer\\MobileSync\\Backup\\)
- 3. Run this from inside the Zero-Breach-Toolkit folder, keeping the quotes:
-      python -X utf8 scan/zero-breach-toolkit.py --phone "PATH TO THE BACKUP FOLDER" --backup-password
+ 3. Run this from the folder that holds zero-breach-toolkit.py, keeping the quotes:
+      python -X utf8 zero-breach-toolkit.py --phone "PATH TO THE BACKUP FOLDER" --backup-password
     Leave out --backup-password if the backup is not encrypted. The password is
     asked for privately and never saved.
     Or open the menu (run the tool with no options), choose the phone check, and

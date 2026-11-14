@@ -607,7 +607,10 @@ def gui_found_line(document):
             if what and what not in leads:
                 leads.append(what)
     if leads:
-        text = T("Worth a look: {items}", items="; ".join(x[:80] for x in leads[:3]))
+        def short(x, n=80):
+            # cut at a word boundary, never mid-word ("installed by: com.andr")
+            return x if len(x) <= n else x[:n].rsplit(" ", 1)[0].rstrip(",;:(") + "..."
+        text = T("Worth a look: {items}", items="; ".join(short(x) for x in leads[:3]))
         return text + (" " + TN("and {n} more", "and {n} more", len(leads) - 3) if len(leads) > 3 else "") + "."
     return ""
 
@@ -744,7 +747,13 @@ class GuiApp:
         self._check_trace = None
         self._net_tick = 0
         self._style()
-        self.root.geometry("1000x820")
+        # Never taller or wider than the screen: on a 1366x768 laptop (or 1080p at 150%) 820 pixels put the
+        # status line and progress bar below the bottom edge (team tests).
+        try:
+            screen_w, screen_h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        except tk.TclError:
+            screen_w, screen_h = 1000, 820
+        self.root.geometry("{}x{}".format(max(780, min(1000, screen_w - 40)), max(560, min(820, screen_h - 100))))
         self._layout()
         self.root.bind("<Configure>", self._on_configure, add="+")
         self.root.after(100, self._drain)
@@ -895,7 +904,7 @@ class GuiApp:
     def _layout(self):
         tk, ttk = self.tk, self.ttk
         self.root.title("Zero Breach Toolkit")
-        self.root.minsize(780, 640)
+        self.root.minsize(780, max(480, min(640, self.root.winfo_screenheight() - 120)))
         header = tk.Frame(self.root, bg="#111111")
         header.pack(fill="x")
         top = tk.Frame(header, bg="#111111")
@@ -1150,24 +1159,28 @@ class GuiApp:
         ttk.Combobox(frame, textvariable=self.phone_kind, state="readonly", width=48,
                      values=self.phone_kinds).grid(row=0, column=1, sticky="w", padx=8)
         ttk.Label(frame, text=T("Folder"), style="Card.TLabel").grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Entry(frame, textvariable=self.phone_folder, width=60).grid(row=1, column=1, sticky="w", padx=8)
+        # Everything fits the narrowest window (780): the folder box is shorter, its buttons sit on the row under
+        # it, and the iPhone and Android help buttons are on two rows (team test: buttons ran past the edge).
+        ttk.Entry(frame, textvariable=self.phone_folder, width=46).grid(row=1, column=1, sticky="w", padx=8)
         row = ttk.Frame(frame, style="Card.TFrame")
-        row.grid(row=1, column=2, sticky="w")
+        row.grid(row=2, column=1, sticky="w", padx=8, pady=(2, 4))
         ttk.Button(row, text=T("Choose..."), command=self.choose_phone_folder).pack(side="left")
         ttk.Button(row, text=T("Find iPhone backups"), command=self.find_backups).pack(side="left", padx=6)
-        ttk.Label(frame, text=T("Backup password"), style="Card.TLabel").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(frame, textvariable=self.phone_password, show="*", width=30).grid(row=2, column=1, sticky="w", padx=8)
+        ttk.Label(frame, text=T("Backup password"), style="Card.TLabel").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(frame, textvariable=self.phone_password, show="*", width=30).grid(row=3, column=1, sticky="w", padx=8)
         ttk.Label(frame, text=T("Only for an encrypted iPhone backup. It is used for this check and then forgotten."),
-                  style="Muted.TLabel").grid(row=3, column=1, columnspan=2, sticky="w", padx=8)
+                  style="Muted.TLabel", wraplength=560).grid(row=4, column=1, sticky="w", padx=8)
         help_row = ttk.Frame(frame, style="Card.TFrame")
-        help_row.grid(row=4, column=1, columnspan=2, sticky="w", padx=8, pady=(6, 0))
+        help_row.grid(row=5, column=1, sticky="w", padx=8, pady=(6, 0))
         ttk.Button(help_row, text=T("Make an iPhone backup..."),
                    command=self.make_backup).pack(side="left", padx=(0, 6))
         ttk.Button(help_row, text=T("How do I make an iPhone backup?"),
                    command=lambda: self.show_guide("ios")).pack(side="left")
-        ttk.Button(help_row, text=T("How do I check an Android phone?"),
-                   command=lambda: self.show_guide("android")).pack(side="left", padx=6)
-        ttk.Button(help_row, text=T("Collect from an Android phone..."),
+        android_row = ttk.Frame(frame, style="Card.TFrame")
+        android_row.grid(row=6, column=1, sticky="w", padx=8, pady=(4, 0))
+        ttk.Button(android_row, text=T("How do I check an Android phone?"),
+                   command=lambda: self.show_guide("android")).pack(side="left", padx=(0, 6))
+        ttk.Button(android_row, text=T("Collect from an Android phone..."),
                    command=self.collect_android).pack(side="left")
 
     def _lists_note_visibility(self):
@@ -1245,7 +1258,7 @@ class GuiApp:
                 (T("Check a suspicious file..."),
                  T("An attachment, download or app you don't trust. Says what it really is and whether it matches "
                    "known spyware, and seals a copy to send to an expert. It is never opened or run. Tip: you can "
-                   "also drop a file onto the Zero Breach program."),
+                   "also drop a file onto the Zero Breach program's icon (not this open window)."),
                  lambda: (win.destroy(), self.check_file())),
                 (T("Check a link or message..."),
                  T("Paste a text, WhatsApp or Signal message, email or link. Finds spyware links and account-takeover "
@@ -2196,7 +2209,7 @@ class GuiApp:
 
     def household(self):
         from tkinter import filedialog, messagebox
-        from .household import HH_HEADLINE, hh_combine, hh_html, hh_render
+        from .household import HH_HEADLINE, hh_combine, hh_html, hh_render, hh_save_private
         # Say what to pick before the file picker opens: people do not know these are the saved .json reports.
         several = T("Cmd") if sys.platform == "darwin" else T("Ctrl")
         if not messagebox.askokcancel(
@@ -2220,7 +2233,7 @@ class GuiApp:
         level = {"red": "dangerous", "amber": "worth-a-look", "grey": "worth-a-look"}.get(doc["overall"], "clean")
         self._text_window(T("Household report"), hh_render(doc),
                           (T("Save as a page..."), "household-report.html",
-                           lambda path: open(path, "x", encoding="utf-8").write(hh_html(doc))),
+                           lambda path: hh_save_private(path, hh_html(doc))),
                           verdict=(T(HH_HEADLINE[doc["overall"]]), level))
 
     def dns_log(self):
@@ -2570,11 +2583,13 @@ class GuiApp:
         table.pack(fill="both", expand=True, padx=16, pady=12)
         columns = ("program", "remote", "who", "port", "state", "match")
         self.tree = ttk.Treeview(table, columns=columns, show="headings")
-        for name, title, width in (("program", "Program", 220), ("remote", "Remote address", 200),
-                                   ("who", "Who runs it", 170), ("port", "Port", 60), ("state", "State", 110),
-                                   ("match", "Known spyware address?", 200)):
+        # The widths add up to 760, so every column - above all "Known spyware address?" - fits the narrowest
+        # window (780); wider windows share the extra space out (team test: the last column was cut off).
+        for name, title, width in (("program", "Program", 190), ("remote", "Remote address", 150),
+                                   ("who", "Who runs it", 140), ("port", "Port", 50), ("state", "State", 90),
+                                   ("match", "Known spyware address?", 140)):
             self.tree.heading(name, text=T(title))
-            self.tree.column(name, width=width, anchor="w")
+            self.tree.column(name, width=width, minwidth=40, anchor="w", stretch=True)
         self.tree.tag_configure("hit", background="#fde2e2", foreground=GUI_RED)
         scroll = ttk.Scrollbar(table, command=self.tree.yview)
         self.tree.configure(yscrollcommand=scroll.set)
@@ -3089,9 +3104,11 @@ class GuiApp:
             if len(rows) > 1:
                 program = T("{program} ({n} connections)", program=program, n=len(rows))
             match = r.get("match")
-            label = T("YES: {name} ({tier})", name=match.family or match.source, tier=match.tier) if match else ""
-            item = self.tree.insert("", "end", values=(program, r["remote"], T(nc_who(r["remote"])) if
-                                                       nc_who(r["remote"]) else "", r["remote_port"],
+            label = T("YES: {name} ({tier})", name=match.family or match.source, tier=match.tier) if match else (
+                T("no") if iocs is not None else "")
+            who = nc_who(r["remote"])
+            item = self.tree.insert("", "end", values=(program, r["remote"], T(who) if who else T("unknown"),
+                                                       r["remote_port"],
                                                        ", ".join(s for s in r["states"] if s), label),
                                     tags=("hit",) if match else ())
             self.net_rows[item] = r

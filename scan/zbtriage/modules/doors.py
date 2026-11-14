@@ -262,6 +262,32 @@ def dr_xdg_dir(home, name):
     return value if os.path.isabs(value) else None
 
 
+_DR_DL_SECONDS = 8      # a folder that does not answer within this many seconds is skipped (reported as not opened)
+
+
+def _dr_list_folder(folder, limit, seconds=None):
+    """The first `limit` entries of a folder, read on a helper thread with a time limit. A folder macOS guards can
+    block the read for minutes while it waits for a permission answer; past the limit this raises TimeoutError and
+    the helper thread is left to finish (or not) on its own - it only ever reads names."""
+    import threading
+    box = {}
+
+    def read():
+        try:
+            with os.scandir(folder) as it:
+                box["entries"] = list(itertools.islice(it, limit))
+        except BaseException as exc:  # noqa: BLE001 - handed back to the caller
+            box["error"] = exc
+    worker = threading.Thread(target=read, daemon=True)
+    worker.start()
+    worker.join(_DR_DL_SECONDS if seconds is None else seconds)
+    if worker.is_alive():
+        raise TimeoutError("{} did not answer within {} seconds".format(folder, _DR_DL_SECONDS))
+    if "error" in box:
+        raise box["error"]
+    return box["entries"]
+
+
 def dr_scan_downloads(folders):
     """([(program, kind, path)], entries_seen, capped, folders_read, folders_refused) - names only; links and
     junctions are not followed. folders_read counts the top folders that could actually be opened (none means
@@ -281,11 +307,13 @@ def dr_scan_downloads(folders):
                     refused += 1
                 continue
             try:
-                with os.scandir(folder) as it:
-                    # Never more names than the cap allows: a folder of millions is not listed whole first.
-                    entries = list(itertools.islice(it, _DR_DL_ENTRIES - count + 1))
+                # Never more names than the cap allows: a folder of millions is not listed whole first.
+                entries = _dr_list_folder(folder, _DR_DL_ENTRIES - count + 1)
             except FileNotFoundError:
                 continue
+            except TimeoutError:
+                refused += 1                  # counted as not opened; the rest of this top folder is skipped
+                break
             except OSError:
                 refused += 1
                 continue

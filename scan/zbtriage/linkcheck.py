@@ -545,9 +545,20 @@ _LC_ADVICE = {
 }
 
 
+_LC_NO_LINK_HEAD = "NO LINK TO CHECK"
+_LC_NO_LINK_ADVICE = ["There was no link in the text, so there was nothing to check. The words are still worth a "
+                      "careful look.",
+                      "Never share a login code or one-time code you received, with anyone: no real company, bank "
+                      "or friend asks for it, and it is how messaging accounts are taken over."]
+
+
+def _lc_no_link(result) -> bool:
+    return result["level"] == LC_NOTHING and not result["links"]
+
+
 def lc_headline(result: Dict[str, object]) -> str:
     """The one-line verdict, for the window's coloured bar."""
-    return _LC_HEAD[result["level"]]
+    return _LC_NO_LINK_HEAD if _lc_no_link(result) else _LC_HEAD[result["level"]]
 
 
 from .safetext import safe_render  # noqa: E402
@@ -555,7 +566,7 @@ from .safetext import safe_render  # noqa: E402
 
 @safe_render
 def lc_render(result: Dict[str, object]) -> str:
-    lines = ["=" * 72, "  " + T("LINK AND MESSAGE CHECK") + "  -  " + T(_LC_HEAD[result["level"]]),
+    lines = ["=" * 72, "  " + T("LINK AND MESSAGE CHECK") + "  -  " + T(lc_headline(result)),
              "  " + T("Nothing was opened, looked up or sent anywhere: the text was only compared."), "=" * 72, ""]
     if not result["links"]:
         lines.append("  " + T("No links or web addresses found in the text."))
@@ -575,7 +586,7 @@ def lc_render(result: Dict[str, object]) -> str:
             lines.append("    - " + T("It {what}.", what=lc_shown(p)))
         lines.append("")
     lines.append("  " + T("WHAT TO DO"))
-    for a in _LC_ADVICE[result["level"]]:
+    for a in (_LC_NO_LINK_ADVICE if _lc_no_link(result) else _LC_ADVICE[result["level"]]):
         lines.append("    - " + T(a))
     if any(l["level"] in (LC_KNOWN, LC_DANGER) for l in result["links"]):
         lines += ["", "  " + T("Dangerous links are shown 'defanged' (hxxp, [.]) so they cannot be clicked by "

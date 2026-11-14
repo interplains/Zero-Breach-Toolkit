@@ -549,6 +549,9 @@ def _bundle_main(argv=None):
                 return code
         raw = ["--check-file", dropped]
     args = _bundle_parse(raw)
+    # The separate tools below return before the scan's own language step: set it here so --lang reaches them.
+    if args.lang and not args.describe:
+        i18n_set(args.lang)
     if args.check_file:
         return fc_command(args, _bundle_iocs)
     if args.accounts or args.threat_warning:

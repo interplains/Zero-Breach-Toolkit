@@ -111,6 +111,17 @@ def mac_info_plist():
     info["NSBluetoothAlwaysUsageDescription"] = (
         "The Bluetooth tracker check listens for AirTags and other trackers near you. It only receives; "
         "nothing is sent.")
+    # Finder's Get Info and the About panel read these (PyInstaller leaves 0.0.0 otherwise).
+    ver = version()
+    info["CFBundleShortVersionString"] = ver
+    info["CFBundleVersion"] = ".".join(str(int(n)) for n in re.findall(r"\d+", ver)[:3]) or "0"
+    # macOS asks before an app reads nearby Wi-Fi networks (location) or talks to devices on the home network.
+    info["NSLocationWhenInUseUsageDescription"] = (
+        "The hidden Wi-Fi check reads the networks this computer can hear, which macOS treats as location. "
+        "Nothing is sent anywhere.")
+    info["NSLocalNetworkUsageDescription"] = (
+        "The home network check looks at the devices on your own network, only after you say yes. Nothing is "
+        "sent outside your network.")
     info["CFBundleDocumentTypes"] = [{"CFBundleTypeName": "Any file", "CFBundleTypeRole": "Viewer",
                                       "LSHandlerRank": "None", "LSItemContentTypes": ["public.item"]}]
     with open(plist, "wb") as fh:

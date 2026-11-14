@@ -57,7 +57,7 @@ class TestPhoneGuides(unittest.TestCase):
         with patch.object(sys, "frozen", False, create=True):
             for platform in ("ios", "android"):
                 text = gui.gui_guide_text(platform)
-                self.assertIn("python -X utf8 scan/zero-breach-toolkit.py --phone", text)
+                self.assertIn("python -X utf8 zero-breach-toolkit.py --phone", text)
         self.assertIn("--backup-password", scope.scope_guide("ios"))
 
     def test_the_guide_names_the_buttons_in_the_chosen_language(self):

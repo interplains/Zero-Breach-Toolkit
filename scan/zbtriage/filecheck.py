@@ -1616,10 +1616,10 @@ def fc_command(args, load_iocs, out=print) -> int:
             # A network path would send this computer's credentials and the file's details elsewhere.
             out(T("{option} {path}: {problem} - use a file on this computer", option=label, path=st_line(value),
                   problem=TX(st_line(problem))))
-            return 2
+            return 1               # an input error, never "found"
     if not os.path.isfile(path):
         out(T("Not a file: {path}", path=st_line(path)))
-        return 2
+        return 1
     try:
         iocs, lists_error = load_iocs(args), ""
     except Exception as exc:  # noqa: BLE001 - checked without the lists, and the result says so

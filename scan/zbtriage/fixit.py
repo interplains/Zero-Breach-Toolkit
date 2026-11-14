@@ -573,15 +573,15 @@ def fx_command(args, out=print, ask=None) -> int:
             result = fx_undo(undo, confirm=ask, runner=None)
         except FxError as exc:
             out(T("Nothing was changed: {why}", why=TX(str(exc))))
-            return 2
+            return 1
         out(T("Put back.") if result["done"] else T("Not put back: {why}", why=TX(result["why"])))
-        return 0 if result["done"] else 2
+        return 0 if result["done"] else 1
     if door and door != "list":
         try:
             result = fx_apply(door, confirm=ask)
         except FxError as exc:
             out(T("Nothing was changed: {why}", why=TX(str(exc))))
-            return 2
+            return 1
         if result["done"]:
             out(T("Done. A way back is saved; put it back with:") + "\n  zero-breach-toolkit --undo-fix " +
                 os.path.basename(result["record"])[:-5])
@@ -589,7 +589,7 @@ def fx_command(args, out=print, ask=None) -> int:
                 out(T("This one finishes after you restart the computer."))
             return 0
         out(T("Nothing was changed: {why}", why=TX(result["why"])))
-        return 2
+        return 1
     out(fx_render(fx_plan()))
     return 0
 

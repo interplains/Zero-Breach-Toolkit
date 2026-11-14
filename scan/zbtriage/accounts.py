@@ -15,7 +15,7 @@ import json
 import os
 from typing import Dict
 
-from .i18n import T
+from .i18n import T, TN
 
 AC_CHECKED, AC_FOUND, AC_SKIPPED = "checked", "found", "skipped"
 
@@ -158,9 +158,13 @@ def ac_result(answers: Dict[str, str]) -> Dict[str, object]:
 def ac_headline(result) -> str:
     c = result["counts"]
     if c[AC_FOUND]:
-        return T("{n} thing(s) to fix in your accounts - see what to do below", n=c[AC_FOUND])
+        return TN("{n} thing to fix in your accounts - see what to do below",
+                  "{n} things to fix in your accounts - see what to do below", c[AC_FOUND])
+    if c[AC_SKIPPED] and not c[AC_CHECKED]:
+        return T("Nothing checked yet")
     if c[AC_SKIPPED]:
-        return T("Nothing found in what you checked - {n} step(s) not checked yet", n=c[AC_SKIPPED])
+        return TN("Nothing found in what you checked - {n} step not checked yet",
+                  "Nothing found in what you checked - {n} steps not checked yet", c[AC_SKIPPED])
     return T("Every account step checked - nothing you didn't recognise")
 
 

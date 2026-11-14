@@ -105,7 +105,7 @@ def test_the_file_check_refuses_network_paths(monkeypatch):
     said = []
     monkeypatch.setattr(fc, "path_problem", lambda p: "UNC or device path was not opened" if "srv" in p else "")
     args = SimpleNamespace(check_file=r"\\srv\share\a.exe", json=None, seal_copy=None)
-    assert fc.fc_command(args, lambda a: None, out=said.append) == 2
+    assert fc.fc_command(args, lambda a: None, out=said.append) == 1     # an input error, never 'found' (3.0.2)
     assert any("use a file on this computer" in s for s in said)
 
 
@@ -146,5 +146,5 @@ def test_the_file_check_refuses_network_indicator_files(monkeypatch, tmp_path):
     said = []
     monkeypatch.setattr(fc, "path_problem", lambda p: "UNC or device path was not opened" if "srv" in p else "")
     args = SimpleNamespace(check_file=str(sample), json=None, seal_copy=None, iocs=[r"\srv\share\iocs.txt"])
-    assert fc.fc_command(args, lambda a: None, out=said.append) == 2
+    assert fc.fc_command(args, lambda a: None, out=said.append) == 1     # an input error, never 'found' (3.0.2)
     assert any("--iocs" in s for s in said)
