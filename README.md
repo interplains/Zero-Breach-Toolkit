@@ -1,6 +1,8 @@
 # Zero Breach Toolkit
 
-> **Version 2 is out:** now a double-click app for Windows, Mac and Linux, in 27 languages.
+> **Version 3 is out:** besides looking for known spyware, it now shows the ways in left open on your devices,
+> checks the links, emails, files and QR codes people send you, and walks you through your accounts and home
+> network. A double-click app for Windows, Mac and Linux, in 27 languages.
 > [Download it from the latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest).
 
 A free, open-source check for traces of known mercenary spyware (Pegasus, Predator,
