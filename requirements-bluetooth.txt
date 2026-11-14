@@ -1,0 +1,3 @@
+# The Bluetooth tracker check (--trackers) with the Python version. The double-click programs already
+# include it. Install with: python -m pip install -r requirements-bluetooth.txt
+bleak==1.1.1

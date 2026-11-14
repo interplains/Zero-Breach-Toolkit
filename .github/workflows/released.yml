@@ -1,0 +1,174 @@
+name: released
+
+# Checks a PUBLISHED release the way people receive it. Each job downloads the release files from the public
+# download links, verifies the GPG signatures and checksums exactly as the release notes tell people to, opens
+# the package (mounts the macOS disk image read-only, unpacks the Linux archive), runs the program from inside
+# it, and compares it with the downloaded single Python file using harmless fixtures (tools/program_smoke.py
+# from the release's own source). It also runs the single file with the system's own Python, Apple's included,
+# and scans the Windows program with Microsoft Defender's current definitions.
+#
+# Besides the systems the programs are built on, it covers Windows on ARM (the x64 program under Windows'
+# emulation), an older Windows and an older macOS.
+#
+# Runs by hand for any tag (a pre-release before it is promoted), and every Monday for the current release,
+# which catches what changes without us: new definitions that flag the program, updated GitHub machines, a
+# dead download link. Read-only: it downloads and publishes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag to check, for example v2.0.7 (empty = the current release)"
+        required: false
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    # The weekly run belongs to the public repository; a private copy only runs it by hand.
+    if: ${{ github.event_name != 'schedule' || github.repository == 'interplains/Zero-Breach-Toolkit' }}
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+    steps:
+      - id: pick
+        env:
+          WANT: ${{ inputs.tag }}
+        run: |
+          tag="$WANT"
+          if [ -z "$tag" ]; then
+            tag="$(curl -fsSL --retry 3 https://api.github.com/repos/interplains/Zero-Breach-Toolkit/releases/latest \
+                   | python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])')"
+          fi
+          case "$tag" in v[0-9]*) ;; *) echo "not a release tag: '$tag'"; exit 1 ;; esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "checking $tag"
+
+  check:
+    name: ${{ matrix.label }}
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, label: windows-x64, file: zero-breach-toolkit-windows-x64.exe }
+          - { os: windows-2022, label: windows-older, file: zero-breach-toolkit-windows-x64.exe }
+          - { os: windows-11-arm, label: windows-arm, file: zero-breach-toolkit-windows-x64.exe, arch: x64 }
+          - { os: macos-latest, label: macos-apple-silicon, file: zero-breach-toolkit-macos-apple-silicon.dmg }
+          - { os: macos-15, label: macos-older, file: zero-breach-toolkit-macos-apple-silicon.dmg }
+          - { os: macos-15-intel, label: macos-intel, file: zero-breach-toolkit-macos-intel.dmg }
+          - { os: ubuntu-22.04, label: linux-x64, file: zero-breach-toolkit-linux-x64.tar.gz }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      TAG: ${{ needs.resolve.outputs.tag }}
+      FILE: ${{ matrix.file }}
+      KEY_FPR: C24EC92B12D6670A2516065F9B4D575499AFA53C
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: interplains/Zero-Breach-Toolkit
+          ref: ${{ needs.resolve.outputs.tag }}
+          persist-credentials: false
+
+      # The current checking tools (this repository), which older releases may not contain.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: .checker
+          sparse-checkout: tools
+          persist-credentials: false
+
+      # On Windows on ARM an x64 Python runs, like the program, under Windows' emulation, so the pinned
+      # x64 packages install.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.11"
+          architecture: ${{ matrix.arch }}
+
+      - name: Download the published files
+        run: |
+          mkdir -p rel
+          base="https://github.com/interplains/Zero-Breach-Toolkit/releases/download/$TAG"
+          for f in "$FILE" SHA256SUMS-programs.txt SHA256SUMS-programs.txt.asc \
+                   zero-breach-toolkit.py zero-breach-toolkit.py.asc SHA256SUMS.txt SHA256SUMS.txt.asc \
+                   archivegenocide-signing-key.asc; do
+            curl -fsSL --retry 3 -o "rel/$f" "$base/$f"
+          done
+          ls -l rel
+
+      - name: Signatures and checksums, as the release notes describe
+        run: |
+          command -v gpg >/dev/null || brew install gnupg
+          export GNUPGHOME="$(mktemp -d)"
+          gpg --batch --import rel/archivegenocide-signing-key.asc
+          for pair in "SHA256SUMS-programs.txt.asc SHA256SUMS-programs.txt" "SHA256SUMS.txt.asc SHA256SUMS.txt" \
+                      "zero-breach-toolkit.py.asc zero-breach-toolkit.py"; do
+            set -- $pair
+            gpg --batch --status-fd 1 --verify "rel/$1" "rel/$2" 2>/dev/null | grep -q "VALIDSIG $KEY_FPR" \
+              || { echo "BAD or missing signature: $1"; exit 1; }
+            echo "good signature: $1"
+          done
+          python - <<'PY'
+          import hashlib, os, sys
+          def listed(manifest, name):
+              for line in open(os.path.join("rel", manifest), encoding="utf-8"):
+                  parts = line.split()
+                  if len(parts) == 2 and parts[1].lstrip("*") == name:
+                      return parts[0].lower()
+              sys.exit("%s is not listed in %s" % (name, manifest))
+          for manifest, name in (("SHA256SUMS-programs.txt", os.environ["FILE"]), ("SHA256SUMS.txt", "zero-breach-toolkit.py")):
+              got = hashlib.sha256(open(os.path.join("rel", name), "rb").read()).hexdigest()
+              if got != listed(manifest, name):
+                  sys.exit("CHECKSUM MISMATCH: " + name)
+              print("checksum OK:", name)
+          PY
+
+      - name: Antivirus check (Microsoft Defender)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: ./.checker/tools/defender_scan.ps1 "rel/$env:FILE"
+
+      # program_smoke.py builds its fixtures with the test helpers (pytest), and the single file needs
+      # cryptography for the encrypted-backup case - the same pinned files the test workflow installs.
+      - name: Dependencies for the comparison
+        run: |
+          python -m pip install --require-hashes -r build/requirements-test.txt
+          python -m pip install --require-hashes -r requirements-backups.txt
+
+      - name: Open the package and run the program from inside it
+        run: |
+          version="${TAG#v}"
+          case "$FILE" in
+            *.exe) prog="$PWD/rel/$FILE" ;;
+            *.dmg)
+              mnt="$(mktemp -d)"
+              hdiutil attach -readonly -nobrowse -mountpoint "$mnt" "rel/$FILE"
+              test -f "$mnt/HOW TO OPEN.txt" && test -L "$mnt/Applications"
+              prog="$mnt/Zero Breach Toolkit.app/Contents/MacOS/Zero Breach Toolkit" ;;
+            *.tar.gz)
+              d="$(mktemp -d)"
+              tar -C "$d" -xzf "rel/$FILE"
+              test -f "$d/zero-breach-toolkit-linux-x64/HOW TO OPEN.txt"
+              prog="$d/zero-breach-toolkit-linux-x64/zero-breach-toolkit" ;;
+          esac
+          "$prog" --version | tee version.txt
+          grep -q "$version" version.txt || { echo "program reports the wrong version"; exit 1; }
+          "$prog" --describe > describe.json
+          python -c "import json; json.load(open('describe.json', encoding='utf-8')); print('describe: valid JSON')"
+          python tools/program_smoke.py "$prog" rel/zero-breach-toolkit.py
+
+      - name: The single Python file with this system's own Python
+        run: |
+          python rel/zero-breach-toolkit.py --version
+          python rel/zero-breach-toolkit.py --describe > /dev/null
+          if [ "$RUNNER_OS" = "macOS" ] && [ -x /usr/bin/python3 ]; then
+            echo "Apple's Python: $(/usr/bin/python3 --version 2>&1)"
+            /usr/bin/python3 rel/zero-breach-toolkit.py --version
+            /usr/bin/python3 rel/zero-breach-toolkit.py --describe > /dev/null && echo "describe OK with Apple's Python"
+          fi

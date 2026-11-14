@@ -55,6 +55,10 @@ from ..devicetraces import (DT_CELLEBRITE_USB, dt_android_path_indicators,
                             dt_android_property_indicators, dt_android_usb, dt_usb_indicator)
 from ..localpaths import path_problem
 from ..result import EV_DEVICE_LOG, EV_ON_DEVICE, EV_RECEIVED, EV_REFERENCED, Hit, Lead, ModuleResult
+from ..result import DOOR_CLOSED, DOOR_OPEN, Door
+from ..contract import sanitize_untrusted
+from ..isdidata import ISDI_APP_FLAGS
+from ..bugreport import BR_MAX_TEXT, BR_NOT_IN_A_BUG_REPORT, br_is_bugreport, br_to_collection
 
 NAME = "android"
 
@@ -71,7 +75,14 @@ _AN_STORES = {
     "com.hihonor.appmarket",           # Honor App Market, since the 2020 split from Huawei
     "com.xiaomi.market", "com.xiaomi.mipicks",
     "com.heytap.market", "com.oppo.market",
-    "com.vivo.appstore",
+    "com.vivo.appstore", "com.bbk.appstore",
+    "com.hihonor.appmarket",          # Honor AppGallery (issue #43)
+}
+# Apps copied from the old phone when moving to a new one: not installed by hand.
+_AN_TRANSFER_INSTALLERS = {
+    "com.sec.android.easyMover",      # Samsung Smart Switch
+    "com.google.android.apps.restore",  # Google "copy apps & data"
+    "com.google.android.setupwizard",
 }
 # The collection's own footprint: the ADB shell AndroidQF works through.
 _AN_FOOTPRINT_APPS = {"com.android.shell"}
@@ -149,7 +160,31 @@ _AN_POWERS = {
     "FINE_LOCATION": "see precise location", "READ_CALL_LOG": "read the call log",
     "READ_CONTACTS": "read contacts", "SYSTEM_ALERT_WINDOW": "draw over other apps",
     "GET_USAGE_STATS": "see which apps you use", "PROJECT_MEDIA": "record the screen",
+    "MANAGE_EXTERNAL_STORAGE": "read and change all your files",
+    "ACCESS_RESTRICTED_SETTINGS": "had Android's restricted-settings protection switched off for it",
 }
+# The powers stalkerware depends on. An app holding two or more of these is named even when it came from an
+# app store (some monitoring apps are published there under harmless names).
+_AN_SPY_POWERS = ("has accessibility access (can read the screen)", "read all notifications",
+                  "is a device admin (resists uninstalling)", "see which apps you use", "draw over other apps",
+                  "record the screen")
+_AN_WHY_POWERS = ("Each of these powers has ordinary uses (password managers, screen readers, parental controls, "
+                  "launchers). Together they are what stalkerware needs to read your screen and messages and stay "
+                  "installed. Check you recognise this app and chose to give it these powers.")
+_AN_WHY_RESTRICTED = ("Since Android 13, apps installed by hand cannot get accessibility or notification access "
+                      "until someone deliberately switches off a protection in the app's settings ('Allow restricted "
+                      "settings'). Stalkerware installers walk the person holding the phone through exactly that.")
+_AN_WHY_OWNER = ("A 'device owner' app manages the whole phone: it can install apps, see its settings and restrict "
+                 "it. Work phones are set up this way. On a personal phone it should not be there.")
+_AN_WHY_VPN = ("All of the phone's internet traffic goes through this app. Privacy VPNs do this on purpose; so do "
+               "some monitoring apps, to watch what you browse.")
+_AN_WHY_ISDI = ("Cornell University's research on intimate-partner surveillance lists this app as made to watch "
+                "someone. It is not on the published spyware indicator lists, so it is a strong lead, not a finding.")
+_AN_WHY_DUAL = ("These are ordinary apps with legitimate uses (family location, finding a lost phone, call "
+                "recording) that are also often used to watch a partner. They are fine if you installed them and know "
+                "who can see what they collect: open each one and check who it shares with. Source: Cornell ISDi.")
+_AN_SAFETY = (" If you think someone installed it to watch you, removing it may alert them: if you are in danger, "
+              "talk to a support service first (https://stopstalkerware.org/).")
 _AN_LISTENED = {"android.provider.Telephony.SMS_RECEIVED": "listens for incoming SMS",
                 "android.intent.action.NEW_OUTGOING_CALL": "watches outgoing calls",
                 "android.intent.action.PHONE_STATE": "watches calls"}
@@ -343,6 +378,33 @@ def _an_appops(section):
     return out
 
 
+def _an_owners(section):
+    """[(kind, app id)] for device owner / profile owner apps in dumpsys device_policy."""
+    out = []
+    for kind, block in re.findall(r"(Device Owner|Profile Owner)[^\n]*\n((?:[ \t]+[^\n]*\n){1,12})", section):
+        m = re.search(r"admin=ComponentInfo\{([\w.]+)/", block)
+        if m:
+            out.append((kind.lower(), m.group(1)))
+    return out
+
+
+def _an_battery_exempt(section):
+    """Apps the user exempted from battery optimisation (dumpsys deviceidle 'user,' whitelist entries)."""
+    return set(re.findall(r"^\s*user,([\w.]+),\d+", section, re.M))
+
+
+def _an_days_before(installed, started):
+    """Whole days between an app's first install and the collection, or None."""
+    import datetime
+    try:
+        a = datetime.datetime.fromisoformat(str(installed)[:19])
+        b = datetime.datetime.fromisoformat(str(started)[:19])
+    except ValueError:
+        return None
+    days = (b - a).days
+    return days if 0 <= days < 3650 else None
+
+
 def _an_device_admins(section):
     start = section.find("Enabled Device Admins")
     if start < 0:
@@ -452,6 +514,13 @@ def _an_tombstones(folder):
     path = os.path.join(folder, "bugreport.zip")
     if not _an_exists(path):
         return None
+    from ..bugreport import ZIP_MAX_DIRECTORY, ZIP_MAX_ENTRIES, zip_directory
+    try:
+        listing = zip_directory(path)
+    except OSError:
+        listing = None
+    if listing and (listing[0] > ZIP_MAX_ENTRIES or listing[1] > ZIP_MAX_DIRECTORY):
+        raise OSError("the bug report's list of contents is too large to read safely")
     found = {}
     try:
         with _an_open(path, "rb") as source, zipfile.ZipFile(source) as z:
@@ -620,6 +689,7 @@ def _an_packages(r, ctx, folder, info):
           "no_files": 0, "builtin_no_hash": 0, "builtin_no_sha1": 0,
           "builtin_no_cert_sha256": 0, "builtin_no_cert_sha1": 0}
     valid = 0
+    dual_use = []
     for pkg in packages:
         if not isinstance(pkg, dict) or not isinstance(pkg.get("name"), str) or not pkg["name"]:
             r.could_not_run("android:packages", "an app record has no valid package name")
@@ -687,22 +757,16 @@ def _an_packages(r, ctx, folder, info):
                     _an_hit(r, ind, where, "this app is signed with a certificate the "
                             "researchers tie to spyware ({})".format(key.upper()))
         installer = str(pkg.get("installer") or "")
-        if pkg.get("third_party") and installer not in _AN_STORES:
-            powers = sorted({_AN_POWERS[op] for op in info["appops"].get(name, ())
-                             if op in _AN_POWERS})
-            powers += sorted({_AN_LISTENED[a] for a in info["receivers"].get(name, ())})
-            if name in info["notification"]:
-                powers.append("read all notifications")
-            if name in info["accessibility"]:
-                powers.append("has accessibility access (can read the screen)")
-            if name in info["admins"]:
-                powers.append("is a device admin (resists uninstalling)")
-            text = "app installed outside an app store: {} (installed by: {})".format(
-                name, installer or "unknown")
-            if powers:
-                text += "; it can: " + ", ".join(powers)
-            r.add_lead(Lead("android:packages", where, text, _AN_WHY_SIDELOAD,
-                            info["installed"].get(name, "")))
+        if pkg.get("third_party"):
+            _an_app_audit(r, name, where, installer, info)
+            # Cornell ISDi research list (MIT): apps used for partner surveillance. Indicator hits above win.
+            flag = ISDI_APP_FLAGS.get(name.lower())
+            if flag in ("stalkerware", "spyware") and not ind:
+                r.add_lead(Lead("android:packages", where,
+                                "app listed as {} by Cornell's intimate-partner-surveillance research: {}".format(
+                                    flag, name), _AN_WHY_ISDI + _AN_SAFETY, info["installed"].get(name, "")))
+            elif flag == "dual-use" and not ind:
+                dual_use.append(name)
     if not valid:
         # No real phone has no apps: an empty or all-invalid list means the list
         # was not recorded, and nothing about the apps was compared.
@@ -713,8 +777,68 @@ def _an_packages(r, ctx, folder, info):
     r.submetrics["android_apps"] = len(packages)
     _an_count_read(r, valid)
     r.ran("android:packages")
+    if dual_use:
+        r.add_lead(Lead("android:packages", "{} app{}".format(len(dual_use), "" if len(dual_use) == 1 else "s"),
+                        "app{} that can also be used to watch someone (location sharing, call recording, tracking): "
+                        "{}".format("" if len(dual_use) == 1 else "s", ", ".join(sorted(dual_use))), _AN_WHY_DUAL))
+    _an_management(r, info)
     _an_fingerprint_coverage(r, iocs, fp)
     return packages
+
+
+def _an_app_powers(name, info):
+    """Plain-words list of the powers one app holds, from app-ops, receivers and the special-access settings."""
+    ops = info["appops"].get(name, ())
+    powers = sorted({_AN_POWERS[op] for op in ops if op in _AN_POWERS and op != "ACCESS_RESTRICTED_SETTINGS"})
+    powers += sorted({_AN_LISTENED[a] for a in info["receivers"].get(name, ())})
+    if name in info["notification"]:
+        powers.append("read all notifications")
+    if name in info["accessibility"]:
+        powers.append("has accessibility access (can read the screen)")
+    if name in info["admins"]:
+        powers.append("is a device admin (resists uninstalling)")
+    if name in info.get("battery", ()):
+        powers.append("run in the background without battery limits")
+    return powers
+
+
+def _an_app_audit(r, name, where, installer, info):
+    """One user-installed app: installed by hand, or holding the powers stalkerware needs."""
+    powers = _an_app_powers(name, info)
+    spy = [p for p in powers if p in _AN_SPY_POWERS]
+    when = info["installed"].get(name, "")
+    days = _an_days_before(when, info.get("started", ""))
+    age = " - installed {} day{} before this check".format(days, "" if days == 1 else "s") \
+        if days is not None and days <= 60 else ""
+    restricted = "ACCESS_RESTRICTED_SETTINGS" in info["appops"].get(name, ())
+    sideloaded = installer not in _AN_STORES and installer not in _AN_TRANSFER_INSTALLERS
+    if sideloaded:
+        text = "app installed outside an app store: {} (installed by: {}){}".format(name, installer or "unknown", age)
+        if powers:
+            text += "; it can: " + ", ".join(powers)
+        why = _AN_WHY_SIDELOAD
+        if restricted and spy:
+            text += "; Android's protection against exactly this was switched off for it"
+            why = _AN_WHY_RESTRICTED + " " + _AN_WHY_SIDELOAD
+        if spy:
+            why += _AN_SAFETY
+        r.add_lead(Lead("android:packages", where, text, why, when))
+    elif len(spy) >= 2:
+        source = "copied from the old phone" if installer in _AN_TRANSFER_INSTALLERS else "from an app store"
+        text = "app with the powers stalkerware needs: {} ({}){}; it can: {}".format(name, source, age,
+                                                                                    ", ".join(powers))
+        r.add_lead(Lead("android:packages", where, text, _AN_WHY_POWERS + _AN_SAFETY, when))
+
+
+def _an_management(r, info):
+    """Phone-wide control: a device or profile owner app, and an always-on VPN app."""
+    for kind, owner in info.get("owners", ()):
+        r.add_lead(Lead("android:packages", "app {}".format(owner),
+                        "this phone has a {} app: {} - it can manage the phone".format(kind, owner), _AN_WHY_OWNER))
+    vpn = info.get("vpn", "")
+    if vpn:
+        r.add_lead(Lead("android:packages", "app {}".format(vpn),
+                        "all internet traffic is set to go through this app's VPN: {}".format(vpn), _AN_WHY_VPN))
 
 
 def _an_fingerprint_coverage(r, iocs, fp):
@@ -868,9 +992,21 @@ def _an_properties(r, ctx, props):
     except ValueError:
         age = None
     if age is not None and age > _AN_PATCH_DAYS:
-        r.add_lead(Lead("android:properties", "ro.build.version.security_patch",
-                        "security updates are {} days old (patch level {})".format(age, patch),
-                        _AN_WHY_PATCH))
+        r.add_door(Door("android:security-updates", DOOR_OPEN,
+                        "Android security updates are {} days old".format(age), _AN_WHY_PATCH,
+                        "Settings > System > Software update (and Settings > Security > Google Play system update). "
+                        "If no update is offered, the phone no longer gets fixes: consider replacing it.",
+                        "", "high", "patch level " + sanitize_untrusted(patch)[:20]))
+    elif age is not None:
+        r.add_door(Door("android:security-updates", DOOR_CLOSED, "Android security updates are recent"))
+    crypto = props.get("ro.crypto.state", "")
+    if crypto == "unencrypted":
+        r.add_door(Door("android:encryption", DOOR_OPEN, "The phone's storage is not encrypted",
+                        "If the phone is taken or seized, its contents can be read without the passcode.",
+                        "Set a screen lock (PIN or password); on older phones also run Settings > Security > "
+                        "Encrypt phone.", "", "high"))
+    elif crypto == "encrypted":
+        r.add_door(Door("android:encryption", DOOR_CLOSED, "The phone's storage is encrypted"))
     _an_count_read(r, len(props))
     r.ran("android:properties")
 
@@ -885,15 +1021,23 @@ def _an_settings(r, settings, info):
                         "apps with accessibility access: " + services.replace(":", ", "),
                         _AN_WHY_ACCESS))
     if settings.get("package_verifier_enable") == "0":
-        r.add_lead(Lead("android:settings", "package_verifier_enable",
-                        "app verification (Play Protect) is switched off", _AN_WHY_VERIFY))
+        r.add_door(Door("android:play-protect", DOOR_OPEN, "App verification (Play Protect) is switched off",
+                        _AN_WHY_VERIFY, "Play Store > your profile picture > Play Protect > Settings > turn on "
+                        "'Scan apps with Play Protect'.", "", "medium"))
+    elif settings.get("package_verifier_enable") == "1":
+        r.add_door(Door("android:play-protect", DOOR_CLOSED, "App verification (Play Protect) is on"))
     if settings.get("adb_wifi_enabled") == "1":
-        r.add_lead(Lead("android:settings", "adb_wifi_enabled",
-                        "wireless debugging is on", _AN_WHY_WIFI_ADB))
+        r.add_door(Door("android:wireless-debugging", DOOR_OPEN, "Wireless debugging is on", _AN_WHY_WIFI_ADB,
+                        "Settings > System > Developer options > turn off Wireless debugging.", "", "high"))
     if settings.get("adb_enabled") == "1":
         r.note("android: USB debugging was on - the collection needs it. Switch it off when "
                "you are done (Settings > System > Developer options), and revoke USB "
                "debugging authorisations.")
+        r.add_door(Door("android:usb-debugging", DOOR_OPEN, "USB debugging is on",
+                        "A computer the phone is plugged into can read it and install apps once it is trusted. "
+                        "The collection needed it on; it should not stay on.",
+                        "Settings > System > Developer options > Revoke USB debugging authorisations, then turn off "
+                        "USB debugging.", "", "low"))
     third_party_admins = sorted(a for a in info["admins"] if a in info["third_party"])
     if third_party_admins:
         r.add_lead(Lead("android:settings", "device admins",
@@ -1209,9 +1353,98 @@ def _an_messages(r, ctx, folder):
 
 
 def run(ctx) -> ModuleResult:
+    supplied = getattr(ctx, "phone_path", "") or ""
+    if supplied and not path_problem(os.path.abspath(supplied)) and os.path.isfile(supplied) \
+            and br_is_bugreport(supplied):
+        return _an_run_bugreport(ctx, os.path.abspath(supplied))
+    if supplied and not path_problem(os.path.abspath(supplied)) and os.path.isfile(supplied):
+        # A file that is not a bug report (or a damaged one): say so, rather than treating it as a folder.
+        r = ModuleResult(NAME)
+        ctx.partial = r
+        r.could_not_run("android", "this file is not an Android bug report that can be read - if it is one, it may "
+                                   "be damaged or unfinished: make a new one. An AndroidQF collection must be "
+                                   "unzipped first and its folder chosen")
+        return r
+    return _an_run_folder(ctx, supplied)
+
+
+def _an_run_bugreport(ctx, path) -> ModuleResult:
+    """A bug report made on the phone: its parts are written, in AndroidQF's shapes, to a private temporary
+    folder that the usual checks read; what a bug report cannot hold is reported as not checked."""
+    import shutil
+    import tempfile
+    from ..localpaths import local_temp_dir
+    work = tempfile.mkdtemp(prefix="zb-bugreport-", dir=local_temp_dir())
+    try:
+        try:
+            found = br_to_collection(path, work)
+        except (OSError, ValueError, zipfile.BadZipFile, RuntimeError, NotImplementedError, MemoryError) as exc:
+            r = ModuleResult(NAME)
+            ctx.partial = r
+            r.could_not_run("android", "the bug report could not be read ({})".format(_an_why(exc)))
+            return r
+        try:
+            r = _an_run_folder(ctx, work)
+        except MemoryError:
+            # A huge or crafted bug report: a gap, never a crash that loses the rest of the scan.
+            r = ModuleResult(NAME)
+            ctx.partial = r
+            r.could_not_run("android", "the bug report is too large to check on this computer (out of memory)")
+            return r
+        r.note("android: read from an Android bug report made on the phone{} - it holds the phone's system "
+               "state, settings and logs, but not the apps' files, the file list or text messages.".format(
+                   " on " + found["made"][:16].replace("T", " ") if found["made"] else ""))
+        if not found["apps"]:
+            r.could_not_run("android:packages", "the bug report has no app list (dumpsys package)")
+        if found.get("too_big_to_copy"):
+            r.could_not_run("android:crashes", "the bug report is larger than 1 GB, so its crash records were not "
+                                               "read")
+        if found.get("cut"):
+            # The checks above ran on what was read; say plainly that the rest of the report was not.
+            r.could_not_run("android:bug-report-size", "the bug report is larger than {} MB: only its first {} MB "
+                            "were read, so apps, settings and log records after that point were not checked".format(
+                                BR_MAX_TEXT // 2 ** 20, BR_MAX_TEXT // 2 ** 20))
+        # What a bug report cannot hold: one gap per check, in bug-report words (the folder reader words them for
+        # an AndroidQF collection - "not in the collection", "AndroidQF could not list files").
+        kept, seen = [], set()
+        for check in r.checks:
+            if not check.ran and check.name in BR_NOT_IN_A_BUG_REPORT:
+                if check.name in seen:
+                    continue
+                seen.add(check.name)
+                check.reason = BR_NOT_IN_A_BUG_REPORT[check.name]
+            kept.append(check)
+        r.checks[:] = kept
+        r.notes[:] = [_an_bugreport_note(n) for n in r.notes
+                      if not any(n.startswith(name + ": could not run (") for name in seen)]
+        r.notes.extend("{}: could not run ({})".format(name, BR_NOT_IN_A_BUG_REPORT[name]) for name in sorted(seen))
+        for door in getattr(r, "doors", []):
+            if getattr(door, "door", "") == "android:usb-debugging":
+                door.why = ("A computer the phone is plugged into can read it and install apps once it is "
+                               "trusted. A bug report does not need it; it should not stay on.")
+        prefix = work.rstrip("\\/") + os.sep
+        for hit in r.hits:
+            if hit.artifact and str(hit.artifact).startswith(prefix):
+                hit.artifact = "{} ({})".format(path, str(hit.artifact)[len(prefix):])
+        return r
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _an_bugreport_note(note):
+    """A note the collection reader wrote, reworded where it would be wrong for a bug report."""
+    if note.startswith("android: USB debugging was on - the collection needs it."):
+        return ("android: USB debugging is on. A bug report does not need it: switch it off (Settings > System > "
+                "Developer options), and revoke USB debugging authorisations.")
+    if note.startswith("android: collection made "):
+        return note.replace("android: collection made ", "android: bug report made ", 1)
+    return note
+
+
+def _an_run_folder(ctx, folder) -> ModuleResult:
     r = ModuleResult(NAME)
     ctx.partial = r
-    folder = getattr(ctx, "phone_path", "") or ""
+    folder = folder or ""
     problem = path_problem(os.path.abspath(folder)) if folder else "no folder given"
     if problem or not _an_exists(os.path.join(folder, "packages.json")):
         r.could_not_run("android", "not an AndroidQF collection folder ({})".format(
@@ -1257,6 +1490,11 @@ def run(ctx) -> ModuleResult:
                                        settings.get("enabled_notification_listeners", ""))),
         "accessibility": set(access),
         "third_party": third_party,
+        "owners": _an_owners(sections.get("device_policy", "")),
+        "battery": _an_battery_exempt(sections.get("deviceidle", "")),
+        "vpn": str(settings.get("always_on_vpn_app", "") or "").strip()
+        if str(settings.get("always_on_vpn_app", "")).strip() not in ("", "null") else "",
+        "started": started,
     }
     props = _an_getprop(os.path.join(folder, "getprop.txt"))
 

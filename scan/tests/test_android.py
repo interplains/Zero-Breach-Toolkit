@@ -127,15 +127,22 @@ class TestWorthALook(unittest.TestCase):
     def test_accessibility_verification_and_old_patch(self):
         d = collection(spy=False, enabled_accessibility_services="com.x/.Svc:com.y/.Svc",
                        package_verifier_enable="0", patch="2020-01-05")
-        whats = " | ".join(l.what for l in check(d).leads)
-        for text in ("accessibility access: com.x/.Svc, com.y/.Svc", "verification",
-                     "security updates are"):
-            self.assertIn(text, whats)
+        r = check(d)
+        whats = " | ".join(l.what for l in r.leads)
+        self.assertIn("accessibility access: com.x/.Svc, com.y/.Svc", whats)
+        # Protections moved to "Doors to close" (prevention), out of "worth a look"
+        doors = {x.door: x for x in r.doors}
+        self.assertEqual(doors["android:play-protect"].state, "open")
+        self.assertEqual(doors["android:security-updates"].state, "open")
+        self.assertIn("security updates are", doors["android:security-updates"].title)
 
     def test_usb_debugging_is_our_footprint_not_a_lead(self):
         r = check(collection(spy=False))
         self.assertTrue(any("USB debugging" in n for n in r.notes))
         self.assertFalse(any("debugging" in l.what for l in r.leads))
+        # ... but it is a (low) door to close once the collection is done
+        self.assertEqual([(x.state, x.severity) for x in r.doors if x.door == "android:usb-debugging"],
+                         [("open", "low")])
 
 
 class TestFolderAndCli(unittest.TestCase):

@@ -1,5 +1,192 @@
 # Changelog
 
+## 3.0.0
+
+**Doors to close.** Besides looking for spyware that is already there, every check now lists the ways in that
+are left open, each with why it matters and how to close it. They never change the verdict.
+- Computer: remote-access and monitoring programs (a list of 70+ kept with this project; viewers are not
+  counted), and on Windows Remote Desktop, automatic sign-in (and whether a password is stored for it - never
+  read), password on wake, firewall, BitLocker/device encryption, Secure Boot, SMB1 and administrator
+  accounts; on macOS FileVault, firewall, System Integrity Protection, Gatekeeper, Remote Login, Screen
+  Sharing and automatic login; on Linux root disk encryption, an SSH server and automatic login.
+- Browsers: extensions that can read every site, and 9,014 extensions confirmed malicious (chrome-mal-ids,
+  CC BY 4.0). The account each browser is signed in to is shown masked (t***@gmail.com): is it yours?
+- iPhone: no passcode, Lockdown Mode. Android: security update age, encryption, Play Protect, wireless and USB
+  debugging (these moved from "worth a look" to doors).
+- A list of accounts to check yourself (Apple Safety Check, Google Security Checkup, linked devices in
+  messaging apps, mail forwarding, recovery details, two-step sign-in, a SIM port-out lock).
+- In the window: a "Doors to close" button with "Open this setting" and "Check again".
+
+**Home network check** (`--home-network`, asks first, looks only):
+- Asks cameras on your own network whether their video can be watched without a password (no password is
+  ever sent; only the stream's description is requested). `--no-camera-check` turns this off.
+- Names each device's maker from the IEEE's public list (downloaded with `--update`, never shipped) and says
+  when that maker has actively exploited flaws on the CISA list: keep its firmware up to date.
+- Finds the home router even with a VPN on; never mistakes a VPN tunnel for the home network.
+- Ports that this computer's own firewall blocks are reported as not checked, not as closed.
+- A Wi-Fi extender is recognised and explained instead of looking like an impostor.
+- A Pi-hole or a DNS filter that blocks a lookup is no longer reported as the router changing answers.
+
+**Also new**
+- **Check a link or message** (`--check-link`, `--check-message`, the start menu and "More checks"): paste a text,
+  WhatsApp or Signal message or email; every link is judged offline against the spyware indicators and documented
+  lure patterns (Signal device-linking links, WhatsApp QR and pairing-code lures, Predator-style login texts,
+  Pegasus-style links, look-alike names, shorteners, app and profile downloads). Nothing is opened.
+- **Was my phone plugged into a forensics tool?** (`--was-extracted`, start menu, "More checks"): reads an
+  AndroidQF collection or an iPhone backup for authorised USB computers, USB debugging, unlocked bootloader or
+  debug build, side-loaded apps with the accessibility permission, and Cellebrite's imitated USB hardware
+  (Amnesty International) and iOS traces (Citizen Lab). Every report states that an extraction can leave no
+  trace, so finding nothing is not proof; each sign says what it does and does not prove, and being copied is
+  distinguished from being infected.
+- **Check a suspicious email** (`--check-email`, start menu, "More checks"): the real sender against the one
+  shown, SPF/DKIM/DMARC as the receiving server decided, Reply-To that leaves the conversation, display names
+  imitating a company, look-alike letters, every link through the link check, and attachments - programs,
+  double extensions, right-to-left name tricks, macro formats, archives - plus what kind of pressure the
+  message applies. Nothing is opened. Tuned so newsletters, mailing lists and forwarded mail are not called
+  forgeries.
+- **Check a QR code** (`--check-qr`, start menu, "More checks"): a QR reader written into the toolkit - PNG,
+  GIF (interlaced too), BMP and PPM, with no other software needed - that handles turned, mirrored, tiny and
+  damaged codes, repairs damage up to the standard's limit and refuses to guess beyond it; then checks what the
+  code says like a pasted link, so Signal/WhatsApp device-linking lures are named. Checked against codes made
+  by an independent library at every size and error-correction level.
+- **Hash look-up** (`--hash-lookup`, start menu "Check something you received", "More checks"): SHA-256 / SHA-1
+  / MD5, file kind from content, imphash identical to pefile's (703 of 706 programs checked; the rest hit pefile's
+  own limits), Authenticode signer name, offline indicator match; optional online look-up of unsigned files'
+  fingerprints at CIRCL, MalwareBazaar, ThreatFox, VirusTotal and Hybrid Analysis with the person's own keys,
+  consent first, answers cached.
+- **Close the doors found open** (`--fix-it`, `--undo-fix`, start menu "Look closer", "More checks"):
+  Remote Desktop off, automatic sign-in off, firewall on, SMB1 removed - each one asked for by name, with an
+  undo record written and checked before anything runs, the result verified afterwards, and one visible
+  permission prompt per command. Disk encryption, Secure Boot and account removal are explained, never
+  automated; managed computers are left alone; no password is ever handled.
+- **Look through Windows' own records** (`--hunt-windows`, start menu "Look closer", "More checks"): 30 rules
+  written for this toolkit over PowerShell, Task Scheduler, WMI, Defender, System, CodeIntegrity, BITS, Remote
+  Desktop, Security and Sysmon; hidden (base64) commands are decoded so what they did is matched and shown;
+  findings are grouped with counts and each says what it means and what is normal; routine noise is held back as
+  context. Calibrated against a working computer so ordinary records are not called an attack.
+- **A reader for Windows log files (.evtx) in plain Python**, so a helper can read someone's records on Linux or
+  a Mac: checked record for record against Windows' own wevtutil output - 21,712 records over four logs, 0
+  missing, 0 extra, every event number, timestamp and field identical.
+- **Send evidence to a helper** (`--package-for-helper`, start menu "Put it together", "More checks"): one
+  package encrypted with age for the helper's key (AndroidQF collections kept as they are, plaintext never on
+  disk), with an Ed25519-signed list of every file's SHA-256 and a safety number to read aloud;
+  `--verify-package` for the helper. Encryption and signing written from the RFCs and checked against their test
+  vectors and an independent implementation; no decryption code.
+- **What starts automatically** (`--startup`, start menu "Look closer", "More checks"): every program set to
+  start with the computer, with Task Manager's on/off state and an offline signature check; flags unsigned
+  programs in user folders, hidden PowerShell, downloaders, remote-access tools, hijacks, missing targets and
+  tasks whose unquoted path can never run. macOS launch items, background items and app permissions (TCC).
+- **Start menu:** "Help and settings" items were listed under "Around you"; sections now match the window.
+- **Check a network recording** (`--check-traffic`, start menu, "More checks"): reads a PCAPdroid / Wireshark
+  recording and lists every server contacted and, for PCAPdroid, which app contacted it; indicator matches,
+  clockwork contact, dynamic-DNS names, TLS on unusual ports. Offline; nothing is decrypted.
+- **Android app audit:** every user-installed app is checked for the powers stalkerware needs, not only apps
+  installed by hand; apps for which Android's "restricted settings" protection was switched off, device-owner apps
+  and always-on VPN apps are named; Honor's store and phone-transfer installs no longer count as installed by hand
+  (issue #43); apps listed by Cornell's ISDi research (MIT) as stalkerware or as often turned on a partner are named;
+  advice says that removing stalkerware may alert whoever installed it.
+- The start menu now lists every separate check in sections ("Check something you received", "Around you"),
+  matching "More checks" in the window; results there open with a coloured verdict bar.
+- Window: "More checks..." (home network, Bluetooth trackers, household report, DNS log) and "Restart as
+  administrator for the full check" when Windows records need it.
+- Bluetooth trackers: the same tracker heard in 3 or more separate checks over a day is marked IMPORTANT
+  (the last day's tracker addresses are kept on this computer only).
+- iPhone diagnostics: a process outside Apple's system folders that was still running at 3 or more restarts
+  is worth a look (the iShutdown method, Kaspersky, MIT licence).
+- After a confirmed phone finding, the next steps say to replace the phone rather than restore it, and to
+  get a new SIM.
+- Root certificates added by antivirus, VPN, game and developer programs are grouped into one calm item
+  that names each, instead of one warning per certificate.
+- `--make-iphone-backup` (Linux) and "Make an iPhone backup..." in the window; `--combine` / household report
+  puts every device's saved report on one page.
+- Linux: saved Wi-Fi names containing ':' are matched correctly.
+
+**Check a suspicious file** (`--check-file`, drop a file onto the program, "More checks"): what a file really
+is from its contents (a program named invoice.pdf, a shortcut that runs a hidden command, a password-locked ZIP
+antivirus cannot open, a disk image hiding a program, HTML smuggling, OneNote and Office tricks, PDF JavaScript
+including inside compressed streams), its signature, packing, Android app permissions in plain words, and any
+spyware server written inside it. Never run, opened, moved or changed. "Save a sealed copy" makes the standard
+ZIP with the password `infected` to send to an expert. Built to avoid false alarms on ordinary files:
+a program file with an unusual extension (.pyd, .ax, .node) is not a "disguise", text that merely mentions curl
+is not a script, random letters in binary data are not a command, and a blocklist or research report full of
+spyware addresses is recognised as a list, not as spyware. A monitoring company's or advertiser's address in an
+ordinary file is shown as a mention, not a finding (Microsoft Family Safety is on the stalkerware list).
+Whatever it could not read in full - a file over 32 MB, a RAR or 7-Zip it cannot list, a document part too
+large - is reported as incomplete, never as "nothing known was found".
+
+**Also new for this release**
+- **Live connections:** a "Who runs it" column (Google, Microsoft 365, Cloudflare, Meta, Apple, Amazon, Akamai -
+  from the companies' own published address lists, built in - or your network / this computer), and
+  right-click or double-click for details in plain words: the program's full path, signature, when it
+  started and what started it, why a hidden one has no name, what the port and state mean. "Look up who owns
+  this address" asks the internet registry (RDAP) only after saying exactly what is sent.
+- **Terminal:** choose from the menu with the arrow keys and Enter (or type the number, as before); one
+  progress line that updates in place; the result line in colour (red, amber or green) and headings in bold -
+  only on a real terminal, never in saved reports, and off with NO_COLOR. Reports wrap at word boundaries
+  instead of breaking words at the window edge. More checks is a tab in the window. The Python version offers
+  to install the Bluetooth library when the tracker check needs it (one yes; pinned, ready-made packages only).
+  The home network check names device makers from the built-in list, no update needed.
+- **Every tool speaks your language:** the results of the smaller tools (file, link, email and QR checks,
+  startup items, home network, Windows' records, the doors tool, trackers, the helper package and the rest)
+  are now translated into all 27 languages, not just their buttons. Saved results stay in English, the
+  record a helpline works from.
+- **Fixes from team testing:** a "worth a look" result no longer looks like a clean one (its own amber
+  headline). Windows' own built-in event-log subscription is no longer reported as an attack. The doors tool
+  now lists every door the full check counted, and says that a full check finds more. Cloudflare's and
+  Quad9's public DNS and Fastly addresses are named in "Who runs it". The household report says which button
+  saves a computer check. The menu no longer hangs when its input is not a real terminal; an option given an
+  empty value stops with a clear message instead of starting a full scan; `--check-message` takes the message
+  text itself; saving over an existing file says so instead of crashing; a damaged picture is reported as
+  damaged instead of crashing the QR check; "Look up who owns this address" no longer names the program in
+  its request; the single-file version accepts every option the program does. The progress bar moves smoothly
+  through the whole check, paced by how long each step usually takes.
+- **Smaller tools, fleshed out:** repeated connections from one program to one address are one row
+  ("6 connections"), and Telegram's addresses are named. Network recordings and DNS logs say which companies
+  run the names contacted ("run by: Google (12), Meta (4)..."). Hidden Wi-Fi can follow one network's signal
+  while you walk (Windows and Linux), to find the device. Startup items get a plain line for each kind of
+  entry and the program file's date. A file check can also be looked up online (after a yes). The accounts
+  checklist starts with the single best step - a physical security key, and why - opens each service's page,
+  and keeps your answers until you finish. Hidden Wi-Fi, live connections and startup items can be saved, and
+  the household report includes them (and the other smaller checks' saved results). Every tool that works in
+  the background now shows a small "working" window, so nothing seems frozen. Help lists every tool.
+- **Easier for people who are not technical:** every result starts with five lines IN PLAIN WORDS - what was
+  found, what it means, what to do. A spyware file or app on the device is called that; an advertising network
+  the browser loaded something from, or an address it contacted, is said NOT to be an infection, so one ad does
+  not cause a panic. "What happened?" (shown once when the window first opens, then from a button, and as `?` in
+  the terminal menu) leads to the right check. Each "worth a look" item says what it means in plain words;
+  progress reads "Checking your browsers... (step 1 of 3)" with the usual time; one "Send this to someone who can
+  help" button; and an iPhone backup started but not checked is offered again next time.
+- **Hidden Wi-Fi networks nearby** (`--wifi-nearby`): who made each hidden network, whether it is part of your own
+  router, a phone's hotspot, and how close it is. Joins nothing.
+- **Two new doors:** no ad blocker in the browsers, and no DNS service that blocks harmful sites.
+- **Android bug reports:** the running apps are now compared with the spyware lists.
+- **File check:** 7-Zip archives are listed (including password-locked file names, said to be locked); a Windows
+  program that claims a famous maker its signature does not back, or is a Windows tool saved under another name,
+  is worth a look; who signed a Mac program is shown (developer and Team ID, ad hoc, or not signed).
+- **iPhone backups from iOS 27:** installed apps are found from the backup's app folders when the old list is
+  missing, diagnostic reports in newer formats are read, and long text fields (such as big Shortcuts) are
+  searched whole instead of skipped. Reported by Natha (#47).
+- **Remote-access programs:** 200+ recognised (LOLRMM, Apache-2.0), and a copy of AnyDesk-type software
+  downloaded but never installed - the step a scam call asks for - is named.
+- **Drivers with known holes:** 2,211 vulnerable or malicious driver fingerprints (LOLDrivers, Apache-2.0), plus
+  whether Windows' vulnerable driver blocklist and memory integrity are on (with memory integrity running, the
+  blocklist is enforced whatever its own setting says).
+- **14 mercenary spyware lists built in** (MVT indicators, MIT) so they work offline; known-good lists, downloaded
+  with `--update`, keep ordinary files from being matched by mistakes in published indicators.
+- **Android without USB debugging:** check the bug report a phone makes itself (Developer options > Take bug
+  report). It even shows apps installed and later removed. What a bug report cannot hold is listed as not checked.
+- Remote-access programs waiting in Downloads are also found as Linux packages (.deb, .rpm, AppImage) and Mac
+  installers (.pkg), in folders named in the desktop's own language, and in OneDrive's Desktop and Documents.
+- **Check your online accounts** (`--accounts`, "More checks"): a guided list of twelve places to look - devices
+  linked to WhatsApp, Signal, Telegram, Apple, Google and Microsoft accounts, email forwarding, location sharing,
+  a lock on your phone number. Skipped steps are reported as not checked, never as fine.
+- **If you got a threat warning** (`--threat-warning`, "More checks"): what to do, in the order that keeps the
+  evidence.
+- Text from outside - an email sender, a device name on the network, a startup entry - can no longer put terminal
+  escape codes into any tool's result; in the file check, a name inside an archive can no longer add a fake line.
+
+Every new sentence is translated into all 26 languages.
+
 ## 2.0.7
 
 - A single malformed `.plist` no longer costs the whole out-of-date-program check. On a Mac holding one

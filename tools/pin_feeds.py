@@ -47,7 +47,7 @@ def file_hashes(pins):
     """SHA-256 of every source file at its pinned commit, after a parse check."""
     out = {}
     with tempfile.TemporaryDirectory() as tmp:
-        for src in feeds.SOURCES:
+        for src in feeds.all_sources():
             url = feeds.RAW + src["repo"] + "/" + pins[src["repo"]] + "/" + src["path"]
             data = feeds._fetch(url)
             if feeds._looks_like_html(data):
@@ -116,7 +116,7 @@ def main(argv=None):
                    help="pin one repository to a given commit instead of its branch head")
     args = p.parse_args(argv)
     repos = {}
-    for src in feeds.SOURCES:
+    for src in feeds.all_sources():
         repos[src["repo"]] = src["url"][len(feeds.RAW + src["repo"]) + 1:].split("/", 1)[0]
     if args.check:
         missing = sorted(set(repos) - set(feeds.FEED_PINS))

@@ -172,8 +172,10 @@ def main():
             # release runs must not see each other's transient snapshots.
             with tempfile.TemporaryDirectory(prefix="zb_unit_") as unit_temp:
                 unit_env = dict(env, TMP=unit_temp, TEMP=unit_temp, TMPDIR=unit_temp)
+                # The limit catches a hung test, not a slow machine: the suite passed 3,500 tests and
+                # several minutes, so 180 s failed the gate on its own.
                 run("unit-tests", [sys.executable, "-B", "-m", "pytest", "-q",
-                                   "scan/tests"], timeout=180, environment=unit_env)
+                                   "scan/tests"], timeout=600, environment=unit_env)
 
         with tempfile.TemporaryDirectory(prefix="zb_release_") as temp:
             work = Path(temp)

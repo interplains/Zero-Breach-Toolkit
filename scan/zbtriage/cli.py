@@ -41,7 +41,7 @@ from .report import V_HITS, build_document, describe_document, render_human, wri
 from .result import ModuleResult
 from .banner import show_banner
 from .menu import menu_wanted, choose_scan
-from .scope import scope_arguments, scope_validate, scope_preview, scope_guide
+from .scope import SCOPE_BUGREPORT_GUIDE, scope_arguments, scope_validate, scope_preview, scope_guide
 from .workflow import (WorkflowParser, workflow_arguments, workflow_validate,
                        workflow_check_outputs, workflow_before_scan, gui_wanted)
 from .training import (training_arguments, training_validate, training_prepare,
@@ -133,7 +133,8 @@ def _parse(argv: List[str]) -> argparse.Namespace:
                    help="scan with the built-in indicator set only, ignoring "
                         "downloaded sets")
     p.add_argument("--phone", metavar="FOLDER",
-                   help="check an AndroidQF collection folder or local iPhone backup instead of this computer")
+                   help="check an AndroidQF collection folder, an Android bug report (.zip made on the phone) "
+                        "or a local iPhone backup instead of this computer")
     p.add_argument("--describe", action="store_true",
                    help="print, as JSON, every check this tool runs, what each reads and "
                         "cannot see, the exit codes and the rules for relaying a "
@@ -198,9 +199,14 @@ def _load_iocs(args):
     verified sources (or only --iocs files when given)."""
     many = len(args.iocs) > 1
     sets = [load_any(path, allow_empty=many) for path in args.iocs]
-    if args.iocs_explicit or args.no_feeds:
-        feed_status = {"used": False,
-                       "reason": "--iocs given" if args.iocs_explicit else "--no-feeds"}
+    if args.iocs_explicit:
+        feed_status = {"used": False, "reason": "--iocs given"}
+    elif args.no_feeds:
+        # Downloaded sets are ignored, but the lists built into this release still count as built in.
+        built, status = feeds.builtin_sets()
+        sets += built
+        feed_status = {"used": False, "reason": "--no-feeds", "loaded": status["loaded"],
+                       "refused": status["refused"]}
     else:
         cached, feed_status = feeds.cached_sets(args.indicator_cache, args.latest)
         feed_status["used"] = True
@@ -227,9 +233,69 @@ def _run_update(args) -> int:
 def _main(argv: List[str] = None) -> int:
     _force_utf8_io()
     raw = sys.argv[1:] if argv is None else argv
+    # A file dropped onto the program (or passed as its only argument) is a file to check. The packaged program
+    # opens the window on it; without a window, or from Python, it is checked in the terminal.
+    if len(raw) == 1 and not raw[0].startswith("-") and os.path.isfile(raw[0]):
+        dropped = os.path.abspath(raw[0])
+        if getattr(sys, "frozen", False):
+            from .gui import gui_main
+            code = gui_main(dict(_gui_hooks(), open_file=dropped))
+            if code is not None:
+                return code
+        raw = ["--check-file", dropped]
     args = _parse(raw)
+    if args.check_file:
+        from .filecheck import fc_command
+        return fc_command(args, _load_iocs)
+    if args.accounts or args.threat_warning:
+        from .accounts import ac_command
+        return ac_command(args)
+    if args.combine:
+        from .household import combine_command
+        return combine_command(args)
+    if args.home_network:
+        from .homenet import homenet_command
+        return homenet_command(args)
+    if args.trackers is not None:
+        from .trackers import trackers_command
+        return trackers_command(args)
+    if getattr(args, "wifi_nearby", False):
+        from .wifinearby import wifi_nearby_command
+        return wifi_nearby_command(args)
+    if args.check_link or args.check_message:
+        from .linkcheck import lc_command
+        return lc_command(args, _load_iocs)
+    if args.check_traffic:
+        from .netcapture import nc_command
+        return nc_command(args, _load_iocs)
+    if args.startup:
+        from .startup import su_command
+        return su_command(args, _load_iocs)
+    if args.package_for_helper or args.verify_package:
+        from .helperpack import hp_command
+        return hp_command(args)
+    if args.hash_lookup or args.set_lookup_key:
+        from .hashlook import hl_command
+        return hl_command(args, _load_iocs)
+    if args.hunt_windows is not None:
+        from .huntwin import hw_command
+        return hw_command(args, _load_iocs)
+    if args.was_extracted:
+        from .extracted import ex_command
+        return ex_command(args, _load_iocs)
+    if args.check_email:
+        from .mailcheck import mc_command
+        return mc_command(args, _load_iocs)
+    if args.check_qr:
+        from .qrcheck import qr_command
+        return qr_command(args, _load_iocs)
+    if args.fix_it is not None or args.undo_fix:
+        from .fixit import fx_ask_terminal, fx_command
+        return fx_command(args, ask=fx_ask_terminal)
     if args.phone_guide:
         print(scope_guide(args.phone_guide))
+        if args.phone_guide == "android":
+            print(SCOPE_BUGREPORT_GUIDE)
         return 0
     if args.preview:
         try:
@@ -258,7 +324,8 @@ def _main(argv: List[str] = None) -> int:
     # --json file: that path is for the report of the check chosen next.
     if menu_wanted(raw, args) and not choose_scan(
             args, lambda: feeds.update_command(args.indicator_cache, None,
-                                               version_check=not args.no_version_check)):
+                                               version_check=not args.no_version_check),
+            load_iocs=_load_iocs):
         return EXIT_NOT_SCANNED
     # --training (or the menu's practice entry) swaps in a made-up phone and
     # made-up indicators; main() deletes them when the tool exits.
@@ -283,7 +350,23 @@ def _main(argv: List[str] = None) -> int:
             return 1
     if args.phone and _refuse_remote("--phone", args.phone):
         return 1
+    for path in args.dns_log:
+        if _refuse_remote("--dns-log", path):
+            return 1
 
+    made_password = ""
+    if args.make_iphone_backup:
+        from .iphonehelper import make_iphone_backup
+        folder, made_password, code = make_iphone_backup(args.make_iphone_backup)
+        if not folder:
+            return code
+        args.phone = folder
+        args.backup_password = not made_password      # encryption was already on: ask for its existing password
+        try:
+            workflow_check_outputs(args)
+        except (OSError, ValueError) as exc:
+            print("error: {}".format(exc), file=sys.stderr)
+            return 1
     if args.collect_android:
         from .phoneguide import collect_android
         folder, code = collect_android(args.collect_android, args.age_recipient_file)
@@ -305,7 +388,7 @@ def _main(argv: List[str] = None) -> int:
         print("WARNING: --deep is not implemented; no full persistence sweep will run.\n",
               file=sys.stderr)
 
-    password = ""
+    password, made_password = made_password, ""
     if args.backup_password:
         import getpass
         if not sys.stdin.isatty():
@@ -318,10 +401,15 @@ def _main(argv: List[str] = None) -> int:
                       targets=tuple(os.path.abspath(p) for p in args.target),
                       backup_password=password, extended_windows=args.extended_windows, ios_input=args.ios_input,
                       patterns=args.patterns, pattern_paths=tuple(args.pattern_path),
-                      phone_path=args.phone or "")
+                      phone_path=args.phone or "", dns_logs=tuple(os.path.abspath(p) for p in args.dns_log))
+    from .termstyle import TsProgress, ts_enabled
+    if ts_enabled(sys.stderr) and not getattr(args, "json", None) == "-":
+        ctx.emit = TsProgress(sys.stderr)                 # one progress line, updated in place
     started = datetime.datetime.now()
     with scan_recovery(ctx):
         ctx.completed = _run_modules(ctx)
+    if hasattr(ctx.emit, "finish"):
+        ctx.emit.finish()
 
     ctx.backup_password = password = ""
     return finalize_report(iocs, ctx.completed, started, args, ctx.cancelled)
@@ -330,6 +418,11 @@ def _main(argv: List[str] = None) -> int:
 def main(argv: List[str] = None) -> int:
     try:
         return _main(argv)
+    except FileExistsError as exc:
+        # Every tool saves with "x" (never overwrite); say so instead of a traceback.
+        print("error: {} already exists - choose a new name. Nothing was overwritten.".format(
+            exc.filename or exc), file=sys.stderr)
+        return 1
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1

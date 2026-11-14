@@ -28,7 +28,8 @@ def test_a_swapped_list_is_refused_whatever_the_manifest_says(tmp_path, bundle):
         for revision in ("branch head", "unpinned", "anything"):
             src, _raw = _cache(tmp_path, revision)
             sets, status = api.cached_sets(str(tmp_path))
-            assert sets == [] and status["loaded"] == [], (api, revision)
+            downloaded = [e for e in status["loaded"] if not e.get("built_in")]
+            assert downloaded == [] and src["id"] not in {e["id"] for e in status["loaded"]}, (api, revision)
             assert "not the copy pinned" in status["refused"][0]["reason"]
 
 
@@ -36,11 +37,13 @@ def test_latest_at_scan_time_uses_it_and_says_so(tmp_path, bundle):
     for api in (feeds, bundle):
         _cache(tmp_path, "branch head")
         sets, status = api.cached_sets(str(tmp_path), latest=True)
-        assert len(sets) == 1 and status["loaded"][0]["pinned_for_this_release"] is False
+        downloaded = [e for e in status["loaded"] if not e.get("built_in")]
+        assert len(downloaded) == 1 and downloaded[0]["pinned_for_this_release"] is False
 
 
 def test_the_pinned_copy_loads_by_content(tmp_path, monkeypatch):
     src, raw = _cache(tmp_path, "branch head")
     monkeypatch.setitem(feeds.FEED_FILE_SHA256, src["id"], hashlib.sha256(raw).hexdigest())
     sets, status = feeds.cached_sets(str(tmp_path))
-    assert len(sets) == 1 and status["loaded"][0]["pinned_for_this_release"] is True
+    downloaded = [e for e in status["loaded"] if not e.get("built_in")]
+    assert len(downloaded) == 1 and downloaded[0]["pinned_for_this_release"] is True

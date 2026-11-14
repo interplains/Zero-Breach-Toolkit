@@ -17,7 +17,8 @@ import time
 
 from ..backupcrypto import backup_cbc, backup_ios_keys, backup_ios_file_key
 from ..localpaths import path_problem, local_temp_dir
-from ..result import Hit, ModuleResult, EV_RECEIVED, EV_REFERENCED, EV_CONTACTED, EV_DEVICE_LOG
+from ..result import Hit, Lead, ModuleResult, EV_RECEIVED, EV_REFERENCED, EV_CONTACTED, EV_DEVICE_LOG
+from ..result import DOOR_CLOSED, DOOR_OPEN, Door
 from ..iocs import TYPE_PROCESS, TYPE_FILE_NAME, TYPE_APP_ID
 from ..ios_sources import IosEvidenceSource, _is_plist, _is_over_limit
 from ..ios_messages import ios_message_text
@@ -154,6 +155,82 @@ def _ios_hit(r, ind, location, detail, grade, observed="", artifact=""):
     r.add_hit(Hit(ind.value, location, detail, ind.tier, ind.confidence,
                   ind.source, grade, observed, family=ind.family, kind=ind.type,
                   artifact=artifact))
+
+
+def _ios_container_app_ids(entries):
+    """Bundle identifiers of the apps that have their own container in a backup's file index.
+
+    Only AppDomain-<bundle id> names an app; AppDomainGroup- holds shared group ids and
+    AppDomainPlugin- holds extensions, so neither is read as an installed app here.
+    """
+    found = set()
+    for domain, _relative in entries:
+        if isinstance(domain, str) and domain.startswith("AppDomain-"):
+            ident = domain[len("AppDomain-"):].strip()
+            if ident:
+                found.add(ident)
+    return found
+
+
+def ios_passcode_door(r, passcode_set):
+    """Door: did the iPhone have a passcode when the backup was made (Manifest.plist WasPasscodeSet)?"""
+    if passcode_set is False:
+        r.add_door(Door("iphone:passcode", DOOR_OPEN, "This iPhone had no passcode when the backup was made",
+                        "Anyone who picks the phone up can read everything on it and install monitoring apps or a "
+                        "monitoring profile in a minute.",
+                        "Settings > Face ID & Passcode (or Touch ID & Passcode) > Turn Passcode On. Use six digits "
+                        "or more, and don't share it.", "", "high"))
+    elif passcode_set is True:
+        r.add_door(Door("iphone:passcode", DOOR_CLOSED, "This iPhone has a passcode"))
+
+
+def ios_lockdown_door(r, enabled):
+    """Door: Lockdown Mode, as recorded in the backup's global preferences (None = not recorded)."""
+    if enabled:
+        r.add_door(Door("iphone:lockdown-mode", DOOR_CLOSED, "Lockdown Mode is on"))
+    elif enabled is False:
+        r.add_door(Door("iphone:lockdown-mode", DOOR_OPEN, "Lockdown Mode is off",
+                        "Lockdown Mode blocks most of the ways mercenary spyware such as Pegasus gets in (message "
+                        "attachments, web features, invitations). Apple recommends it for people who could be "
+                        "personally targeted.",
+                        "Settings > Privacy & Security > Lockdown Mode > Turn On Lockdown Mode. Some features will "
+                        "work differently; you can exempt trusted websites.", "", "medium"))
+
+
+def ios_outdated(r, version, cache=None):
+    """Prevention advice, never a finding: is the iOS version this backup
+    records older than the fix for a flaw attackers are actively using (CISA's
+    Known Exploited Vulnerabilities list, saved by the indicator update)? Most
+    mercenary spyware reaches iPhones through exactly these flaws, and the
+    published chains do not work on an updated phone. Offline: it compares with
+    the saved list, as the out-of-date programs check does on a computer."""
+    from ..feeds import default_cache_dir
+    from ..kevdata import kev_affected, kev_load
+    doc, problem = kev_load(cache or default_cache_dir())
+    if problem or doc is None:
+        r.note("The iOS version was not compared with actively exploited vulnerabilities: " +
+               (problem or "that list is saved by the indicator update, which has not been run here") + ".")
+        return
+    rows = [row for row in doc.get("entries", []) if isinstance(row, dict) and row.get("target") == "ios"]
+    hits = [row for row in rows if kev_affected(version, row.get("ranges", [])) is True]
+    if not hits:
+        compared = any(kev_affected(version, row.get("ranges", [])) is False for row in rows)
+        r.note("iOS {} is {} actively exploited vulnerabilities in the saved list ({}).".format(
+            version, "not older than any fix for" if compared else "not comparable with the fixes for",
+            doc.get("catalogVersion", "?")))
+        return
+    hits.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
+    newest = hits[0]
+    what = ("This iPhone runs iOS {} - older than the fix for {} vulnerability that attackers are actively "
+            "using (newest: {}, listed by CISA on {})." if len(hits) == 1 else
+            "This iPhone runs iOS {} - older than the fix for {} vulnerabilities that attackers are actively "
+            "using (newest: {}, listed by CISA on {}).").format(version, len(hits), newest.get("cve", "?"),
+                                                                 newest.get("dateAdded", "?"))
+    r.add_lead(Lead("ios:software-version", "iOS " + version, what,
+                    "This is not a sign of spyware. These flaws are how spyware usually gets onto iPhones, and "
+                    "the published attacks do not work on an updated phone: update in Settings > General > "
+                    "Software Update. If you could be targeted, also turn on Lockdown Mode "
+                    "(Settings > Privacy & Security)."))
 
 
 def _ios_message_rows(con, query, columns, r, gap, deadline):
@@ -295,8 +372,10 @@ def run(ctx) -> ModuleResult:
         version = source.info.get("Product Version")
         if isinstance(version, str):
             r.note("iOS version recorded by backup: " + version[:64] + "; schema support is checked per artifact.")
+            ios_outdated(r, version[:64])
         if source.kind == "backup" and not source.encrypted:
             r.note("This backup is unencrypted; some website/call history and other protected records may be unavailable. An owner-created encrypted local backup can provide more coverage.")
+        ios_passcode_door(r, getattr(source, "passcode_set", None) if source.kind == "backup" else None)
         # Paths documented by the browser producers and MVT's artifact catalogue.
         # Optional app databases are selected by fixed domain/path pairs, never
         # by traversing a path stored inside an app's database.
@@ -460,17 +539,31 @@ def run(ctx) -> ModuleResult:
                 gap(check, "artifact unreadable or unsupported: " + str(exc))
         ios_additional_artifacts(source, ctx, r, gap, _ios_query, _ios_tables,
                                  _ios_columns, _ios_record_rows, _ios_hit, _ios_timestamp)
+        ios_lockdown_door(r, getattr(r, "lockdown_mode", None))
         try:
             if source.kind != "backup":
                 return r
             info = source.info
-            apps = info.get("Installed Applications")
-            if not isinstance(apps, list) or not all(isinstance(a, str) for a in apps):
-                raise ValueError("unsupported installed-application list")
+            listed = info.get("Installed Applications")
+            listed_ok = isinstance(listed, list) and all(isinstance(a, str) for a in listed)
+            # Every app that keeps data in the backup has its own container in the file index, named
+            # AppDomain-<bundle id>. Issue #47: an iOS 27 backup's Info.plist had no usable
+            # "Installed Applications" list, so the whole check was lost; the containers still name the apps.
+            containers = _ios_container_app_ids(source.entries)
+            if not listed_ok and not containers:
+                raise ValueError("unsupported installed-application list, and no app containers in the backup")
+            if not listed_ok:
+                r.note("The backup's own list of installed apps was missing or in an unrecognised format, so apps "
+                       "were identified from their data folders in the backup instead. An app that keeps no data "
+                       "in the backup is not seen this way.")
+            listed = set(listed) if listed_ok else set()
             for ind in ctx.iocs.of_type(TYPE_APP_ID):
-                if ind.value in apps:
+                if ind.value in listed:
                     _ios_hit(r, ind, "Info.plist", "application identifier recorded in backup metadata", EV_DEVICE_LOG,
                              artifact=os.path.join(folder, "Info.plist"))
+                elif ind.value in containers:
+                    _ios_hit(r, ind, "Manifest.db", "application data folder present in the backup", EV_DEVICE_LOG,
+                             artifact=os.path.join(folder, "Manifest.db"))
             r.ran("ios:applications")
         except (ValueError, OSError, AttributeError, plistlib.InvalidFileException) as exc:
             gap("ios:applications", "installed-application list missing or unreadable: {}".format(exc))

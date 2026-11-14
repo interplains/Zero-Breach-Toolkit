@@ -501,3 +501,22 @@ def test_new_menu_choices_and_preview_are_scope_only(tmp_path, bundle):
         with contextlib.redirect_stdout(out), patch.object(api, "_force_utf8_io", lambda: None):
             assert api.main(["--phone", str(tmp_path), "--ios-input", "sysdiagnose", "--preview"]) == 0
         assert json.loads(out.getvalue())["collection_type"] == "ios-sysdiagnose"
+
+
+def test_process_delaying_three_restarts_is_worth_a_look(tmp_path, reader):
+    archive = tmp_path / "sticky.tar"
+    lines = []
+    for n in range(3):
+        lines += ["After 1.2s, these clients are still here:",
+                  "- remaining client pid: 9{} (/private/var/tmp/helperd/11111111-2222-3333-4444-55555555555{})".format(n, n),
+                  "- remaining client pid: 1{} (/usr/libexec/backboardd/11111111-2222-3333-4444-55555555555{})".format(n, n),
+                  "SIGTERM: [17000000{}0] All buffers flushed".format(n)]
+    raw = ("\n".join(lines) + "\n").encode()
+    with tarfile.open(archive, "w") as tar:
+        member = tarfile.TarInfo("sys/system_logs.logarchive/Extra/shutdown.log")
+        member.size = len(raw)
+        tar.addfile(member, io.BytesIO(raw))
+    result = reader(ctx(archive, "sysdiagnose"))
+    sticky = [l.what for l in result.leads if "separate restarts" in l.what]
+    assert sticky == ["A process outside Apple's system folders was still running at 3 separate restarts, delaying "
+                      "each one: /private/var/tmp/helperd"]

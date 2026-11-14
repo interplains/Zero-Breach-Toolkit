@@ -158,6 +158,34 @@ class Lead:
         return dataclasses.asdict(self)
 
 
+DOOR_OPEN, DOOR_CLOSED, DOOR_UNKNOWN = "open", "closed", "unknown"
+DOOR_SEVERITIES = ("high", "medium", "low")
+
+
+@dataclass
+class Door:
+    """A protection: a way in that is left OPEN, is CLOSED, or could not be checked (UNKNOWN).
+
+    "Doors to close" is prevention advice, like a Lead it never touches the verdict, the module status
+    or the exit code: an open door is not a sign of infection. Every text field is fixed wording written
+    by the module (not read from the machine) except `observed`, which is sanitised evidence.
+    `setting` is a URI that opens the exact system setting (ms-settings:..., x-apple.systempreferences:...)
+    or "" when there is none; the window offers it as an "Open this setting" button.
+    """
+
+    door: str              # stable id, e.g. "computer:disk-encryption"
+    state: str             # DOOR_OPEN | DOOR_CLOSED | DOOR_UNKNOWN
+    title: str             # what is open, e.g. "Disk encryption is off"
+    why: str = ""          # one sentence: why it matters for someone who could be targeted
+    fix: str = ""          # how to close it, in plain steps
+    setting: str = ""      # URI that opens the setting, if any
+    severity: str = "medium"
+    observed: str = ""     # what was read, sanitised
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dataclasses.asdict(self)
+
+
 @dataclass
 class Check:
     """One named sub-check inside a module (e.g. 'dns-cache'). `ran` records
@@ -197,6 +225,8 @@ class ModuleResult:
     reach: Dict[str, Any] = field(default_factory=dict)
     # 'Worth a look' items (see Lead). Never part of the status rollup.
     leads: List[Lead] = field(default_factory=list)
+    # 'Doors to close' items (see Door). Never part of the status rollup.
+    doors: List[Door] = field(default_factory=list)
     # Explicit optional-input absence is distinct from failing to inspect an
     # expected input. Errors/hits/checks always take precedence over this label.
     inapplicable_reason: str = ""
@@ -224,6 +254,11 @@ class ModuleResult:
     def add_lead(self, lead: Lead) -> None:
         self.leads.append(lead)
 
+    def add_door(self, door: Door) -> None:
+        if door.state not in (DOOR_OPEN, DOOR_CLOSED, DOOR_UNKNOWN) or door.severity not in DOOR_SEVERITIES:
+            raise ValueError("bad door state/severity: {} {}".format(door.state, door.severity))
+        self.doors.append(door)
+
     def ran(self, name: str) -> None:
         self.checks.append(Check(name, True))
 
@@ -241,7 +276,8 @@ class ModuleResult:
         if self.hits:
             return HITS
         if not self.checks:
-            if self.inapplicable_reason and not self.checked and not self.skipped and not self.leads:
+            if (self.inapplicable_reason and not self.checked and not self.skipped and not self.leads
+                    and not self.doors):
                 return NOT_APPLICABLE
             return UNKNOWN
         ran = [c for c in self.checks if c.ran]
@@ -265,4 +301,5 @@ class ModuleResult:
             "reach": dict(self.reach),
             "duration_s": round(self.duration_s, 1),
             "leads": [l.to_dict() for l in self.leads],
+            "doors": [d.to_dict() for d in self.doors],
         }

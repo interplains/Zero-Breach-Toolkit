@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from zbtriage.context import ScanContext
 from zbtriage.iocs import Indicator, IocSet
-from zbtriage.modules import execution, exploited, hashscan, host, intrusion, patternscan, posix, traces
+from zbtriage.modules import execution, exploited, hashscan, host, intrusion, patternscan, posix, traces, trust, wifi
 from zbtriage.result import ModuleResult
 
 import test_fix_host_browser as tb
@@ -507,6 +507,61 @@ def _dante_refused(tmp):
 
 _case(UNUSABLE, "dante-traces", "LocalAppData is refused", _dante_refused)
 NOT_FILE_BASED["dante-traces"] = "probes one registry class and the folders directly under LocalAppData; absence is the clean answer (refusal is swept above)"
+NOT_FILE_BASED["remote-access-software"] = "reads installed program names (registry / app folders); none installed is the clean answer"
+
+
+def _downloads(make_folders):
+    def build(tmp):
+        from zbtriage.modules import doors
+        folders = make_folders(tmp)
+        result = ModuleResult("doors")
+        with patch.object(doors, "dr_download_folders", lambda home: folders):
+            doors._check_downloads(result)
+        return result
+    return build
+
+
+def _downloads_refused(tmp):
+    """The folders exist but cannot be opened (macOS privacy controls refusing access, permissions)."""
+    (tmp / "Downloads").mkdir()
+
+    def refuse(*_a, **_k):
+        raise PermissionError("refused")
+    with patch("os.scandir", refuse):
+        return _downloads(lambda t: [(str(t / "Downloads"), 2)])(tmp)
+
+
+_case(UNUSABLE, "remote-access-downloads", "the folders exist but cannot be opened", _downloads_refused)
+# No Downloads/Desktop/Documents folder at all (a server, another layout) is not unusable input: nothing can be
+# waiting in a folder that does not exist. That case is a note, not a gap (2026-11-14).
+LEGIT_EMPTY["remote-access-downloads"] = (
+    "readable Downloads/Desktop/Documents folders holding no remote-access program",
+    _downloads(lambda tmp: [((tmp / "Downloads").mkdir() or (str(tmp / "Downloads"), 2))]))
+
+
+def _drivers(files, folder_read=True):
+    def build(tmp):
+        from zbtriage.modules import doors
+        paths = []
+        for name, data in files:
+            (tmp / name).write_bytes(data)
+            paths.append(str(tmp / name))
+        paths.append(str(tmp / "missing.sys"))
+        matches, done, unread = doors.dr_fingerprint_files(paths, problem=lambda p: "")
+        result = ModuleResult("doors")
+        doors.dr_driver_doors(result, matches, done, unread, folder_read)
+        return result
+    return build
+
+
+_case(UNUSABLE, "windows-drivers", "the drivers folder could not be listed", _drivers([], folder_read=False))
+_case(UNUSABLE, "windows-drivers", "the folder lists but no driver file can be read", _drivers([]))
+LEGIT_EMPTY["windows-drivers"] = ("readable driver files, none of them on the list",
+                                  _drivers([("ordinary.sys", GARBAGE)]))
+NOT_FILE_BASED["windows-settings"] = "reads Windows settings; an unreadable one becomes a 'could not check' door, never a closed one"
+NOT_FILE_BASED["macos-settings"] = "runs macOS status commands; an unreadable one becomes a 'could not check' door"
+NOT_FILE_BASED["linux-settings"] = "reads lsblk/ss/display-manager files; an unreadable one becomes a 'could not check' door"
+NOT_FILE_BASED["browser-extensions"] = "lists extension folders and reads their manifests; no extensions is the clean answer"
 
 
 # --- File fingerprints and patterns -----------------------------------------------------------------
@@ -626,6 +681,109 @@ def _exploited_empty(tmp):
 
 
 _case(UNUSABLE, exploited.NAME, "no installed program could be listed", _exploited_empty)
+
+
+# --- Saved Wi-Fi settings -----------------------------------------------------------------------
+# Formats: Windows WLANProfile XML (Microsoft WLAN_profile schema v1, as `netsh wlan export profile`
+# writes it); NetworkManager `nmcli -g` values; macOS `system_profiler SPAirPortDataType -json`.
+
+def _wifi_windows(tmp, files, rc=0, out="", err="", visible_error=None):
+    from test_wifi_settings import run_windows
+    return run_windows(files, rc=rc, out=out, err=err, visible_error=visible_error)
+
+
+def _wifi_lookalike_unlisted(tmp):
+    from test_wifi_settings import profile_xml
+    return _wifi_windows(tmp, [profile_xml("Home", "WPA2PSK", "AES")], visible_error=OSError("WlanOpenHandle failed (5)"))
+
+
+_case(UNUSABLE, "wifi-lookalike", "nearby networks could not be listed", _wifi_lookalike_unlisted)
+
+
+def _wifi_linux(tmp, listing, values):
+    def fake(argv, timeout=60):
+        return (0, listing, "") if argv[:3] == ["nmcli", "-t", "-f"] else (1, values, "error")
+    with patch.object(wifi.sys, "platform", "linux"), \
+            patch.object(wifi.shutil, "which", return_value="/usr/bin/nmcli"), patch.object(wifi, "_wifi_run", fake):
+        return wifi.run(_ctx())
+
+
+def _wifi_mac(tmp, text, rc=0):
+    with patch.object(wifi.sys, "platform", "darwin"), patch.object(wifi, "_wifi_run", return_value=(rc, text, "")):
+        return wifi.run(_ctx())
+
+
+_case(UNUSABLE, wifi.NAME, "export refused", lambda tmp: _wifi_windows(tmp, [], rc=5, err="Access is denied."))
+_case(UNUSABLE, wifi.NAME, "every exported profile damaged", lambda tmp: _wifi_windows(tmp, ["<garbage", "nope"]))
+_case(UNUSABLE, wifi.NAME, "listed connections unreadable",
+      lambda tmp: _wifi_linux(tmp, "u1:802-11-wireless\n", ""))
+_case(UNUSABLE, wifi.NAME, "macOS report not JSON", lambda tmp: _wifi_mac(tmp, GARBAGE.decode("latin-1")))
+_case(UNUSABLE, wifi.NAME, "macOS report refused", lambda tmp: _wifi_mac(tmp, "", rc=1))
+LEGIT_EMPTY[wifi.NAME] = (
+    "a computer without Wi-Fi (the Wi-Fi service is not running): there are no Wi-Fi settings to check",
+    lambda tmp: _wifi_windows(tmp, [], rc=1, out="The Wireless AutoConfig Service (wlansvc) is not running."))
+DYNAMIC[("modules/wifi.py", "NAME")] = "wifi-settings, swept above"
+
+
+# --- DNS logs (--dns-log) ------------------------------------------------------------------------
+# Formats: dnsmasq/Pi-hole text log lines; Pi-hole FTL database table "queries"; AdGuard Home
+# querylog.json lines; BIND, Unbound, Windows DNS Server debug and Zeek dns.log.
+
+def _dnslog_file(tmp, name, data):
+    from zbtriage.modules import dnslogs
+    path = tmp / name
+    path.write_bytes(data)
+    return dnslogs.run(_ctx(dns_logs=(str(path),)))
+
+
+for _name, _data in (("pihole.log", GARBAGE), ("querylog.json", b'{"not": "a query"}\n'),
+                     ("pihole-FTL.db", b"SQLite format 3\x00" + bytes(100)), ("empty.log", b"")):
+    _case(UNUSABLE, "dns-log:" + _name, "unusable " + _name,
+          lambda tmp, n=_name, d=_data: _dnslog_file(tmp, n, d))
+DYNAMIC[("modules/dnslogs.py", "'dns-log:' + label")] = "dns-log:<file>, swept above"
+
+
+# --- Trust settings: root certificates, proxy, DNS servers, gateway ---------------------------
+# Formats: PowerShell certificate-store rows (Thumbprint/Subject/Store); `security dump-trust-settings`
+# text; Windows TCP/IP NameServer values; /proc/net/route and /proc/net/arp; Get-NetNeighbor rows.
+
+def _trust(check, platform, patches):
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(trust.sys, "platform", platform))
+        for target, value in patches:
+            stack.enter_context(patch(target, value))
+        result = ModuleResult(trust.NAME)
+        check(result, _ctx())
+        return result
+
+
+def _ps_fail(*_a, **_k):
+    return [], "Access is denied"
+
+
+def _no_dns():
+    raise OSError("registry unreadable")
+
+
+def _mac_trust_refused(argv, timeout=60):
+    return 1, "", "SecTrustSettingsCopyCertificates: unknown error"
+
+
+_case(UNUSABLE, "root-certificates", "certificate stores refused",
+      lambda tmp: _trust(trust._check_roots, "win32", [("zbtriage.modules.host._ps_json", _ps_fail)]))
+_case(UNUSABLE, "root-certificates", "macOS trust settings refused",
+      lambda tmp: _trust(trust._check_roots, "darwin", [("zbtriage.modules.trust._tr_run", _mac_trust_refused)]))
+_case(UNUSABLE, "dns-settings", "DNS settings unreadable",
+      lambda tmp: _trust(trust._check_dns, "win32", [("zbtriage.modules.trust._tr_windows_dns", _no_dns)]))
+_case(UNUSABLE, "gateway", "route table refused",
+      lambda tmp: _trust(trust._check_gateway, "win32", [("zbtriage.modules.host._ps_json", _ps_fail)]))
+_case(UNUSABLE, "proxy-settings", "macOS proxy settings refused",
+      lambda tmp: _trust(trust._check_proxy, "darwin", [("zbtriage.modules.trust._tr_run", _mac_trust_refused)]))
+LEGIT_EMPTY["gateway"] = (
+    "no default route: the computer is not on a routed network, so there is no router to check",
+    lambda tmp: _trust(trust._check_gateway, "linux",
+                       [("zbtriage.modules.trust._tr_linux_neighbours", lambda: (None, []))]))
 
 
 def _intrusion(tmp, name, data):

@@ -71,6 +71,10 @@ KEV_TARGETS = (
      "cna": (r"^apple$", r"^macos$"), "windows": None, "mac": ()},
     {"key": "safari", "label": "Safari", "kev": ("Apple", r"safari|webkit|multiple products"),
      "cna": (r"^apple$", r"^safari$"), "windows": None, "mac": ("com.apple.Safari",)},
+    # Checked by the iPhone reader against the iOS version a backup records,
+    # not on this computer (no "windows" or "mac" way to find it installed).
+    {"key": "ios", "label": "iOS", "kev": ("Apple", r"\bios\b|ipados|webkit|multiple products"),
+     "cna": (r"^apple$", r"^ios( and ipados)?$|^ipados$"), "windows": None, "mac": ()},
 )
 
 
@@ -78,9 +82,14 @@ class KevError(Exception):
     pass
 
 
+OUI_URL = "https://standards-oui.ieee.org/oui/oui.csv"
+OUI_FILE = "manufacturers.json"
+OUI_MAX_BYTES = 16 * 1024 * 1024
+
+
 def kev_url_allowed(url):
     return isinstance(url, str) and ".." not in url and (
-        url == KEV_URL or (url.startswith(KEV_CVE_PREFIX) and re.fullmatch(
+        url == KEV_URL or url == OUI_URL or (url.startswith(KEV_CVE_PREFIX) and re.fullmatch(
             r"\d{4}/\d+xxx/CVE-\d{4}-\d{4,7}\.json", url[len(KEV_CVE_PREFIX):]) is not None))
 
 
@@ -200,17 +209,83 @@ def kev_update(cache, emit=lambda _m: None, fetch=None, accept_shrink=False):
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         rows = [row for rows in pool.map(one, wanted) for row in rows]
+    devices = kev_device_vendors(vulns)
     missing = sum(1 for r in rows if not r["record"])
     doc = {"tool": "zero-breach-toolkit", "source": KEV_URL,
            "catalogVersion": str(catalog.get("catalogVersion", ""))[:40],
            "dateReleased": str(catalog.get("dateReleased", ""))[:40],
            "downloaded_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "catalog_size": len(vulns), "peak_catalog_size": peak,
-           "entries": rows}
+           "entries": rows, "device_vendors": devices}
     data = json.dumps(doc, ensure_ascii=False, indent=1).encode("utf-8")
     _kev_write(cache, KEV_FILE, data)
     _kev_write(cache, KEV_MANIFEST, (hashlib.sha256(data).hexdigest() + "  " + KEV_FILE + "\n").encode("ascii"))
     return {"entries": len(rows), "records_missing": missing, "catalogVersion": doc["catalogVersion"]}
+
+
+# Makers of home routers, cameras, recorders and storage boxes, as CISA writes them (vendorProject), with the
+# words a device's own UPnP description uses for the same maker. The home check uses this to say "this maker's
+# devices have flaws attackers are using - keep the firmware current". Only these makers: a computer's UPnP
+# manufacturer ("Microsoft") is not a home device.
+KEV_DEVICE_VENDORS = {
+    "TP-Link": r"tp-?link", "D-Link": r"d-?link", "NETGEAR": r"netgear", "Zyxel": r"zyxel", "Linksys": r"linksys",
+    "ASUS": r"\basus", "DrayTek": r"draytek", "Tenda": r"tenda", "Ubiquiti": r"ubiquiti|ubnt", "MikroTik": r"mikrotik",
+    "Hikvision": r"hikvision", "Dahua": r"dahua", "Synology": r"synology", "QNAP": r"qnap",
+    "Western Digital": r"western digital|\bwd\b", "Huawei": r"huawei", "ZTE": r"\bzte\b", "TOTOLINK": r"totolink",
+    "Edimax": r"edimax", "Xiongmai": r"xiongmai|xmeye", "Four-Faith": r"four-?faith", "Arris": r"arris",
+    "Cisco": r"cisco", "Fortinet": r"fortinet|fortigate", "SonicWall": r"sonicwall", "Reolink": r"reolink",
+    "Uniview": r"uniview", "AVTECH": r"avtech", "Optilink": r"optilink",
+}
+
+
+def kev_device_vendors(vulns):
+    """{CISA vendor: {"count", "newest_cve", "newest_date"}} for the home-device makers, since KEV_SINCE."""
+    out = {}
+    for entry in vulns:
+        if not isinstance(entry, dict) or str(entry.get("dateAdded", "")) < KEV_SINCE:
+            continue
+        vendor = str(entry.get("vendorProject", "")).strip()
+        match = next((v for v in KEV_DEVICE_VENDORS if v.lower() == vendor.lower()), None)
+        if not match:
+            continue
+        item = out.setdefault(match, {"count": 0, "newest_cve": "", "newest_date": ""})
+        item["count"] += 1
+        date = str(entry.get("dateAdded", ""))[:10]
+        if date >= item["newest_date"]:
+            item["newest_date"], item["newest_cve"] = date, str(entry.get("cveID", ""))[:20]
+    return out
+
+
+def oui_parse(raw):
+    """{"AA:BB:CC": organisation} from the IEEE MA-L listing (CSV: Registry, Assignment, Organization Name, ...)."""
+    import csv
+    out = {}
+    for row in csv.reader(raw.decode("utf-8", "replace").splitlines()):
+        if len(row) >= 3 and re.fullmatch(r"[0-9A-Fa-f]{6}", row[1].strip()):
+            a = row[1].strip().upper()
+            out[a[0:2] + ":" + a[2:4] + ":" + a[4:6]] = re.sub(r"\s+", " ", row[2]).strip()[:80]
+    return out
+
+
+def oui_update(cache, fetch=None):
+    """Save the IEEE public manufacturer listing (MAC prefix -> maker) for the home check to name devices.
+    Downloaded at --update time from IEEE (never shipped with the program). Returns the entry count."""
+    fetch = fetch or _kev_fetch
+    table = oui_parse(fetch(OUI_URL, OUI_MAX_BYTES))
+    if len(table) < 10000:
+        raise KevError("the manufacturer list looked incomplete ({:,} entries); the previous copy was kept".format(
+            len(table)))
+    _kev_write(cache, OUI_FILE, json.dumps(table, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    return len(table)
+
+
+def kev_device_maker(text):
+    """The CISA maker name a device description (manufacturer / model / name) points to, or ""."""
+    low = str(text or "").lower()
+    for vendor, rx in KEV_DEVICE_VENDORS.items():
+        if re.search(rx, low):
+            return vendor
+    return ""
 
 
 def _kev_write(cache, name, data):
@@ -273,6 +348,49 @@ def _kev_cmp(a, b):
     return (a > b) - (a < b)
 
 
+def _kev_branch_ranges(have, ranges, product=None):
+    """Keep only the range for the installed release line when a record lists
+    one fixed version per line.
+
+    Apple's records give, for one product, "affected below 18.7.3" and "affected
+    below 26.2": the same flaw fixed separately in each supported release line,
+    both starting at 0. Read as two independent cut-offs, a fully updated
+    18.7.3 is "below 26.2" and was reported out of date (the same happened to
+    older macOS lines). When several open-ended ranges of one product end in
+    different major versions, the one ending in the installed major version is
+    the one that applies. If none does, the installed line is newer than every
+    listed fix (compare with the highest: not affected) or older than all of
+    them (compare with the lowest: a line that no longer gets fixes, affected).
+    Ranges with a real start version (Windows builds) are left as they are."""
+    def open_start(r):
+        start = kev_version(r.get("version"))
+        return start is None or all(p == 0 for p in start)
+    by_product = {}
+    for r in ranges:
+        if product and r.get("product") and r["product"].lower() != product.lower():
+            continue
+        end = kev_version(r.get("lessThan")) or kev_version(r.get("lessThanOrEqual"))
+        if end is None or not open_start(r) or _kev_year_bound(end, have):
+            continue
+        by_product.setdefault(str(r.get("product", "")).lower(), []).append((end, r))
+    drop = set()
+    for items in by_product.values():
+        if len({end[0] for end, _r in items}) < 2:
+            continue
+        keep = [r for end, r in items if end[0] == have[0]]
+        if not keep:
+            ordered = sorted(items, key=lambda item: item[0])
+            if _kev_cmp(have, ordered[0][0]) < 0:
+                keep = [ordered[0][1]]       # older than every fixed line
+            elif _kev_cmp(have, ordered[-1][0]) >= 0:
+                keep = [ordered[-1][1]]      # newer than every fixed line
+            # Otherwise the installed line sits between listed lines and is not
+            # itself listed: the record does not say whether it was affected
+            # (often it was released after the fix), so nothing is compared.
+        drop.update(id(r) for _end, r in items if all(r is not k for k in keep))
+    return [r for r in ranges if id(r) not in drop]
+
+
 def kev_affected(installed, ranges, product=None):
     """True if the installed version falls in an affected range, False if
     comparable ranges exist and it is outside all of them, None if the record
@@ -280,6 +398,7 @@ def kev_affected(installed, ranges, product=None):
     have = kev_version(installed)
     if have is None:
         return None
+    ranges = _kev_branch_ranges(have, ranges, product)
     comparable = False
     for r in ranges:
         if product and r.get("product") and r["product"].lower() != product.lower():

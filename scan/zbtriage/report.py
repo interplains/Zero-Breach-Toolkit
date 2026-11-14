@@ -16,7 +16,7 @@ import json
 import platform as _platform
 import re
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from . import __version__
 from .contract import (CHECK_CATALOGUE, CONTENT_TRUST, EXIT_CODES, HELP_LINKS,
@@ -214,6 +214,9 @@ def build_document(iocs: IocSet, modules: List[ModuleResult],
         # Heuristics: never part of the verdict (result.Lead).
         "worth_a_look": [dict(lead, module=name) for name, md in module_dicts.items()
                          for lead in md.get("leads", [])],
+        # Prevention: protections left open, closed or not checkable. Never findings; never change the
+        # verdict or exit code. Open first (by severity), then could-not-check, then closed.
+        "doors": _doors(module_dicts),
         # Every finding and lead that records a time, oldest first, in this
         # computer's local time. Idea from MVT's timeline (method only).
         "timeline": _timeline(module_dicts),
@@ -321,6 +324,9 @@ def describe_document() -> Dict[str, Any]:
             "worth_a_look": ("heuristic items a person should look at; NEVER findings, "
                              "never change the verdict or exit code; each carries "
                              "usual_reason, the common harmless explanation"),
+            "doors": ("protections (\"doors to close\"): state open/closed/unknown with why, fix "
+                      "and a settings link; prevention advice, NEVER findings, never change the "
+                      "verdict or exit code"),
             "timeline": ("findings and worth-a-look items that record a time, oldest "
                          "first, in the scanned computer's local time"),
         },
@@ -449,7 +455,9 @@ def finalize_report(iocs, results, started, args, cancelled=False):
     try:
         if rendered is None:
             raise ValueError("readable report unavailable")
-        attempt(lambda: _report_console(rendered, sys.stdout))
+        from .termstyle import ts_colour_report, ts_enabled
+        shown = ts_colour_report(rendered, document) if ts_enabled(sys.stdout) else rendered
+        attempt(lambda: _report_console(shown, sys.stdout))
     except (OSError, ValueError, TypeError) as exc:
         failed = True
         _report_console("[could not display report: {}]".format(exc), sys.stderr)
@@ -496,6 +504,7 @@ def share_summary(document: Dict[str, Any]) -> Dict[str, Any]:
         "coverage": {"checked_count": len(document["coverage"]["checked"]),
                      "gap_count": len(v["gaps"])},
         "worth_a_look_count": len(document.get("worth_a_look", [])),
+        "doors_open_count": sum(1 for d in document.get("doors", []) if d.get("state") == "open"),
         "must_relay": contract_must_relay(document),
         "next_steps": copy.deepcopy(document["next_steps"]),
         "omitted": "Indicator values, artifact text, message senders and bodies, paths, "
@@ -572,8 +581,12 @@ def render_human(document: Dict[str, Any]) -> str:
     # report cannot imply "you are safe".
     scope = document.get("scope", {})
     if scope:
-        w("  " + (T("Scope: {kind} (phone evidence only)", kind=scope.get("scan_type", "default"))
-                  if scope.get("phone") else T("Scope: {kind}", kind=scope.get("scan_type", "default"))))
+        if scope.get("dns_logs"):
+            w("  " + T("Scope: DNS logs from a network ({n} file(s)) - every device that used that DNS server",
+                       n=scope.get("dns_logs")))
+        else:
+            w("  " + (T("Scope: {kind} (phone evidence only)", kind=scope.get("scan_type", "default"))
+                      if scope.get("phone") else T("Scope: {kind}", kind=scope.get("scan_type", "default"))))
         if scope.get("phone") and scope.get("ios_input"):
             w("  " + T("iPhone input: {kind}", kind=_safe_text(scope["ios_input"])))
         if scope.get("targets"):
@@ -646,7 +659,8 @@ def render_human(document: Dict[str, Any]) -> str:
         if m.get("inapplicable_reason"):
             w("    " + _field("note   : ") + TX(m["inapplicable_reason"]))
         for note in m["notes"]:
-            w("    " + _field("note   : ") + TX(note))
+            if note != m.get("inapplicable_reason"):      # already printed just above
+                w("    " + _field("note   : ") + TX(note))
         if m["hits"]:
             # Strongest evidence first: someone reading this should see a sample
             # on disk or a proven contact before a string that merely appeared in
@@ -694,6 +708,13 @@ def render_human(document: Dict[str, Any]) -> str:
             w("      " + _field("at     : ") + "{}".format(item.get("location", "")))
             if item.get("observed"):
                 w("      " + _field("when   : ") + "{}".format(item["observed"]))
+            meaning = plain_meaning(item)
+            if meaning:
+                label = _field("means  :")
+                if i18n_lang() != "en":
+                    label = label.rstrip()
+                for i, line in enumerate(_wrap_t(meaning, 60)):
+                    w("      {} {}".format(label if i == 0 else " " * len(label), line))
             if item.get("usual_reason"):
                 usual = _field("usually:")
                 if i18n_lang() != "en":
@@ -702,6 +723,7 @@ def render_human(document: Dict[str, Any]) -> str:
                                          else _wrap(item["usual_reason"], 60)):
                     w("      {} {}".format(usual if i == 0 else " " * len(usual), line))
         w("")
+    _render_doors(w, document)
     timeline = document.get("timeline") or []
     if timeline:
         w(T("IN TIME ORDER  —  local time of this computer"))
@@ -1089,8 +1111,18 @@ def _hit_watchware(hit) -> bool:
                                  for r in records)
 
 
-def _headline_for(hit) -> str:
-    """The summary headline for one serious hit, chosen by grade AND tier."""
+NETWORK_HEADLINE = {
+    EV_DNS: "A DEVICE ON THIS NETWORK LOOKED UP THIS INFRASTRUCTURE",
+    EV_ATTEMPTED: "A DEVICE ON THIS NETWORK TRIED TO REACH THIS INFRASTRUCTURE (a filter blocked it)",
+}
+
+
+def _headline_for(hit, network=False) -> str:
+    """The summary headline for one serious hit, chosen by grade AND tier. With
+    network=True (DNS logs from a router or DNS server) the record is about a
+    device on the network, named by its address in the evidence, not this one."""
+    if network and hit.get("evidence") in NETWORK_HEADLINE and not hit.get("withdrawn_only"):
+        return NETWORK_HEADLINE[hit["evidence"]]
     if hit.get("withdrawn_only"):
         return "HISTORICAL MATCH TO A WITHDRAWN INDICATOR - REVIEW SOURCE CONTEXT"
     if hit.get("tier") == "forensic":
@@ -1254,6 +1286,11 @@ def _human_document(document):
         for key in ("location", "what", "observed"):
             if key in item:
                 item[key] = scrub(item[key], 500)
+    for module in doc.get("modules", {}).values():
+        for door in module.get("doors", []):
+            door["observed"] = scrub(door.get("observed", ""), 300)
+    for door in doc.get("doors", []):
+        door["observed"] = scrub(door.get("observed", ""), 300)
     for row in doc.get("timeline", []):
         for key in ("when", "what", "location"):
             row[key] = scrub(row.get(key, ""), 500)
@@ -1536,6 +1573,7 @@ def render_summary(document: Dict[str, Any]) -> str:
     serious = [h for h in all_hits if is_serious(h.get("evidence", ""))]
     benign = [h for h in all_hits if not is_serious(h.get("evidence", ""))]
 
+    _render_plain(w, document)
     w(_RULE)
     w("  " + T("SUMMARY  —  read this part"))
     if i18n_lang() != "en":
@@ -1588,7 +1626,7 @@ def render_summary(document: Dict[str, Any]) -> str:
         # one domain in three cache files is not three lines.
         for h in sorted(_dedup_serious(serious),
                         key=_recommended_action, reverse=True):
-            headline = _headline_for(h)
+            headline = _headline_for(h, network=bool(document.get("scope", {}).get("dns_logs")))
             w("    >> {}".format(T(headline)))
             w("       {}  [{}]".format(_show_indicator(h, document), h["tier"]))
             if h.get("withdrawal_present"):
@@ -1648,6 +1686,25 @@ def render_summary(document: Dict[str, Any]) -> str:
         _say(w, ["  ALSO: {n} item under \"WORTH A LOOK\" further down. It is NOT" if len(looks) == 1 else
                  "  ALSO: {n} items under \"WORTH A LOOK\" further down. They are NOT",
                  "  a finding; each comes with its usual, ordinary explanation."], n=len(looks))
+        # The first few in plain words, so someone who reads only this part still knows what they are.
+        shown = []
+        for item in looks:
+            meaning = plain_meaning(item)
+            if meaning and meaning not in shown:
+                shown.append(meaning)
+        for meaning in shown[:4]:
+            for i, line in enumerate(_wrap_t(meaning, 66)):
+                w(("    - " if i == 0 else "      ") + line)
+        if len(shown) > 4:
+            w("      " + TN("... and {n} more kind further down.", "... and {n} more kinds further down.",
+                            len(shown) - 4))
+    open_doors = [d for d in document.get("doors") or [] if d.get("state") == "open"]
+    if open_doors:
+        w("")
+        _say(w, ["  DOORS TO CLOSE: {n} way in is left open on this device. It is NOT a" if len(open_doors) == 1 else
+                 "  DOORS TO CLOSE: {n} ways in are left open on this device. They are NOT",
+                 "  a finding, but closing it makes spying harder - see \"DOORS TO CLOSE\"." if len(open_doors) == 1 else
+                 "  a finding, but closing them makes spying harder - see \"DOORS TO CLOSE\"."], n=len(open_doors))
     gaps = v.get("gaps") or []
     if gaps:
         w("")
@@ -1687,6 +1744,77 @@ _GAP_FOLDERS = re.compile(r"(\d+) folder\(s\) or item\(s\)")
 _APP_NAMES = {"edge": "Edge", "chrome": "Chrome", "brave": "Brave", "vivaldi": "Vivaldi",
               "chromium": "Chromium", "firefox": "Firefox", "safari": "Safari",
               "selected": "the selected browser folder"}
+
+
+# Accounts cannot be scanned without logging in (this tool never does). Abusers get in through shared accounts
+# more often than through installed spyware, so the doors section always ends with this short guided list.
+ACCOUNT_CHECKLIST = (
+    ("Apple: Safety Check", "iPhone Settings > Privacy & Security > Safety Check: review who you share with, which "
+                            "devices are signed in to your Apple Account, and app access. 'Emergency Reset' stops all "
+                            "sharing at once."),
+    ("Google: Security Checkup", "myaccount.google.com/security-checkup: signed-in devices, third-party access, "
+                                 "recovery phone and email. Then Google Maps > Location sharing."),
+    ("Messaging: linked devices", "WhatsApp, Signal and Telegram each have a 'Linked devices' (or 'Devices', "
+                                  "'Active sessions') screen: remove any computer or tablet you don't recognise."),
+    ("Email: forwarding and rules", "Check your email settings for forwarding addresses and rules you did not "
+                                    "create - a quiet way to receive copies of every message."),
+    ("Recovery details", "Make sure the recovery phone number and email on your important accounts are yours alone."),
+    ("Passwords and sign-in", "Use a different password for each important account and turn on two-step sign-in "
+                              "with an app or passkey rather than text messages."),
+    ("Your phone number", "Ask your mobile provider to add a PIN or port-out lock, so nobody can move your number "
+                          "to another SIM and receive your codes."),
+)
+
+_DOOR_ORDER = {"open": 0, "unknown": 1, "closed": 2}
+_DOOR_SEVERITY = {"high": 0, "medium": 1, "low": 2}
+
+
+def _doors(module_dicts) -> List[Dict[str, Any]]:
+    doors = [dict(d, module=name) for name, md in module_dicts.items() for d in md.get("doors", [])]
+    return sorted(doors, key=lambda d: (_DOOR_ORDER.get(d.get("state"), 3), _DOOR_SEVERITY.get(d.get("severity"), 3),
+                                        d.get("door", "")))
+
+
+def _render_doors(w, document) -> None:
+    doors = document.get("doors") or []
+    if not doors:
+        return
+    open_ = [d for d in doors if d.get("state") == "open"]
+    unknown = [d for d in doors if d.get("state") == "unknown"]
+    closed = [d for d in doors if d.get("state") == "closed"]
+    w(T("DOORS TO CLOSE  —  ways in left open (prevention, NOT findings)"))
+    _say(w, ["  Settings and programs that make spying easier if someone gets the chance.",
+             "  An open door is not a sign of spyware. Closing it makes spying harder."])
+    w("")
+    marks = {"high": "!!", "medium": "! ", "low": ". "}
+    for d in open_:
+        w("  [{}] {}".format(marks.get(d.get("severity"), "! "), TX(d.get("title", ""))))
+        if d.get("observed"):
+            w("        " + _field("found  : ") + d["observed"])
+        for label, key in (("why    : ", "why"), ("fix    : ", "fix")):
+            if d.get(key):
+                text = TX(d[key])
+                lines = _wrap(text, 62) if i18n_lang() == "en" else _wrap_any(text, 62)
+                for i, line in enumerate(lines):
+                    w("        " + (_field(label) if i == 0 else " " * len(label)) + line)
+        if d.get("setting"):
+            w("        " + _field("open   : ") + d["setting"])
+    if unknown:
+        w("")
+        w("  " + T("Could not check:") + " " + "; ".join(TX(d.get("title", "")) for d in unknown))
+    if closed:
+        w("")
+        w("  " + TN("Already closed: {n} protection in place", "Already closed: {n} protections in place",
+                    len(closed)) + " - " + "; ".join(TX(d.get("title", "")) for d in closed))
+    w("")
+    w("  " + T("ACCOUNTS TO CHECK YOURSELF  (no tool can see these without signing in to them)"))
+    for name, how in ACCOUNT_CHECKLIST:
+        text = T(name) + ": " + T(how)
+        lines = _wrap(text, 66) if i18n_lang() == "en" else _wrap_any(text, 66)
+        for i, line in enumerate(lines):
+            w("    " + ("[ ] " if i == 0 else "    ") + line)
+    w("    " + T("A guided version, step by step: More checks > Check my online accounts (or --accounts)."))
+    w("")
 
 
 def _gap_lines(gaps: List[str]) -> List[str]:
@@ -1853,6 +1981,209 @@ def _field(english: str) -> str:
     if i18n_lang() == "en":
         return english
     return T(english.split(":")[0].strip()) + ": "
+
+
+# --- what a worth-a-look item means, in plain words -------------------------------------------------------------
+# One sentence per kind of item, for someone who is not technical: what it could let another person do, and what to
+# do if they did not cause it. Fixed text, chosen by the check that raised the item (and a word or two of it); never
+# built from what was read off the device. Kept calm on purpose: these are not findings.
+PLAIN_MEANINGS = (
+    ("android:settings", "accessibility", "These apps can see what is on your screen and tap for you. Many helpful "
+     "apps need this, but so does phone-monitoring software. If you do not know why an app has it, turn it off in "
+     "Settings > Accessibility."),
+    ("android:settings", "device admin", "These apps can lock the phone or make themselves hard to remove. If you do "
+     "not recognise one, take its rights away in Settings > Security > Device admin apps."),
+    ("android:packages", "vpn", "All your internet traffic goes through this app. That is normal for a VPN you chose; "
+     "if you did not set one up, someone could be watching what you do online."),
+    ("android:packages", "manage the phone", "Someone can manage this phone from a distance. That is normal for a "
+     "work or school phone, and worth asking about on a personal one."),
+    ("android:packages", "watch someone", "This kind of app can share where you are or record calls. If you did not "
+     "install it, or do not use it for that, someone may be using it to keep watch on you."),
+    ("android:packages", "intimate-partner", "This app has been used by partners to watch each other. If you did not "
+     "install it, talk to a helpline before removing it - the person may notice."),
+    ("android:packages", "stalkerware", "This app has the powers phone-monitoring software needs. If you do not "
+     "recognise it, talk to a helpline before removing it - the person who installed it may notice."),
+    ("android:packages", "", "This app did not come from an app store. If you do not recognise it, someone may have "
+     "installed it by hand while they had your phone."),
+    ("android:device-security", "", "The phone's built-in protections are weakened. That is fine if you or a repair "
+     "shop did it on purpose; otherwise it can mean someone had the phone in their hands."),
+    ("android:root", "", "The phone's built-in protections are weakened. That is fine if you or a repair shop did it "
+     "on purpose; otherwise it can mean someone had the phone in their hands."),
+    ("android:files", "", "A file has a name linked to spyware. A name alone proves very little; an expert can say "
+     "more."),
+    ("ios:configuration-profiles", "", "A profile can change how the iPhone handles internet traffic or let someone "
+     "manage it. If it is not from your work or school, remove it in Settings > General > VPN & Device Management."),
+    ("ios:", "developer build", "This app was put on the iPhone without the App Store. If you did not do this, "
+     "someone who had your phone may have."),
+    ("ios:", "restart", "This is a sign researchers use when looking for advanced iPhone spyware. On its own it is "
+     "not proof; an expert can check it."),
+    ("ios:", "shutdown", "This is a sign researchers use when looking for advanced iPhone spyware. On its own it is "
+     "not proof; an expert can check it."),
+    ("ios:software-version", "", "This iPhone is missing security updates. Update it in Settings > General > "
+     "Software Update."),
+    ("browser:synced-history", "", "Your browser history is shared with another device. If that device is not "
+     "yours, someone can see the sites you visit - sign the other device out of your account."),
+    ("browser-accounts", "", "This browser sends your history and passwords to this account. If it is not yours, "
+     "someone else can see them - sign it out."),
+    ("stalkerware-site", "", "This device visited the website of a phone-monitoring company. That can be research - "
+     "or someone setting up monitoring on a phone."),
+    ("dante-traces", "", "A trace linked to known government spyware. It is usually harmless, but worth showing to "
+     "an expert."),
+    ("devilstongue-traces", "", "A trace linked to known government spyware. It is usually harmless, but worth "
+     "showing to an expert."),
+    ("defender-history", "exclusion", "Your antivirus has been told to skip some places. Trusted programs do this "
+     "sometimes; harmful ones do it to hide."),
+    ("defender-history", "detected", "Your antivirus caught something before. Usually it was dealt with; check in "
+     "Windows Security that it was removed."),
+    ("defender-history", "", "Your antivirus was switched off at some point, so it could not protect the computer "
+     "then."),
+    ("antivirus-status", "", "Your antivirus may not be protecting this computer right now. Open Windows Security "
+     "and check it is on and up to date."),
+    ("run-history", "", "A command downloaded something from the internet and ran it. That is fine if you or your IT "
+     "person did it; otherwise it is a common way harmful software gets in."),
+    ("powershell-history", "", "A command downloaded something from the internet and ran it. That is fine if you or "
+     "your IT person did it; otherwise it is a common way harmful software gets in."),
+    ("root-certificates", "", "Something added a certificate that lets a program read your secure web traffic. "
+     "Security tools do this; so does spyware."),
+    ("proxy-settings", "", "Your web traffic passes through another program or computer first, which can see it."),
+    ("gateway", "", "Another device on your network may be pretending to be your router, which would let it watch "
+     "your traffic."),
+    ("dns-settings", "", "This computer asks an unusual server where websites are. A bad one can send you to fake "
+     "sites."),
+    ("wifi", "", "This Wi-Fi setting makes it easier for someone nearby to watch your traffic or fake your network."),
+    ("exploited-software", "", "This program has security holes that attackers are known to use. Update it."),
+)
+
+
+def plain_meaning(item: Dict[str, Any]) -> str:
+    """The plain-words meaning of one worth-a-look item, or "" when there is none for its kind."""
+    check = str(item.get("check") or "").lower()
+    what = str(item.get("what") or "").lower()
+    module = str(item.get("module") or "").lower()
+    for prefix, word, meaning in PLAIN_MEANINGS:
+        if (check.startswith(prefix) or module.startswith(prefix)) and (not word or word in what):
+            return meaning
+    return ""
+
+
+# --- the result in five plain lines -----------------------------------------------------------------------------
+# What a frightened, non-technical person reads first. Built only from what the report already worked out (the
+# matches and how strong each is as evidence, the gaps, the open doors, the worth-a-look meanings), so it can never
+# say more than the detail below supports. The strength of the evidence decides the wording: a spyware file or app
+# ON the device is said to be that; an advertising network the browser loaded something from, or an address it
+# contacted, is said NOT to be an infection - so one ad does not send people into a panic.
+PLAIN_STRONG = ("on-disk", "on-device", "persistence", "ran-command", "execution-record")
+PLAIN_CONTACT = ("contacted", "dns-record", "attempted", "received", "configured")
+PLAIN_HELP = ("A free helpline can look at it with you: Access Now, https://www.accessnow.org/help/ (in the window: "
+              "\"Send this to someone who can help\").")
+PLAIN_HELP_PARTNER = ("A free helpline can help you plan before you change anything: Coalition Against Stalkerware, "
+                      "https://stopstalkerware.org/")
+
+
+def plain_summary(document: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """[(label, English sentence)] - the result, what it means, what to do, and (when there is one) the first
+    thing worth a look and where to get help. Labels and sentences are English; the renderer translates."""
+    hits = [h for m in document.get("modules", {}).values() for h in m.get("hits", [])]
+    live = [h for h in hits if is_serious(h.get("evidence", "")) and not h.get("withdrawn_only")]
+    v = document.get("verdict", {})
+    gaps = v.get("gaps") or []
+    doors = document.get("doors") or []
+    open_ids = {d.get("door") for d in doors if d.get("state") in ("open", "unknown")}
+    open_count = sum(1 for d in doors if d.get("state") == "open")
+    # Whole sentences (never glued from pieces), so every language has its own translation of each.
+    ad, dns = "browser:ad-blocker" in open_ids, "network:protective-dns" in open_ids
+    protect_line = ("Install a good ad blocker (uBlock Origin) and use a DNS service that blocks harmful sites "
+                    "(Quad9) - see \"Doors to close\" below." if ad and dns else
+                    "Install a good ad blocker (uBlock Origin) - see \"Doors to close\" below." if ad else
+                    "Use a DNS service that blocks harmful sites (Quad9) - see \"Doors to close\" below." if dns else "")
+    out = []
+    if live and {h.get("tier") for h in live} == {"forensic"}:
+        out.append(("Result", "This phone shows traces of Cellebrite, a tool police and security services use to "
+                              "unlock seized phones and copy them."))
+        out.append(("What it means", "The phone was unlocked, or someone tried, while it was out of your hands. It "
+                                     "is not spyware."))
+        out.append(("Do this now", "Save this report. Think about what was on the phone at the time, and change the "
+                                   "passwords of accounts that were signed in on it."))
+        out.append(("Get help", PLAIN_HELP))
+        return out
+    strong = [h for h in live if h.get("evidence") in PLAIN_STRONG]
+    if strong:
+        tiers = {h.get("tier") for h in strong}
+        if tiers == {"stalkerware"}:
+            out.append(("Result", "A phone-monitoring (stalkerware) app was found on this device itself."))
+            out.append(("What it means", "If you did not install it, someone may be watching this phone. Removing "
+                                         "it can alert them - talk to a helpline first."))
+        else:
+            out.append(("Result", "Spyware was found on this device itself - a file or app matching known spyware "
+                                  "(named below)."))
+            out.append(("What it means", "This is the strongest kind of evidence this tool can find."))
+        out.append(("Do this now", "Do not wipe, reset or update the device - that destroys the evidence. Save this "
+                                   "report."))
+        out.append(("Get help", PLAIN_HELP_PARTNER if tiers == {"stalkerware"} else PLAIN_HELP))
+        return out
+    if live and all(h.get("tier") == "delivery" for h in live):
+        out.append(("Result", "Your browser loaded something from an advertising network that spyware has been "
+                              "delivered through."))
+        out.append(("What it means", "This happens through ordinary ads and does NOT mean this device is infected - "
+                                     "no spyware file or app was found."))
+        out.append(("Do this next", protect_line or "Nothing urgent. Keep your ad blocker and protective DNS on."))
+        return out
+    if live:
+        if all(h.get("evidence") in PLAIN_CONTACT for h in live):
+            out.append(("Result", "This device contacted or looked up an address on the spyware lists."))
+        else:
+            out.append(("Result", "A trace matching known spyware was found (named below)."))
+        out.append(("What it means", "That is NOT proof of infection - no spyware file or app was found - but it is "
+                                     "worth showing to an expert."))
+        out.append(("Do this next", "Save this report. Do not wipe or reset the device."))
+        if protect_line:
+            out.append(("Also", protect_line))
+        out.append(("Get help", PLAIN_HELP))
+        return out
+    if hits:
+        out.append(("Result", "Only a mention of spyware was found - for example in an article or a list you "
+                              "opened."))
+        out.append(("What it means", "A mention is not a sign of infection."))
+    elif result_kind(document) == "unread":
+        out.append(("Result", "The phone could not be checked: its backup or collection could not be opened."))
+        out.append(("What it means", "This is NOT a clean result - nothing in the phone was looked at."))
+        out.append(("Do this next", "See \"What could not be checked\" below for the reason, then try again."))
+        return out
+    elif gaps:
+        out.append(("Result", "Nothing known was found - but some things could not be checked."))
+        out.append(("What it means", "No sign of known spyware in what was looked at. That is not a guarantee."))
+    else:
+        out.append(("Result", "Nothing known was found, and every check ran."))
+        out.append(("What it means", "No sign of known spyware. New spyware cannot be ruled out."))
+    if gaps:
+        out.append(("Do this next", "See \"What could not be checked\" below - fixing those makes the check "
+                                    "complete."))
+    elif protect_line:
+        out.append(("Do this next", protect_line))
+    elif open_count:
+        out.append(("Do this next", "Close the ways in listed under \"Doors to close\" below to make spying harder."))
+    looks = document.get("worth_a_look") or []
+    first = next((plain_meaning(i) for i in looks if plain_meaning(i)), "")
+    if first:
+        out.append(("Worth a look", first))
+    return out
+
+
+def _render_plain(w, document) -> None:
+    lines = plain_summary(document)
+    if not lines:
+        return
+    w(_RULE)
+    w("  " + T("IN PLAIN WORDS"))
+    w(_RULE)
+    labels = [T(label) for label, _s in lines]
+    width = max(len(x) for x in labels) + 2
+    for (label, sentence), shown in zip(lines, labels):
+        text = _wrap_t(sentence, max(36, 70 - width))
+        w("  {:<{}}{}".format(shown + ":", width, text[0] if text else ""))
+        for more in text[1:]:
+            w("  " + " " * width + more)
+    w("")
 
 
 def _referrals(w) -> None:

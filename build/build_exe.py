@@ -90,8 +90,34 @@ def main():
         cmd[-1:-1] = ["--version-file", version_file(ver)]
     print("building version", ver)
     subprocess.run(cmd, check=True)
+    if sys.platform == "darwin":
+        mac_info_plist()
     exe = program_path()
     print("wrote {} ({:,} bytes)".format(exe, os.path.getsize(exe)))
+
+
+def mac_info_plist():
+    """Two Info.plist entries, then the bundle re-signed (ad hoc, as PyInstaller signed it) so the signature
+    stays valid after the edit:
+      - why the app uses Bluetooth: macOS stops an app the moment it uses Bluetooth without saying why, and the
+        tracker check (--trackers) listens to it;
+      - that it accepts any file dropped on its icon, for "Check a suspicious file" (the window receives the
+        file through Tk's open-document event). Viewer role, lowest rank: it never becomes the default app."""
+    import plistlib
+    app = os.path.join(ROOT, "dist", PRODUCT + ".app")
+    plist = os.path.join(app, "Contents", "Info.plist")
+    with open(plist, "rb") as fh:
+        info = plistlib.load(fh)
+    info["NSBluetoothAlwaysUsageDescription"] = (
+        "The Bluetooth tracker check listens for AirTags and other trackers near you. It only receives; "
+        "nothing is sent.")
+    info["CFBundleDocumentTypes"] = [{"CFBundleTypeName": "Any file", "CFBundleTypeRole": "Viewer",
+                                      "LSHandlerRank": "None", "LSItemContentTypes": ["public.item"]}]
+    with open(plist, "wb") as fh:
+        plistlib.dump(info, fh)
+    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", app], check=True)
+    subprocess.run(["codesign", "--verify", "--deep", "--strict", app], check=True)
+    print("added the Bluetooth permission text and re-signed", app)
 
 
 def program_path():

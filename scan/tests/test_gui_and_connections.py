@@ -19,6 +19,13 @@ def test_headline_follows_the_verdict():
     assert gui.gui_headline(_doc(V_REFERENCES))[1] == "Only references found"
     doc = _doc(V_NONE)
     doc["modules"] = {"ios": {"leads": [{"check": "x"}]}}
+    colour, title, subtitle = gui.gui_headline(doc)
+    # leads with nothing known: an amber card that says so (team test F1), never the grey "nothing found" one
+    assert title == "1 thing worth a look" and colour == gui.GUI_WARN and "not proof" in subtitle
+    doc["verdict"]["gaps"] = ["a"]
+    doc["verdict"]["status"] = V_NONE_WITH_GAPS
+    assert "1 check could not run" in gui.gui_headline(doc)[2]
+    doc["verdict"]["status"] = V_REFERENCES      # references still say "references", leads in the small print
     assert "1 thing worth a look is listed" in gui.gui_headline(doc)[2]
 
 
@@ -108,15 +115,15 @@ def test_progress_follows_the_steps_of_the_check():
     state = {"steps": ["browser", "hash", "host"]}
     assert gui.gui_progress("[*] loading indicators", state) == ("[*] loading indicators", None)
     text, percent = gui.gui_progress("[*] running check: browser", state)
-    assert text == "Step 1 of 3: Browsers" and percent == 0
+    assert text == "Checking your browsers... (step 1 of 3)" and percent == 0
     text, _ = gui.gui_progress("[browser]   still working: app:steam (1,200 records checked so far)", state)
-    assert text == "Step 1 of 3: Browsers - Steam: 1,200 records checked"
+    assert text == "Checking your browsers... (step 1 of 3) - Steam: 1,200 records checked"
     assert not state["measured"]
     _, percent = gui.gui_progress("[*]   browser finished in 600s", state)
     assert round(percent) == 33
     gui.gui_progress("[*] running check: hash", state)
     text, percent = gui.gui_progress("[hash] fingerprinted 5,000 / 10,000 candidates", state)
-    assert text == "Step 2 of 3: Program files - 5,000 of 10,000 files"
+    assert text == "Checking program files... (step 2 of 3) - 5,000 of 10,000 files"
     assert state["measured"] and round(percent) == 50
 
 

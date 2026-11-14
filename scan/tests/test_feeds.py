@@ -80,9 +80,16 @@ class TestUpdate(unittest.TestCase):
         # cached_sets() only trusts sources in the built-in list.
         self.src_patch = patch.object(feeds, "SOURCES", [SRC])
         self.src_patch.start()
+        # these tests are about the download cache itself: no built-in copies, no known-good lists
+        self.builtin_patch = patch.object(feeds, "MVT_BUILTIN", {})
+        self.builtin_patch.start()
+        self.kg_patch = patch.object(feeds, "KNOWN_GOOD_SOURCES", [])
+        self.kg_patch.start()
 
     def tearDown(self):
         self.src_patch.stop()
+        self.builtin_patch.stop()
+        self.kg_patch.stop()
 
     def update(self, response):
         return feeds.update(self.cache, sources=[SRC], fetch=fake_fetch(response))
@@ -131,9 +138,16 @@ class TestCachedSets(unittest.TestCase):
         feeds.update(self.cache, sources=[SRC], fetch=fake_fetch(STIX_OK))
         self.src_patch = patch.object(feeds, "SOURCES", [SRC])
         self.src_patch.start()
+        # these tests are about the download cache itself: no built-in copies, no known-good lists
+        self.builtin_patch = patch.object(feeds, "MVT_BUILTIN", {})
+        self.builtin_patch.start()
+        self.kg_patch = patch.object(feeds, "KNOWN_GOOD_SOURCES", [])
+        self.kg_patch.start()
 
     def tearDown(self):
         self.src_patch.stop()
+        self.builtin_patch.stop()
+        self.kg_patch.stop()
 
     def test_verified_file_loads_with_its_family(self):
         sets, status = feeds.cached_sets(self.cache)
@@ -196,7 +210,8 @@ class TestCliFeeds(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             cli.main(["--indicator-cache", empty, "--json", report])
         doc = json.load(open(report, encoding="utf-8"))
-        self.assertFalse(doc["ioc_set"]["feeds"]["loaded"])
+        # only the lists built into the release load; the report still asks for an update
+        self.assertTrue(all(e.get("built_in") for e in doc["ioc_set"]["feeds"]["loaded"]))
         self.assertIn("feeds-missing", [m["id"] for m in doc["must_relay"]])
         self.assertIn("update-indicators", [s["id"] for s in doc["next_steps"]])
 

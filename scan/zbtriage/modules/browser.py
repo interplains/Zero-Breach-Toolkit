@@ -1453,6 +1453,8 @@ def run(ctx) -> ModuleResult:
     # the CLI can still recover whatever was found before the failure
     # instead of discarding it (see ScanContext.partial).
     ctx.partial = r
+    ctx.emit("[*] Browsers usually take longest: every page, download and cookie is read. On a busy "
+             "computer this can be 10 minutes or more; progress is shown as it goes.")
 
     # Matching itself lives in IocSet.search / search_bytes, so the boundary
     # rules (a domain must not match inside a longer name, an IP must not match

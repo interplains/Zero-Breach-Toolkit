@@ -43,8 +43,9 @@ def test_an_existing_download_takes_the_corrected_label(tmp_path, bundle):
     (tmp_path / feeds.MANIFEST).write_text(json.dumps({"sources": {SID: meta}}))
     for api in (feeds, bundle):
         sets, status = api.cached_sets(str(tmp_path), latest=True)
-        assert len(sets) == 1, status
-        (ind,) = sets[0].indicators
+        mine = [s for s in sets if any(i.value == "insider-label.invalid" for i in s.indicators)]
+        assert len(mine) == 1, status
+        (ind,) = mine[0].indicators
         assert ind.value == "insider-label.invalid"
         assert ind.family == ""
         assert "NSO" not in ind.source and "Chinese-language news sites" in ind.source

@@ -164,6 +164,8 @@ def pinned(monkeypatch):
     monkeypatch.setattr(feeds, "FEED_PINS", {"mvt-project/mvt-indicators": PIN})
     monkeypatch.setattr(feeds, "FEED_FILE_SHA256", {"test-src": hashlib.sha256(data).hexdigest()})
     monkeypatch.setattr(feeds, "SOURCES", [SRC])
+    monkeypatch.setattr(feeds, "KNOWN_GOOD_SOURCES", [])     # only the test source is downloaded
+    monkeypatch.setattr(feeds, "MVT_BUILTIN", {})            # and only it can load
     return data
 
 
@@ -214,10 +216,11 @@ def test_repeated_smaller_drops_cannot_empty_a_source(tmp_path, monkeypatch):
 
 
 def test_recorded_pins_cover_every_source():
-    repos = {src["repo"] for src in feeds.SOURCES}
+    every = feeds.all_sources()                              # indicator sources and known-good lists
+    repos = {src["repo"] for src in every}
     assert repos <= set(feeds.FEED_PINS)
-    assert set(feeds.FEED_FILE_SHA256) == {src["id"] for src in feeds.SOURCES}
-    for src in feeds.SOURCES:
+    assert set(feeds.FEED_FILE_SHA256) == {src["id"] for src in every}
+    for src in every:
         assert feeds.url_allowed(feeds._pinned_url(src)), src["id"]
 
 

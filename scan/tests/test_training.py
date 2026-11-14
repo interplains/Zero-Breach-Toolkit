@@ -71,9 +71,12 @@ class TestScenarios(TrainingCase):
         self.assertEqual(doc["verdict"]["hits_total"], 0)
         self.assertNotEqual(code, 2)
         whats = " | ".join(l["what"] for l in doc["worth_a_look"])
-        for expected in ("outside an app store", "accessibility access",
-                         "verification", "security updates are"):
+        for expected in ("outside an app store", "accessibility access"):
             self.assertIn(expected, whats)
+        doors = " | ".join(d["title"] for d in doc["doors"] if d["state"] == "open")
+        for expected in ("verification", "security updates are"):
+            self.assertIn(expected, doors)
+        self.assertIn("DOORS TO CLOSE", text)
 
     def test_clean_has_nothing_but_still_lists_gaps(self):
         code, text, doc, _ = run("--training", "clean", tmp=self.tmp)
@@ -269,11 +272,19 @@ class TestIndicatorsAreInvented(TrainingCase):
                 self.assertNotIn(ind.value, text)
 
 
+def _shown_number(label):
+    """The number the start menu shows for `label`. The menu hides items that do not apply here (some are
+    Windows-only), so counting in the full _MN_ITEMS list picked the wrong item on Linux (2026-11-12)."""
+    session = menu._MnSession(cli._parse([]), lambda: None, io.StringIO(), io.StringIO(), True)
+    shown = [i.label for i in menu._MN_ITEMS if i.available(session)]
+    return str(shown.index(label) + 1)
+
+
 class TestMenus(TrainingCase):
     def test_start_menu_offers_practice(self):
         labels = [i.label for i in menu._MN_ITEMS]
         self.assertIn("Practise with a training example", labels)
-        number = str(labels.index("Practise with a training example") + 1)
+        number = _shown_number("Practise with a training example")
         args = cli._parse([])
         stdin = io.StringIO(number + "\n2\n")
         ok = menu.choose_scan(args, lambda: None, stdin=stdin, stderr=io.StringIO(),
@@ -283,8 +294,7 @@ class TestMenus(TrainingCase):
         self.assertIsNone(args.phone)
 
     def test_start_menu_offers_the_cellebrite_example(self):
-        labels = [i.label for i in menu._MN_ITEMS]
-        number = str(labels.index("Practise with a training example") + 1)
+        number = _shown_number("Practise with a training example")
         args = cli._parse([])
         out = io.StringIO()
         with contextlib.redirect_stdout(out):

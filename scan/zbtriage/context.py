@@ -50,6 +50,8 @@ class ScanContext:
     cancelled: bool = False
     completed: list = field(default_factory=list, repr=False)
     ios_input: str = ""
+    # --dns-log: DNS logs from a router, Pi-hole, AdGuard Home or DNS server, checked instead of this computer.
+    dns_logs: tuple = ()
 
     def __post_init__(self):
         # Progress lines can carry names read from the evidence (a browser

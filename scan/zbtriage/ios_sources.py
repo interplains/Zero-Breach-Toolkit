@@ -174,6 +174,7 @@ class IosEvidenceSource:
         self.tmp, self.connections, self.entries = None, [], []
         self.database_serial = 0
         self.index, self.keys, self.encrypted = None, {}, False
+        self.passcode_set = None
         self.total, self.provenance, self.cached = 0, {}, {}
         self.inventory_complete = False
         self.info = {}
@@ -201,6 +202,9 @@ class IosEvidenceSource:
             if not isinstance(manifest, dict):
                 raise ValueError("Manifest.plist is not a dictionary")
             self.encrypted = manifest.get("IsEncrypted") is True
+            # Whether the phone had a passcode when the backup was made (True / False / None if not recorded)
+            passcode = manifest.get("WasPasscodeSet")
+            self.passcode_set = passcode if isinstance(passcode, bool) else None
             self.keys = backup_ios_keys(manifest.get("BackupKeyBag"), self.password) if self.encrypted else {}
             self.password = ""
             path = os.path.join(self.root, "Manifest.db")

@@ -264,6 +264,7 @@ A("'''")
 A('')
 
 for label, fname in (("result", "result.py"),
+                     ("safetext", "safetext.py"),
                      ("i18n_data", "i18n_data.py"),
                      ("i18n", "i18n.py"),
                      ("bidi", "bidi.py"),
@@ -273,25 +274,65 @@ for label, fname in (("result", "result.py"),
                      ("netguard", "netguard.py"),
                      ("localpaths", "localpaths.py"),
                      ("kevdata", "kevdata.py"),
+                     ("trustdata", "trustdata.py"),
+                     ("rmmdata", "rmmdata.py"),
+                     ("driverdata", "driverdata.py"),
+                     ("accessdata", "accessdata.py"),
+                     ("extensiondata", "extensiondata.py"),
+                     ("isdidata", "isdidata.py"),
+                     ("bugreport", "bugreport.py"),
+                     ("mvtdata", "mvtdata.py"),
                      ("feeds", "feeds.py"),
+                     ("resume", "resume.py"),
+                     ("intake", "intake.py"),
                      ("heuristics", "heuristics.py"),
                      ("context", "context.py"),
                      ("scope", "scope.py"),
                      ("phoneguide", "phoneguide.py"),
+                     ("homenet", "homenet.py"),
+                     ("trackers", "trackers.py"),
+                     ("ouidata", "ouidata.py"),
+                     ("iprangedata", "iprangedata.py"),
+                     ("wifinearby", "wifinearby.py"),
+                     ("ncinfo", "ncinfo.py"),
+                     ("linkcheck", "linkcheck.py"),
+                     ("netcapture", "netcapture.py"),
+                     ("winsign", "winsign.py"),
+                     ("startup", "startup.py"),
+                     ("ageseal", "ageseal.py"),
+                     ("helperpack", "helperpack.py"),
+                     ("orddata", "orddata.py"),
+                     ("hashlook", "hashlook.py"),
+                     ("sevenzip", "sevenzip.py"),
+                     ("filecheck", "filecheck.py"),
+                     ("accounts", "accounts.py"),
+                     ("evtxread", "evtxread.py"),
+                     ("huntrules", "huntrules.py"),
+                     ("huntwin", "huntwin.py"),
+                     ("fixit", "fixit.py"),
+                     ("mailcheck", "mailcheck.py"),
+                     ("extracted", "extracted.py"),
+                     ("qrcheck", "qrcheck.py"),
                      ("aes", "aes.py"),
                      ("backupcrypto", "backupcrypto.py"),
                      ("candiru_rules", "candiru_rules.py"),
                      ("banner", "banner.py"),
+                     ("termstyle", "termstyle.py"),
+                     ("menukeys", "menukeys.py"),
                      ("menu", "menu.py"),
                      ("training", "training.py"),
                      ("readers", "readers.py"),
                      ("contract", "contract.py"),
+                     ("household", "household.py"),
                      ("evidence", "evidence.py"),
                      ("report", "report.py"),
                      ("workflow", "workflow.py"),
                      ("handoff", "handoff.py"),
                      ("shelllinks", "shelllinks.py"),
                      ("netconns", "netconns.py"),
+                     ("iphonebackup", "iphonebackup.py"),
+                     ("iphonehelper_reqs", "iphonehelper_reqs.py"),
+                     ("iphonehelper", "iphonehelper.py"),
                      ("gui", "gui.py")):
     A('# --- {} {}'.format(label, '-' * max(0, 72 - len(label))))
     A(strip_imports(read(os.path.join(PKG, fname))))
@@ -405,6 +446,8 @@ def _bundle_parser():
                    help="skip candidate-file fingerprinting (roughly halves the "
                         "runtime). The skipped check is reported as a gap, not "
                         "as clean.")
+    p.add_argument("--deep", action="store_true",
+                   help=argparse.SUPPRESS)
     p.add_argument("--update", action="store_true",
                    help="download or refresh the published indicator sets into this "
                         "user's cache, then exit (separate from offline scanning)")
@@ -418,10 +461,14 @@ def _bundle_parser():
                         "instead of the copy pinned and checked for this release; when "
                         "scanning: use lists downloaded that way (otherwise only the "
                         "pinned copies are used)")
+    p.add_argument("--no-version-check", action="store_true",
+                   help="with --update (and the update in the menu or window): do not ask "
+                        "GitHub whether a newer release exists")
     p.add_argument("--no-feeds", action="store_true",
                    help="scan with the embedded indicator set only")
     p.add_argument("--phone", metavar="FOLDER",
-                   help="check an AndroidQF collection folder or local iPhone backup instead of this computer")
+                   help="check an AndroidQF collection folder, an Android bug report (.zip made on the phone) "
+                        "or a local iPhone backup instead of this computer")
     p.add_argument("--describe", action="store_true",
                    help="print, as JSON, what this tool checks and the rules for "
                         "relaying a result, then exit without scanning")
@@ -467,8 +514,11 @@ def _bundle_iocs(args):
         ioc_set = merge([load_any(v, allow_empty=len(args.iocs) > 1) for v in args.iocs])
         ioc_set.feeds = {"used": False, "reason": "--iocs given"}
     elif args.no_feeds:
-        ioc_set = _load_embedded_iocs()
-        ioc_set.feeds = {"used": False, "reason": "--no-feeds"}
+        # Downloaded sets are ignored, but the lists built into this release still count as built in.
+        built, status = builtin_sets()
+        ioc_set = merge([_load_embedded_iocs()] + built)
+        ioc_set.feeds = {"used": False, "reason": "--no-feeds", "loaded": status["loaded"],
+                         "refused": status["refused"]}
     else:
         cached, feed_status = cached_sets(args.indicator_cache, args.latest)
         feed_status["used"] = True
@@ -477,20 +527,64 @@ def _bundle_iocs(args):
     return ioc_set
 
 
-def _bundle_gui_hooks():
+def _bundle_gui_hooks(version_check=True):
     def run_readers(ctx):
         with no_network():
             reader_run(ctx, lambda spec: globals()["run_" + spec.suffix])
     return {"parse": _bundle_parse, "load_iocs": _bundle_iocs, "run_readers": run_readers,
-            "update": lambda: update_command(None, None), "version": __version__}
+            "update": lambda: update_command(None, None, version_check=version_check),
+            "version": __version__}
 
 
 def _bundle_main(argv=None):
     _force_utf8_io()
     raw = sys.argv[1:] if argv is None else argv
+    # A file dropped onto the program (or passed as its only argument) is a file to check. The packaged program
+    # opens the window on it; without a window, or from Python, it is checked in the terminal.
+    if len(raw) == 1 and not raw[0].startswith("-") and os.path.isfile(raw[0]):
+        dropped = os.path.abspath(raw[0])
+        if getattr(sys, "frozen", False):
+            code = gui_main(dict(_bundle_gui_hooks(), open_file=dropped))
+            if code is not None:
+                return code
+        raw = ["--check-file", dropped]
     args = _bundle_parse(raw)
+    if args.check_file:
+        return fc_command(args, _bundle_iocs)
+    if args.accounts or args.threat_warning:
+        return ac_command(args)
+    if args.combine:
+        return combine_command(args)
+    if args.home_network:
+        return homenet_command(args)
+    if args.trackers is not None:
+        return trackers_command(args)
+    if getattr(args, "wifi_nearby", False):
+        return wifi_nearby_command(args)
+    if args.check_link or args.check_message:
+        return lc_command(args, _bundle_iocs)
+    if args.check_traffic:
+        return nc_command(args, _bundle_iocs)
+    if args.startup:
+        return su_command(args, _bundle_iocs)
+    if args.package_for_helper or args.verify_package:
+        return hp_command(args)
+    if args.hash_lookup or args.set_lookup_key:
+        return hl_command(args, _bundle_iocs)
+    if args.hunt_windows is not None:
+        return hw_command(args, _bundle_iocs)
+    if args.was_extracted:
+        return ex_command(args, _bundle_iocs)
+    if args.check_email:
+        return mc_command(args, _bundle_iocs)
+    if args.check_qr:
+        return qr_command(args, _bundle_iocs)
+    if args.fix_it is not None or args.undo_fix:
+        return fx_command(args, ask=fx_ask_terminal)
     if args.phone_guide:
         print(scope_guide(args.phone_guide))
+        if args.phone_guide == "android":
+            print(SCOPE_BUGREPORT_GUIDE)
         return 0
     if args.preview:
         try:
@@ -505,7 +599,7 @@ def _bundle_main(argv=None):
     if args.lang:
         i18n_set(args.lang)
     if gui_wanted(raw, args):
-        code = gui_main(dict(_bundle_gui_hooks(), lang=args.lang))
+        code = gui_main(dict(_bundle_gui_hooks(not args.no_version_check), lang=args.lang))
         if code is not None:
             return code
     if not args.no_banner:
@@ -517,7 +611,7 @@ def _bundle_main(argv=None):
     # Same start menu as the source CLI, for a person who double-clicked this
     # file. Never shown to scripts or when a check was chosen on the command line.
     if menu_wanted(raw, args) and not choose_scan(
-            args, lambda: update_command(args.indicator_cache, None)):
+            args, lambda: update_command(args.indicator_cache, None), load_iocs=_bundle_iocs):
         return EXIT_NOT_SCANNED
     # --training (or the menu's practice entry): a made-up phone and made-up
     # indicators, deleted by main() when the tool exits.
@@ -532,7 +626,8 @@ def _bundle_main(argv=None):
             print("error: --json must be a path on a local disk", file=sys.stderr)
             _hold(args)
             return 1
-        code = update_command(args.indicator_cache, args.json, args.accept_shrink, args.latest)
+        code = update_command(args.indicator_cache, args.json, args.accept_shrink, args.latest,
+                              version_check=not args.no_version_check)
         _hold(args)
         return code
 
@@ -560,6 +655,18 @@ def _bundle_main(argv=None):
                 _hold(args)
                 return 1
 
+    made_password = ""
+    if args.make_iphone_backup:
+        folder, made_password, code = make_iphone_backup(args.make_iphone_backup)
+        if not folder:
+            return code
+        args.phone = folder
+        args.backup_password = not made_password
+        try:
+            workflow_check_outputs(args)
+        except (OSError, ValueError) as exc:
+            print("error: {}".format(exc), file=sys.stderr)
+            return 1
     if args.collect_android:
         folder, code = collect_android(args.collect_android, args.age_recipient_file)
         if not folder:
@@ -577,7 +684,7 @@ def _bundle_main(argv=None):
         _hold(args)
         return 1
 
-    password = ""
+    password, made_password = made_password, ""
     if args.backup_password:
         import getpass
         if not sys.stdin.isatty():
@@ -585,11 +692,15 @@ def _bundle_main(argv=None):
             return 1
         password = getpass.getpass("Backup password (not saved): ")
     workflow_before_scan(args, ioc_set)
-    ctx = ScanContext(iocs=ioc_set, quick=args.quick, patterns=args.patterns,
+    if args.deep:
+        print("WARNING: --deep is not implemented; no full persistence sweep will run.", file=sys.stderr)
+        print(file=sys.stderr)
+    ctx = ScanContext(iocs=ioc_set, deep=args.deep, quick=args.quick, patterns=args.patterns,
                       full=args.scan_type == "full", browser_only=args.scan_type == "browser",
                       targets=tuple(os.path.abspath(p) for p in args.target),
                       backup_password=password, extended_windows=args.extended_windows, ios_input=args.ios_input,
-                      pattern_paths=tuple(args.pattern_path), phone_path=args.phone or "")
+                      pattern_paths=tuple(args.pattern_path), phone_path=args.phone or "",
+                      dns_logs=tuple(os.path.abspath(p) for p in args.dns_log))
     started = datetime.datetime.now()
     results = ctx.completed
     # The whole scan runs inside the no-network guard (see the header).
@@ -605,6 +716,11 @@ def _bundle_main(argv=None):
 def main(argv=None):
     try:
         return _bundle_main(argv)
+    except FileExistsError as exc:
+        # Every tool saves with "x" (never overwrite); say so instead of a traceback.
+        print("error: {} already exists - choose a new name. Nothing was overwritten.".format(
+            exc.filename or exc), file=sys.stderr)
+        return 1
     except KeyboardInterrupt:
         print("Stopped by user. Any completed report already saved remains on disk.", file=sys.stderr)
         return 1

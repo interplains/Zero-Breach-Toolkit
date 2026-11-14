@@ -66,6 +66,11 @@ jobs:
       - name: Check it against the single-file build
         run: python tools/program_smoke.py "dist/${{ matrix.program }}"
 
+      # The Bluetooth tracker check ships inside the programs: fails if the library (or a part of it) was left
+      # out, or if macOS stops the app for using Bluetooth without saying why.
+      - name: The Bluetooth tracker check is bundled
+        run: python tools/bluetooth_smoke.py "dist/${{ matrix.program }}"
+
       - name: Package
         run: |
           mkdir -p out
@@ -89,6 +94,32 @@ jobs:
               tar -C pkg -czf "out/$name.tar.gz" "$name" ;;
           esac
           ls -l out
+
+      # The checks above ran the program in dist/. This runs it from the file people actually download:
+      # the disk image is mounted read-only (macOS) and the archive unpacked fresh (Linux), so a broken
+      # package fails the build instead of reaching a release. Windows ships the same .exe, and its
+      # signed copy is run again after signing below.
+      - name: Check the packaged file as downloaded
+        if: ${{ !startsWith(matrix.label, 'windows-') }}
+        run: |
+          name="zero-breach-toolkit-${{ matrix.label }}"
+          case "${{ matrix.label }}" in
+            macos-*)
+              mnt="$(mktemp -d)"
+              hdiutil attach -readonly -nobrowse -mountpoint "$mnt" "out/$name.dmg"
+              trap 'hdiutil detach "$mnt" -quiet || true' EXIT
+              test -f "$mnt/HOW TO OPEN.txt" && test -L "$mnt/Applications"
+              app="$mnt/Zero Breach Toolkit.app/Contents/MacOS/Zero Breach Toolkit"
+              "$app" --version
+              python tools/program_smoke.py "$app" ;;
+            linux-*)
+              dir="$(mktemp -d)"
+              tar -C "$dir" -xzf "out/$name.tar.gz"
+              test -f "$dir/$name/HOW TO OPEN.txt"
+              test -x "$dir/$name/zero-breach-toolkit"
+              "$dir/$name/zero-breach-toolkit" --version
+              python tools/program_smoke.py "$dir/$name/zero-breach-toolkit" ;;
+          esac
 
       # Windows: signed through the SignPath Foundation before it is attested and
       # attached. The unsigned file goes to SignPath as a build artifact, and the
@@ -130,6 +161,13 @@ jobs:
           python tools/program_smoke.py $f
           if ($LASTEXITCODE -ne 0) { throw "the signed program failed the fixture check" }
           Copy-Item $f out/ -Force
+
+      # The file that will be attached (signed when signing ran) is scanned with Microsoft Defender's current
+      # definitions, so a false positive stops the build here instead of reaching people.
+      - name: Antivirus check (Microsoft Defender)
+        if: ${{ startsWith(matrix.label, 'windows-') }}
+        shell: pwsh
+        run: ./tools/defender_scan.ps1 "out/zero-breach-toolkit-${{ matrix.label }}.exe"
 
       # Build attestations are not available to private repositories owned by a user, so a private test copy of this repository skips them; the public repository always attests.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2

@@ -24,6 +24,18 @@ Made by archivegenocide. Built on [Zero Breach](https://github.com/interplains/z
 
 ---
 
+## Phone backup? Check it in your browser
+
+To check an **iPhone backup** or an **Android collection** there is nothing to install: open
+[archivegenocide.com/scan/phone](https://archivegenocide.com/scan/phone/) on the computer that holds
+the backup, choose the backup folder, and you get the same result as the program, in your language.
+Nothing is uploaded. The check runs inside a part of the page whose security settings forbid every
+network connection, and before it opens your backup it proves this by trying to reach the site and
+showing you that your browser blocked it. The page's code is in [`web/phone/`](web/phone/).
+
+A web page cannot look at the computer itself (its programs, start-up items and connections). To
+check a computer, use the program below.
+
 ## Easiest: download the program (no Python, no commands)
 
 **You do not need to know anything technical to use this.** Download one file from the
@@ -184,6 +196,19 @@ You do not need `sudo` to run the check. It reads your own account's records; if
 `sudo`, it may look at the root account's browsers instead of yours.
 
 ### Android phone
+
+**Cannot turn on USB debugging, or install anything? Use a bug report the phone makes itself.** Turn on
+Developer options (Settings → About phone → tap **Build number** seven times), then **Settings → System →
+Developer options → Take bug report** ("Full report" if it asks). When the notification says it is ready,
+tap it and choose **Share > save to the phone's Files** (Android keeps bug reports where a cable cannot
+reach), then copy the `.zip` to your computer the way you copy photos (a USB cable with the phone set to "File
+transfer", which is not USB debugging, or a memory card). If your accounts may be watched, do not email it to yourself
+or use a cloud folder: it holds private details about the phone. Check it as it is, without unzipping it:
+in the window, **A phone → What
+is it? → Android bug report**, or `--phone "the-bug-report.zip"`. A bug report holds the phone's system
+state, settings, logs and the history of apps installed and **removed**, but not the apps' files, the
+file list or text messages, so those parts are listed as not checked. For the fullest check, use the
+cable steps below.
 
 First do the **Set up** steps for [Windows](#windows) or [Mac](#mac) above.
 
@@ -356,6 +381,434 @@ advice. The lists are downloaded by the indicator update; the comparison happens
 your list of programs never leaves the computer. An out-of-date program is not a sign of spyware,
 but it is a common way in.
 
+Apple fixes a flaw separately in each supported release line (for example iOS 18.7.3 and 26.2).
+Each installed version is compared with the fix for its own line; a version on a line the record
+does not list is not called out of date. The same list is used for an iPhone backup: the check
+says when the iOS version the backup records is older than such a fix.
+
+### Wi-Fi settings (Windows, macOS, Linux)
+
+Also prevention: the check reads the computer's saved Wi-Fi settings and points out the ones that
+weaken it: open networks it joins by itself (anyone nearby can copy the name), WEP, the original
+WPA or its TKIP cipher, and hidden networks it keeps calling out for. On Windows the saved networks
+are exported without their passwords into a private temporary folder, three settings are read
+from each, and the files are deleted. On Linux NetworkManager is asked only for each network's
+security type; on macOS only the network in use is checked (the saved list needs administrator
+rights). No network is joined, scanned or contacted, no password is read, and the router's own
+settings are not checked, because that would mean contacting it.
+
+It also warns when a network nearby (in the computer's last Wi-Fi scan; no scan is started) uses the
+name of one you saved but has no password or uses WEP: the classic "evil twin" set up to watch
+people's traffic.
+
+### Certificates and network settings (Windows, macOS, Linux)
+
+A trusted root certificate lets whoever holds its key read this computer's encrypted web traffic.
+The check compares the trusted roots with the ones the major trust programs distribute (Microsoft
+and Mozilla, from the public CCADB lists) and names the others by kind: security software that
+checks encrypted pages, developer tools such as Fiddler or mitmproxy, VPN apps, game launchers, or
+unknown. On macOS it lists certificates given custom trust; on Linux the locally added anchors. It
+also reports a system proxy or automatic proxy script, DNS servers set by hand or in ranges used by
+DNS-hijacking malware, and another address on the network claiming the router's hardware address
+(a sign of ARP spoofing). All local reads; each is "worth a look" with its usual explanation.
+
+### The whole network, from its DNS log
+
+`--dns-log FILE` checks a DNS log instead of this computer: from a router (dnsmasq), Pi-hole (its
+text log or its database), AdGuard Home (`querylog.json`), BIND, Unbound, a Windows DNS server's
+debug log or Zeek. Every name any device looked up, and every address in a logged answer, is
+compared with the indicators offline, so phones, tablets and TVs on the network are covered without
+touching them. A lookup the filter blocked is reported as an attempt, with the device's address.
+It sees only the period the log covers, and not devices that use their own DNS (browsers with DNS
+over HTTPS, VPNs, mobile data).
+
+### Doors to close
+
+Besides looking for traces of spyware, every check lists the doors left open: settings and programs that
+make spying easier if someone gets the chance. Each comes with why it matters and how to close it, and in
+the window an **Open this setting** button takes you straight to the right page, with **Check again** to
+confirm. They are prevention advice, never findings, and never change the result.
+
+- **This computer:** remote-access and monitoring programs (over 200: our own list - TeamViewer, AnyDesk,
+  Chrome Remote Desktop, keyloggers, employee and parental monitoring products... - plus remote-support
+  and management agents hand-picked from LOLRMM), and the same programs **downloaded but never installed**
+  (the "download AnyDesk and read me the code" scam: a copy waiting in Downloads, Desktop or Documents is
+  named by its file name, never opened), Remote Desktop / SSH /
+  Screen Sharing switched on, automatic sign-in (whether a password is stored for it is noted; the
+  password is never read), no password after sleep, firewall off, disk not encrypted (BitLocker, device
+  encryption, FileVault, LUKS), Secure Boot / System Integrity Protection / Gatekeeper off, old SMB1 file
+  sharing, extra administrator accounts. On Windows also **drivers with a known security hole or known
+  to be malicious** (the installed driver files fingerprinted against LOLDrivers' verified list - the
+  holes attackers use to switch off antivirus, usually brought in by a hardware or tuning tool), whether
+  Microsoft's vulnerable driver blocklist is on, and whether memory integrity is actually running, not
+  just set to on.
+- **Browsers:** extensions that can read and change every website, and extensions known to be malicious
+  (chrome-mal-ids, CC BY 4.0). Each browser's signed-in account is shown masked (`s***@gmail.com`) under
+  WORTH A LOOK: a browser syncing to someone else's account sends them your history and saved passwords.
+- **iPhone:** no passcode, Lockdown Mode off. **Android:** old security updates, storage not encrypted,
+  Play Protect off, wireless or USB debugging left on.
+- **Accounts to check yourself:** what no tool can see without signing in - Apple Safety Check, Google
+  Security Checkup, linked devices on WhatsApp/Signal/Telegram, email forwarding, recovery details,
+  two-step sign-in and a SIM port-out lock.
+
+### Home network check (separate, asks first)
+
+`--home-network` is not part of the spyware check: it is the one part of the toolkit that talks to
+other devices, so it explains what it will do and asks each time. On the local network this
+computer is on (private addresses only, the 256 addresses around it) it finds the devices and their
+names (Bonjour/mDNS and UPnP), tries to open a connection to a short list of ports on each and
+closes it at once, and reads the router's UPnP description and its list of ports opened to the
+internet. It reports risky doors - Android debugging left open on a TV or phone, Telnet, camera
+recorders, remote desktop and VNC - cameras on the network, and ports your router has opened. It
+never logs in, tries a password or changes anything. Only run it on a network you own or are
+responsible for.
+
+It also tests whether the router's lookups are being changed - the classic sign of a router whose DNS
+setting was altered by someone or by malware - without logging into it. It asks the router to look up
+`one.one.one.one` and `dns.google` (whose answers never change), a made-up name under `example.com`
+(which must not exist), and two names that echo back the address of the resolver the router really
+uses. A wrong answer, a made-up name that comes back with an address (often an internet provider's
+advert page, sometimes a hijack), or a resolver in a range used by the DNSChanger malware is reported
+with what to do. These five lookups are the only part of the check whose questions leave your network
+(through the router, like any lookup); the consent screen names them and `--no-router-lookups` skips
+them. If the router does not answer - a VPN usually blocks this on purpose - that is reported as not
+checked.
+
+Android TV and Google TV can be checked for spyware like a phone: see
+[docs/ANDROID-TV.md](docs/ANDROID-TV.md).
+
+### Check a link or message (separate, offline)
+
+Got a text, a WhatsApp or Signal message, or an email with a link you are not sure about? Paste it into
+"More checks" > "Check a link or message" in the window, or choose "A link or message" in the start menu, or run:
+
+    zero-breach-toolkit --check-link "the message or link"
+    zero-breach-toolkit --check-message saved-message.txt      (use - to paste instead)
+
+Nothing is opened, looked up or sent anywhere: the text is only compared. Every link in it (including
+"defanged" ones like hxxps://example[.]com) is checked against the spyware indicators the scan uses, and
+against tricks from documented attacks on journalists and activists:
+
+- Signal "link a new device" links (`sgnl://linkdevice`) and fake Signal sites, used to read people's messages;
+- WhatsApp QR-code and pairing-code lures ("scan to join the group", "enter this code to see the photo");
+- "New WhatsApp login - terminate it" texts and look-alike messenger addresses, as used to deliver Predator;
+- Pegasus-style links: short links, random short paths, random sub-domains on unusual ports;
+- link shorteners, raw IP addresses, look-alike letters from other alphabets, a fake name before "@", and links
+  that download an app, a configuration profile or a program.
+
+The result is one of four: known spyware infrastructure, dangerous, worth a look, or nothing known, with what
+to do next. Dangerous links are shown "defanged" so they cannot be clicked by accident. "Nothing known" does
+not prove a link is safe: targeted attacks use new addresses.
+
+### Was my phone plugged into a forensics tool?
+
+A different question from "is there spyware on my phone". When a phone is taken at a border, a police station or
+a checkpoint, what usually happens is not spyware: it is plugged into a machine that copies everything off it.
+
+    zero-breach-toolkit --was-extracted phone-collection/
+
+**Finding nothing here is not proof**, and the report says so every time: a successful extraction can leave no
+trace at all. If a phone was out of your hands and unlocked, treat what was on it as known to whoever had it.
+
+What it reads, from a phone collection or an iPhone backup you already have:
+
+- **Android:** which computers are allowed to control the phone over USB - each authorised key is one computer,
+  approved once by tapping "Allow", and the approval never expires; whether USB debugging is on; whether the
+  bootloader is unlocked or the phone is running a debug build; side-loaded apps holding the accessibility
+  permission that lets them tap through their own consent prompts; and the **fake USB devices Cellebrite's
+  unlocking hardware imitates**, published by Amnesty International and matched only together with the version
+  number they all reported - so a real Microsoft mouse is not mistaken for one.
+- **iPhone:** what the backup says about the phone and when it was last backed up, whether it was left
+  unencrypted, and the Cellebrite traces published by the Citizen Lab. An iPhone keeps its list of trusted
+  computers on the phone rather than in a backup, so the report says that and how to clear it.
+
+Each sign says what it does and does not prove - USB debugging is listed as "worth knowing", because developers
+turn it on too - and being copied is told apart from being infected: a tool that copies a phone usually leaves
+nothing running on it.
+
+### Check a suspicious email
+
+Targeted spyware usually arrives as a message, and the giveaways are in the parts an email program hides. Save
+the message ("Show original" in Gmail, "View message source" in Outlook, or the `.eml` file - forwarding it to
+yourself does **not** work, it loses those parts) and check it:
+
+    zero-breach-toolkit --check-email message.eml
+
+It reads who really sent it (the envelope sender is often not the "From:" you see), what the **receiving** server
+decided about it - SPF, DKIM and DMARC, the one part of an email a sender cannot forge - whether a reply would go
+somewhere else, display names that imitate a company while the address does not, every link (through the same
+check as "Check a link or message"), and every attachment: programs dressed as documents, names with a hidden
+character that reverses how they read, old Office formats that can carry macros, archives that hide what is
+inside. It also says when a message is pushing you to act quickly, and about what.
+
+A message that passes every check can still be a lie told from a real account someone else has taken over, so
+the report ends by saying what to do rather than declaring it safe.
+
+### Check a QR code
+
+A QR code is a link you cannot read before you follow it. The dangerous ones are printed on stickers over real
+ones, or sent as a picture "to sign in" - and the worst of them link your **messaging account to someone else's
+device**, so every message you get afterwards is theirs too.
+
+    zero-breach-toolkit --check-qr screenshot.png
+
+The code is read from a picture on your computer - no camera, nothing opened, nothing contacted - and then
+checked exactly like a pasted link, so device-linking addresses, look-alike names and known spyware links are
+all recognised. The reader is written into the toolkit (PNG, GIF, BMP and PPM, no other software needed): it
+handles codes that are turned, mirrored, only a pixel or two per square, and damaged - and when a code is too
+damaged to repair it says so rather than guessing at the text.
+
+### Check a suspicious file
+
+For a file you do not trust - an attachment, a download, an app someone sent you - before you open it or hand it
+to an expert. Drop it onto the program, or:
+
+    zero-breach-toolkit --check-file invoice.pdf
+
+The file is read, never run, opened in another program, uploaded or moved (where it was found is evidence). It
+tells you, answer first:
+
+- whether its fingerprint or any spyware address written inside it is on the indicator lists;
+- what it really is, whatever its name says - and names **built to deceive**: two endings (`invoice.pdf.exe`),
+  invisible right-to-left characters that make `fdp.exe` display as `exe.pdf`, or the real ending pushed out of
+  sight by spaces;
+- for Windows programs: who signed it and whether Windows trusts the signature, and signs of packing;
+- for **shortcuts** (`.lnk`): what they really start, and whether that is a command tool with an internet address,
+  a hidden window or an encoded command;
+- for **archives**: what is inside without unpacking it - programs, shortcuts and disk images, scripts at the top -
+  and whether it is **locked with a password** so antivirus could not look inside;
+- for **disk images** (ISO, VHD/VHDX, DMG): what is inside an ISO, and that files inside lose Windows'
+  "downloaded from the internet" warning;
+- for **documents**: macros (including old Excel 4.0 ones), embedded programs, a **remote template** or the
+  **Follina** trick that fetches something when it is opened, DDE fields, Equation Editor objects used against old
+  Word, and PDF JavaScript - also when it is hidden inside a compressed part;
+- for **web pages and SVG pictures**: a file built inside the browser and downloaded ("HTML smuggling"), a whole file
+  hidden as encoded text, and password boxes;
+- for **OneNote** files: embedded programs and scripts;
+- for Android apps: the package name and what it asks to do, in plain words.
+
+"Save a sealed copy" writes it into a ZIP protected with the password `infected` - the usual way to pass a sample to
+a researcher, so the copy cannot be run or removed by accident on the way.
+
+### Look up a file's fingerprint (offline first, online only if you say so)
+
+"A file's fingerprint" (start menu, "More checks", or `zero-breach-toolkit --hash-lookup FILE_OR_FOLDER`)
+fingerprints files and tells you who knows them:
+
+- For every file: SHA-256, SHA-1 and MD5, and what kind of file it really is (from its contents, not its name).
+- For Windows programs: the **import hash** (imphash, computed exactly as the standard pefile library does, so it
+  matches values published in reports; it often stays the same across re-packed variants of one malware), and the
+  **name of whoever signed it**, read from its certificate; on Windows the signature is checked, offline.
+- **Offline**, every fingerprint is compared with the spyware indicator lists.
+- **Online, only if you add `--online` or say yes**: the fingerprints - never the files, their names or paths - of
+  programs, scripts, documents and archives that are not validly signed are sent to the services you choose:
+  CIRCL hashlookup (Luxembourg, no key: is it ordinary known software?), MalwareBazaar and ThreatFox (abuse.ch,
+  Switzerland), VirusTotal (Google, USA) and Hybrid Analysis (CrowdStrike, USA), the last three with **your own
+  free key** (saved with `--set-lookup-key` or "Keys for online look-ups"; never on the command line). Answers are
+  cached on this computer. VirusTotal's free key allows 4 look-ups a minute, so 20 files per run unless you add
+  `--lookup-all`.
+
+Results say plainly: known malicious (with family and first seen), flagged by some tools, known good, or
+**unknown - which is not the same as safe**.
+
+    zero-breach-toolkit --hash-lookup Downloads/invoice.exe --online circl,malwarebazaar
+
+### Close the doors found open
+
+The scan's "Doors to close" tells you what is open. This closes the ones it is safe for a tool to close, and
+explains the rest:
+
+    zero-breach-toolkit --fix-it                      lists what can be done; changes nothing
+    zero-breach-toolkit --fix-it windows:firewall     does that one, after asking
+    zero-breach-toolkit --undo-fix 20261110T...       puts a setting back
+
+It can switch **Remote Desktop** off, stop **automatic sign-in**, switch the **firewall** on and remove **old
+file sharing (SMB1)**. The rules it follows:
+
+- Nothing changes unless you name the fix and say yes to a plain description of what it does and what might
+  break.
+- The current setting is read and written to an **undo record first**. If it cannot be recorded, the fix is not
+  offered at all.
+- **One change, one command.** On Windows you see Windows' own permission prompt for that single command, so
+  you can see what is being run. A password is never asked for, read or passed on.
+- Afterwards the setting is **read back**, and the record says whether it actually took effect.
+- Anything that could lock you out or lose your data - **disk encryption, Secure Boot, removing accounts** - is
+  explained for you to do yourself, never done. On macOS and Linux the exact `sudo` command is printed for you
+  to run.
+- On a **work or school computer** (domain, Entra/Azure AD or MDM) it changes nothing and says to ask whoever
+  supports it, because a change here would be undone or break something.
+
+### Look through Windows' own records
+
+Windows keeps a record of a great deal that happens on it. "Windows' own records" (start menu "Look closer",
+"More checks", or `zero-breach-toolkit --hunt-windows`) reads those records and looks for the handful of things
+that mean someone else had control:
+
+- a PowerShell command whose text was **hidden** (base64) - and it **decodes it**, so the report shows what the
+  command actually did, not just that something was hidden;
+- commands that **fetched a program from the internet and ran it**, the commonest way a computer is taken over;
+- attempts to switch off Windows' script checking (AMSI) or its own logging;
+- programs loaded **straight into memory**, leaving nothing on disk;
+- a **service or driver installed from a personal or temporary folder**;
+- **exclusions** added to Windows' "do not scan" list;
+- **cleared event logs** - which does not happen by itself;
+- a document (Word, Excel, a PDF reader) **starting a command interpreter**;
+- WMI subscriptions, new administrators, remote-desktop sessions, failed sign-ins.
+
+Every finding says what the record was, **what it means, and what is normal** - because most of these have
+innocent explanations, and the report is written so a person can judge their own case. Routine noise (Windows
+Update downloads, driver signature messages) is kept back as context unless you add `--hunt-all`. The Security
+log needs administrator rights: without them the check says so rather than staying quiet (`--with-security`).
+
+A helper can read logs from someone else's computer **on any operating system**, because the toolkit has its own
+reader for Windows log files:
+
+    wevtutil epl "Microsoft-Windows-PowerShell/Operational" ps.evtx     (on the Windows computer)
+    zero-breach-toolkit --hunt-windows ps.evtx                          (on any computer)
+
+That reader was checked record for record against Windows' own output: 21,712 records across four logs, with
+every event number, timestamp and field identical.
+
+### Check your online accounts
+
+No program can see inside your accounts without signing in, and this toolkit never signs in to anything. But a
+computer still linked to your WhatsApp, a forwarding rule in your email or a location shared from a family app is
+a more common way to be watched than spyware. **More checks → Check my online accounts** (or
+`zero-breach-toolkit --accounts`) walks you through twelve places to look: the devices on your Apple, Google and
+Microsoft accounts, Apple's Safety Check, linked devices in WhatsApp, Signal and Telegram, where your Instagram
+and Facebook are logged in, email forwarding and rules, location sharing and a lock on your phone number. For
+each one you answer *checked, fine*, *something is wrong or missing* or *skip*. The result says what to do about each
+thing you found, warns that removing someone's access can alert them, and lists every skipped step as **not
+checked**, never as fine. You can save it.
+
+It starts with the single best thing you can do: sign in to your most important accounts (email first) with a
+physical security key such as a YubiKey. A key only works on the real website, so a fake sign-in page gets
+nothing; nobody can sign in from far away without holding it; and it cannot be stolen by moving your number to
+another SIM, unlike text-message codes. Buy two and add both. In the window, each step with a web page has an
+**Open this page** button, and your answers are kept (in the program's own folder) until you finish or press
+**Start over**.
+
+### If you got a threat warning
+
+Apple, Google, WhatsApp and Meta warn people they believe were targeted by mercenary spyware or government-backed
+attackers. **More checks → I got a threat warning** (or `zero-breach-toolkit --threat-warning`) says what to do,
+in order: make sure the warning is real without clicking anything in it, do not erase the evidence, save a copy of
+the phone and check it, *then* update and turn on Lockdown Mode or Advanced Protection, and get free help.
+
+### Send evidence to a helper
+
+When a helpline or expert offers to look at your case, they give you an **age public key** (one line starting
+with `age1`). "Send evidence to a helper" (start menu, "More checks", or the command below) puts the reports,
+phone collection, screenshots or files you choose into one package that only that key can open:
+
+    zero-breach-toolkit --package-for-helper OUTFOLDER --helper-key age1... --add report.json --add phone-folder
+
+- It is encrypted with the standard **age** format, so the helper opens it with `age`, `rage` or their usual
+  tools. An AndroidQF phone collection is kept exactly as AndroidQF wrote it, so their tools work on it unchanged.
+- A list of every file and its SHA-256 fingerprint is **signed with your own sender key**, made the first time and
+  kept on this computer. Encryption alone does not show who sent a file; the signature does. Read your **safety
+  number** to the helper by phone or in person and they can confirm the package is from you.
+- No user name or computer name goes in, the unencrypted ZIP is never written to disk, and nothing is uploaded:
+  you send the file yourself, by the route the helper gives you.
+- A helper with this toolkit checks a decrypted package with `--verify-package package.zip`.
+
+Keys that start with `AGE-SECRET-KEY` are secret and are refused. `--no-encryption` makes an unencrypted package,
+only for a helper who asked for one.
+
+### What starts automatically (separate, read only)
+
+Spyware has to start again after every restart, so it has to register somewhere. "What starts automatically"
+(start menu, "More checks", or `zero-breach-toolkit --startup`) lists every one of those places in plain words:
+
+- **Windows:** Run and RunOnce keys (per user, all users, 32-bit, policy) and whether Task Manager has each one
+  switched off, the Startup folders (shortcuts and batch files resolved to what they run), scheduled tasks,
+  auto-start services and drivers, and the hijack points spyware likes (Winlogon shell, debugger redirects,
+  AppInit DLLs). Each program's signature is checked with Windows' own verifier, **offline** (no revocation or
+  certificate download).
+- **macOS:** launch agents and daemons outside /System with their signing Team ID, login and background items,
+  and which apps are allowed to record the screen, see key presses, control the computer, use the camera or
+  microphone, or read all files. Background items and app permissions need sudo or Full Disk Access; without
+  them they are reported as not read.
+- **Linux:** desktop autostart entries, enabled systemd units and cron.
+
+Every program is fingerprinted and compared with the indicator lists. It marks as worth a look: unsigned programs
+or scripts in folders any program you run can change, hidden (encoded) PowerShell, start-up commands that
+download something, remote-access programs, hijacks, and entries that point to a missing program or were set up
+with a path that can never run. Signed Windows components are hidden unless you add `--startup-all`. Nothing is
+changed: it tells you where to switch something off.
+
+### A phone's network recording (separate, offline)
+
+Spyware has to send what it collects somewhere, so a recording of a phone's internet traffic can show it even
+when it hides on the phone. On Android, the free, open-source **PCAPdroid** app records without root: choose
+"PCAP file" as the output, use the phone normally for a day, then copy the file to the computer. Check it with
+"More checks" > "Check a network recording", "A phone's network recording" in the start menu, or:
+
+    zero-breach-toolkit --check-traffic phone.pcap
+
+It reads .pcap and .pcapng files (PCAPdroid, Wireshark, tcpdump) and lists every server contacted: the names
+looked up, the names of encrypted connections (re-assembled across packets, as modern apps send them), plain
+web requests; HTTP/3 (QUIC) connections are matched by address only, because their names are encrypted and the
+toolkit never decrypts anything. PCAPdroid recordings name the app behind each connection, so a match says which app it was. Every
+name and address is compared with the spyware indicator lists, and the traffic is checked for contact at
+regular intervals like clockwork, dynamic-DNS names and encrypted connections on unusual ports. The recording is
+only read; nothing is contacted. A recording covers only the time it ran, and encrypted DNS hides look-ups.
+
+### Hidden Wi-Fi networks nearby (separate)
+
+`--wifi-nearby` lists the Wi-Fi networks this computer already hears and says what a hidden one probably is:
+who made the device (the IEEE's public list of manufacturer codes is built in), whether it is part of the
+router you are connected to (mesh systems and internet providers' routers run hidden networks for their own
+units), whether it is a phone sharing its connection (a made-up address), and roughly how close it is. A hidden
+network's name cannot be read without connecting to it, which the tool never does. Windows 11 asks for location
+access before it shows nearby networks; macOS hides their hardware addresses, so less can be said there.
+
+On Windows and Linux it can then **find** one hidden network: choose it and walk slowly around with the
+computer - the signal is re-read every few seconds and the line says stronger, weaker or about the same. The
+device is where the signal is strongest. In the terminal, type the network's number when asked; Enter or Ctrl+C
+stops. `--json PATH` saves the result for the household report.
+
+### Bluetooth trackers (separate)
+
+`--trackers [MINUTES]` listens for Bluetooth location trackers near you - AirTag and other Find My
+items, Samsung SmartTag, Tile and Google Find Hub tags - and points out any that say they are away
+from their owner and stay near you, which is what a tracker planted in a bag or car does. It only
+receives. The double-click programs include the Bluetooth library it needs; with the Python version,
+the tool offers to install it when you first run the check (one yes; the pinned `bleak==1.1.1`, ready-made
+packages only) - or install it yourself with `python -m pip install -r requirements-bluetooth.txt`. On a Mac,
+allow Bluetooth when asked.
+Run it again after moving: a tracker heard in both places is the one travelling with you.
+
+### One report for the whole household
+
+`--combine REPORT [REPORT ...]` puts the saved JSON reports of several checks on one page: each
+computer, each phone (from the program or from the phone-check web page's "Save JSON"), a DNS log and
+the home network check - and the smaller checks' saved results (hidden Wi-Fi, live connections, startup
+items, network recordings, Windows' records, file, link, email and QR checks). One line per device, worst first, with what was found, what is worth a look
+and what could not be checked - and a list of the kinds of check the house is still missing (no phone
+checked, no home network check, no DNS log). Name a device with `"Mum's iPhone=report.json"`; reports
+older than 30 days are flagged; a file that is not a report is listed, never silently dropped. Add
+`--html house.html` for a page to print or keep. It reads files only and never replaces an existing
+file.
+
+### Making an iPhone backup
+
+On Windows and Mac, Apple's own app makes the backup. In the window, the phone screen's **Make an
+iPhone backup...** button opens Apple Devices or iTunes (Windows; the Microsoft Store if neither is
+installed) or Finder (Mac), shows the steps - including ticking "Encrypt local backup", which keeps far
+more of what the check needs - then watches the usual backup folders and offers **Check this backup**
+as soon as Apple's app has finished writing a new one.
+
+Linux has no Apple app, so `--make-iphone-backup FOLDER` does it: after asking, it installs the
+pymobiledevice3 backup helper (GPL-3.0-or-later; about 350 MB) into its own folder under
+`~/.local/share/zero-breach-toolkit/`, with every file checked against the SHA-256 hashes in
+[requirements-iphone-backup.txt](requirements-iphone-backup.txt) and nothing built from source. The
+helper runs as a separate program, never inside the toolkit. It turns backup encryption on with a
+password you type privately (handed to the helper on its standard input, never on a command line),
+makes a full backup into FOLDER and the toolkit then checks it. It needs the `usbmuxd` service
+(`sudo apt install usbmuxd` on Debian/Ubuntu). If encryption was already on, the backup keeps its
+existing password and you are asked for that one to check it.
+
 ### Desktop apps
 
 Apps with a built-in Chromium browser are found by their folder contents under AppData
@@ -376,7 +829,17 @@ it never talks to the phone itself. It checks:
   process-start events (a connection attempt does not prove success);
 - links in SMS and MMS messages, from the SMS backup AndroidQF offers to take;
 - apps installed outside an app store, with what they can do (read SMS, use the
-  microphone, read notifications, resist uninstalling) and when they arrived;
+  microphone, read notifications, resist uninstalling) and when they arrived; app stores of
+  Google, Samsung, Xiaomi, Huawei, Honor, OPPO/Realme, Vivo, Amazon, F-Droid and GrapheneOS
+  count as stores, and apps copied from your old phone (Smart Switch, Google restore) are not
+  treated as installed by hand;
+- **any** app, even from a store, that holds two or more of the powers stalkerware needs
+  (reading the screen, reading notifications, resisting uninstalling, seeing which apps you
+  use, drawing over other apps, recording the screen), and apps for which someone switched off
+  Android's "restricted settings" protection;
+- apps Cornell University's intimate-partner-surveillance research lists as stalkerware, and
+  ordinary apps that are often turned on a partner (location sharing, call recording);
+- a "device owner" app managing the whole phone, and an always-on VPN app;
 - signs of a modified phone: unlocked bootloader, debug build, security protection off;
 - signs the phone was unlocked with **Cellebrite**, the phone-forensics tool police and
   security services use on seized phones: the fake USB devices its unlocking hardware
@@ -414,6 +877,16 @@ the Citizen Lab and Echap's stalkerware research, and a hand-curated set from Ci
 reports (Candiru / DevilsTongue and Paragon's Graphite, and Memento Labs' Dante from
 Kaspersky) with every line cited. The curated
 set works offline; `--update` downloads the rest from a fixed list of official sources.
+The MVT project's own indicator files (Predator, QuaDream, Operation Triangulation, Candiru,
+Cellebrite, DarkSword, Coruna and seven more; MIT licence) are also **built in**, so a computer that
+never runs `--update` - offline, or where GitHub is blocked - still checks against them from the
+first scan; a downloaded copy is used instead when there is one. `--update` also downloads a few
+**known-good lists** (MISP warninglists: empty-file fingerprints, reserved
+addresses, certificate-revocation and connectivity-check hosts ...): a published indicator that is
+exactly one of those values can only be a mistake in the source, so it is set aside and counted,
+never matched. Exact, so a listed provider such as `duckdns.org` never hides a real
+`something.duckdns.org`. The lists published today contain no such mistake; this guards against
+future ones.
 A second built-in set holds about 1,040 file fingerprints and Android package names of
 spyware used against journalists, activists and minorities (Arid Viper against Palestinians,
 EvilBamboo, MOONSHINE, HenBox, DoNot, OceanLotus, KoSpy and others, and the Massistant
@@ -483,13 +956,13 @@ The single-file `zero-breach-toolkit.py` attached to a release is generated from
 source. Rebuild it from the release's tag and compare:
 
 ```
-git checkout v2.0.5
+git checkout v3.0.0
 python build/bundle.py
 python -c "import hashlib; print(hashlib.sha256(open('dist/zero-breach-toolkit.py','rb').read()).hexdigest())"
 ```
 
-For v2.0.5 the file is 2,988,026 bytes, SHA-256
-`d3d50bda337d33536512d42f139fcb72f6c9bac212eae6b5ef8824cb06f62c96`. The size and SHA-256
+For v3.0.0 the file is 7,855,664 bytes, SHA-256
+`5d755bdc8207538ee3007fdaabdf0dc852d82e23de47194a127662d03e859198`. The size and SHA-256
 published with each release are authoritative. The build is deterministic, so a matching
 rebuild means the published file contains that source and nothing else. Releases are also
 GPG-signed; see [docs/VERIFYING.md](docs/VERIFYING.md).
@@ -816,5 +1289,7 @@ project and Echap.
 Code, including the generated scanner: Apache License 2.0 ([LICENSE](LICENSE)). The curated
 indicator files in `iocs/` and generated indicator exports in `dist/`: CC0 1.0, public
 domain ([iocs/LICENSE.md](iocs/LICENSE.md)). Optional bundled research rules keep their own
-licences in [third_party/candiru](third_party/candiru/README.md). Indicator lists downloaded
+licences in [third_party/candiru](third_party/candiru/README.md). Built-in copies of the MVT
+project's indicator files (MIT), and data taken from LOLRMM and LOLDrivers (Apache License 2.0),
+keep their notices in [NOTICE](NOTICE) and `third_party/`. Indicator and known-good lists downloaded
 by `--update` remain under their publishers' terms and are not part of this repository.

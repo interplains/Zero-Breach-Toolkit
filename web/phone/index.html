@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Phone Spyware Check</title>
+<meta name="description" content="Check an iPhone backup or Android collection for known mercenary spyware, in your browser. Nothing is installed and nothing is uploaded.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Check your phone for spyware, in your browser">
+<meta property="og:description" content="The Zero Breach phone check, running entirely on your computer. Nothing is installed and nothing is uploaded.">
+<link rel="stylesheet" href="/css/fonts.css?v=1">
+<link rel="stylesheet" href="phone.css?v=1">
+</head>
+<body>
+<div class="wrap">
+  <a class="backlink" href="/scan/">&larr; ZERO BREACH</a>
+  <div class="badge"><i></i>Phone check &middot; runs in your browser</div>
+  <h1>Check your phone for spyware, without installing anything</h1>
+  <p class="sub">The same check as the Zero Breach program, running inside this page. You make a backup of your
+    phone, choose it here, and get a plain result. <strong>Nothing is uploaded</strong>: your backup is read on
+    this computer and never leaves it.</p>
+
+  <section class="panel trust" aria-labelledby="trust-h">
+    <h2 id="trust-h">Why nothing can leave your computer</h2>
+    <ul class="ticks">
+      <li>The checker runs in a sealed part of the page whose security settings forbid every network
+        connection, including to this site.</li>
+      <li>Before it opens anything of yours, it proves this by trying to contact our server, and shows you
+        whether your browser blocked it:</li>
+    </ul>
+    <p class="seal" id="seal" data-state="pending" role="status">
+      <span class="dot"></span><span id="seal-text">Waiting for the checker to start&hellip;</span>
+    </p>
+    <ul class="ticks">
+      <li>Your backup password is used only inside that sealed part to unlock the backup, and is never stored.</li>
+      <li>Every file this page loads is checked against published fingerprints first
+        (<a href="files.json">files.json</a>). The checking engine is the open-source
+        <a href="https://github.com/interplains/Zero-Breach-Toolkit">Zero Breach Toolkit</a>; this page's own code
+        can be read in your browser and will be published there with the next release.</li>
+    </ul>
+  </section>
+
+  <section class="panel loader" id="loader" aria-live="polite">
+    <div class="row"><span id="loader-text">Getting the checker ready (about 16 MB, once)&hellip;</span><span id="loader-pct"></span></div>
+    <div class="bar"><span id="loader-bar"></span></div>
+  </section>
+
+  <section class="panel note" id="desktop-note" hidden>
+    <h2>Want to check this computer itself?</h2>
+    <p>A web page is not allowed to look at your computer's programs, start-up items or connections, which is
+      also why nothing here can leave your device. To check the computer, use the free program:
+      <a id="download-link" href="https://github.com/interplains/Zero-Breach-Toolkit/releases/latest">download Zero Breach</a>.
+      This page checks <strong>phone backups</strong>.</p>
+  </section>
+
+  <section class="panel note" id="mobile-note" hidden>
+    <h2>Open this page on a computer</h2>
+    <p>A phone backup is made on, and stored on, a computer (Mac, Windows or Linux). Open this page on the
+      computer that holds the backup, in Chrome, Edge, Firefox or Safari.</p>
+  </section>
+
+  <section class="panel step" id="step-device">
+    <h2><span class="num">1</span>Which phone?</h2>
+    <div class="choice" role="tablist">
+      <button type="button" class="pick" id="pick-iphone" role="tab" aria-selected="true" data-device="iphone">iPhone</button>
+      <button type="button" class="pick" id="pick-android" role="tab" aria-selected="false" data-device="android">Android</button>
+    </div>
+  </section>
+
+  <section class="panel step" id="step-guide">
+    <h2><span class="num">2</span>Make a backup</h2>
+    <div id="guide-iphone">
+      <p>Connect the iPhone to the computer with a cable and unlock it. Tap <em>Trust</em> if it asks.</p>
+      <ol>
+        <li><strong>Mac:</strong> open Finder and click the iPhone in the sidebar.
+          <strong>Windows:</strong> open the Apple Devices app (or iTunes on older Windows).</li>
+        <li>Choose <em>Back up all of the data on your iPhone to this computer</em>.</li>
+        <li>Tick <em>Encrypt local backup</em> and set a password you will remember. Encrypted backups hold
+          more of the records spyware leaves behind (website history, call records), so the check sees more.</li>
+        <li>Click <em>Back Up Now</em> and wait until it finishes.</li>
+      </ol>
+      <details>
+        <summary>Where is the backup folder?</summary>
+        <p><strong>Mac:</strong> in Finder, click <em>Manage Backups&hellip;</em>, right-click the backup and choose
+          <em>Show in Finder</em>. Copy that folder (a long name of letters and numbers) to your Desktop and choose the
+          copy in step 3: macOS does not let browsers open the original location.</p>
+        <p><strong>Windows (Apple Devices app):</strong> <code>C:\Users\<var>you</var>\Apple\MobileSync\Backup</code><br>
+          <strong>Windows (iTunes):</strong> <code>C:\Users\<var>you</var>\AppData\Roaming\Apple Computer\MobileSync\Backup</code><br>
+          You can paste that path into the folder window's address bar. Choosing the <code>Backup</code> folder itself is
+          fine: if it holds several phones, this page asks which one.</p>
+      </details>
+    </div>
+    <div id="guide-android" hidden>
+      <p>Android has no built-in backup that is enough for this check. Make a <strong>collection</strong> with
+        AndroidQF, the free tool from Amnesty International's Security Lab that the Zero Breach program also uses:</p>
+      <ol>
+        <li>Easiest: in the Zero Breach program choose <em>A phone &rarr; Collect from an Android phone</em>. It downloads
+          AndroidQF, verifies it and guides you through each step.</li>
+        <li>Or run AndroidQF yourself (<a href="https://github.com/mvt-project/androidqf">github.com/mvt-project/androidqf</a>):
+          turn on <em>USB debugging</em> on the phone, connect it, run AndroidQF and follow its questions.</li>
+        <li>If you get a <code>.zip</code>, unzip it first. Choose the folder that contains <code>packages.json</code>.</li>
+      </ol>
+      <p class="small">If the collection was encrypted with an <code>age</code> key, decrypt it first; this page reads
+        plain folders only.</p>
+    </div>
+  </section>
+
+  <section class="panel step" id="step-pick">
+    <h2><span class="num">3</span>Choose the backup folder</h2>
+    <div class="drop" id="drop" tabindex="0">
+      <p><strong>Drag the folder here</strong>, or</p>
+      <label class="btn" for="folder-input">Choose folder&hellip;</label>
+      <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
+      <p class="small">Your browser may say it will &ldquo;upload&rdquo; the files. That is its standard wording for
+        letting a page read a folder: here they are only read on this computer, inside the sealed checker.</p>
+    </div>
+    <p class="picked" id="picked" hidden></p>
+  </section>
+
+  <section class="panel step" id="step-run" hidden>
+    <h2><span class="num">4</span>Start the check</h2>
+    <div id="which" hidden>
+      <label for="which-select">This folder holds several phones. Which one?</label>
+      <select id="which-select"></select>
+    </div>
+    <div id="password-row" hidden>
+      <label for="password">Backup password <span class="small">(the one you set when you turned on encryption; never stored)</span></label>
+      <input type="password" id="password" autocomplete="off" spellcheck="false">
+    </div>
+    <div>
+      <label for="lang">Language of the result</label>
+      <select id="lang"></select>
+    </div>
+    <button type="button" class="btn primary" id="start" disabled>Start the check</button>
+    <p class="small" id="start-note"></p>
+  </section>
+
+  <section class="panel" id="progress" hidden aria-live="polite">
+    <div class="row"><strong id="progress-text">Starting&hellip;</strong><span id="progress-time"></span></div>
+    <div class="bar"><span id="progress-bar"></span></div>
+    <p class="small" id="progress-line"></p>
+    <button type="button" class="btn" id="stop">Stop</button>
+  </section>
+
+  <section class="panel result" id="result" hidden>
+    <div class="verdict" id="verdict">
+      <h2 id="verdict-title"></h2>
+      <p id="verdict-text"></p>
+    </div>
+    <h3 data-label="What should I do now?">What should I do now?</h3>
+    <ol id="next-steps"></ol>
+    <div id="leads-box" hidden>
+      <h3 data-label="Worth a look">Worth a look</h3>
+      <ul id="leads" class="leads"></ul>
+    </div>
+    <pre id="summary" class="report"></pre>
+    <details>
+      <summary data-label="Show full report">Show full report</summary>
+      <pre id="report" class="report"></pre>
+    </details>
+    <div class="actions">
+      <button type="button" class="btn" id="save-report" data-label="Save report...">Save report&hellip;</button>
+      <button type="button" class="btn" id="save-json">Save full JSON</button>
+      <button type="button" class="btn" id="save-share" data-label="Save sharing summary...">Save sharing summary&hellip;</button>
+      <button type="button" class="btn" id="again">Check another backup</button>
+    </div>
+    <p class="small">The sharing summary leaves out personal details, for sending to a helpline such as Access Now's
+      Digital Security Helpline (<a href="https://www.accessnow.org/help/">accessnow.org/help</a>).</p>
+  </section>
+
+  <section class="panel error" id="error" hidden role="alert">
+    <h2>Something went wrong</h2>
+    <p id="error-text"></p>
+    <p class="small">Nothing was sent anywhere. Reload the page to try again, or use the Zero Breach program instead.</p>
+  </section>
+
+  <section class="panel limits">
+    <h2>What this check can and cannot do</h2>
+    <ul>
+      <li>It looks for traces of <strong>known</strong> mercenary spyware (Pegasus, Predator, Paragon Graphite and
+        others) using the indicator lists built into Zero Breach. New spyware is unknown until researchers publish it,
+        so &ldquo;nothing found&rdquo; is not a guarantee.</li>
+      <li>A backup holds only part of what is on a phone. Experts can look further with a full forensic check.</li>
+      <li>It never shows green if the backup could not be read.</li>
+      <li>This page uses only the lists built into this version. The Zero Breach program can also download the
+        newest lists.</li>
+    </ul>
+  </section>
+
+  <footer class="foot" id="foot">Zero Breach phone check</footer>
+</div>
+<script src="phone.js?v=1"></script>
+</body>
+</html>

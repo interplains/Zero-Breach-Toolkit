@@ -1,5 +1,5 @@
 # Build and test dependencies for the release pipeline, pinned by version AND hash.
-# Resolved for the Windows release builder (CPython 3.11, 64-bit); macholib is PyInstaller's macOS dependency.
+# Resolved for the release builders (CPython 3.11, 64-bit); macholib is PyInstaller's macOS dependency.
 # Install with: pip install --require-hashes -r build/requirements-build.txt
 # Regenerate deliberately; a changed hash fails the build instead of installing silently.
 altgraph==0.17.5 --hash=sha256:c87b395dd12fabde9c99573a9749d67da8d29ef9de0125c7f536699b4a9bc9e7 --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
@@ -213,6 +213,151 @@ pyinstaller==6.22.3 --hash=sha256:020d4fe0627f5c73dfbcfad1a6578ef354d5fe4bdccd9d
 pytest==9.1.1 --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
 pywin32-ctypes==0.2.3 --hash=sha256:8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8 --hash=sha256:d162dc04946d704503b2edc4d55f3dba5c1d539ead017afa00142c38b9885755
 setuptools==84.2.1 --hash=sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc --hash=sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2
-typing-extensions==4.16.0 ; python_full_version < "3.11" \
+typing-extensions==4.16.0 ; python_full_version < "3.12" or sys_platform == "win32" \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
+# Bluetooth tracker check (--trackers), bundled into the programs since 3.0: bleak and what it needs on
+# each system (winrt on Windows, pyobjc on macOS, dbus-fast on Linux).
+bleak==1.1.1 \
+    --hash=sha256:e601371396e357d95ee3c256db65b7da624c94ef6f051d47dfce93ea8361c22e \
+    --hash=sha256:eeef18053eb3bd569a25bff62cd4eb9ee56be4d84f5321023a7c4920943e6ccb
+dbus-fast==5.2.0 ; sys_platform == "linux" \
+    --hash=sha256:0858d3f0a9b9fe506e6847c8200e85fda4b62319aa5712e61dfa696f19e0d1f3 \
+    --hash=sha256:0a772708d25c11e980642781f603882e3dc51b5767be19075ffc5a484c4d3411 \
+    --hash=sha256:0c0d6ff2dffa3115fb5c670a0d17474827428ba87991f5e7b4d3791f0abcb07f \
+    --hash=sha256:0c4e7f48961e7c85540086458be0c5ca6ae6272e327c15907bd7d1e777ab2ace \
+    --hash=sha256:0c6df68c231ebb3649d8a1b1a5011876fd44ce780988e329c65e62308ecafbdb \
+    --hash=sha256:0e061cf9b31c540af7641739fef11654392c283f3c611f5009b6019b0d7c6ddd \
+    --hash=sha256:0ffd0427bb7fbae5d3bcf493c294581824bd446a563fd0027e77fba77f634438 \
+    --hash=sha256:1aad5984b9724f438a2ccd5e3df15723aece0d248b309576744345a04eee948a \
+    --hash=sha256:1ef8b5882fb74dcc6eeebb9502fbd247e276309bc0d659097e8793ba193d0af4 \
+    --hash=sha256:236327794a5957238e83c363809903b6a47d1f4fecd64831a29fd09458d90f0e \
+    --hash=sha256:255b79663e44708479a9b15f4a05be633186e6169e9ee4037001b036f2fda989 \
+    --hash=sha256:288111b8d920b5ab445c2d9e4f13cd8521fe5233efe191c4749dd8fd07c5beb9 \
+    --hash=sha256:3177e819532e30da3847d6c10652d4f97e0c07f12180d2e470d60b6141ac8b34 \
+    --hash=sha256:352e4cc8dbc608e297a73784857a8f9841d3a221b10e4b0f6a1b4b5168456e51 \
+    --hash=sha256:383d6d43dcc6b2ca6c079b5a16cb94ea2c86dd8af9a8d22f3f29d960a9fe1533 \
+    --hash=sha256:4944cb6cf92af103b4127e3935f138a8852b8268444ed8bf7975c507cad45c8a \
+    --hash=sha256:4d91ce3cd74b3b8a1518afca3ceb90ab7b280a53e9c50a257453b83e48c4b19c \
+    --hash=sha256:594f755fe172c76dd1a7f6558504244a0713da4ce07d9cf9abb5db80372a5d4f \
+    --hash=sha256:5bde3e9bae0af4bdc27afa9b4550e15ed55c32907b45620d35b36bd0f1ba28b4 \
+    --hash=sha256:5c8b4b70b8811e3fe431370f7e9699c01eb097561ddfa367081e5abdcf34a9a8 \
+    --hash=sha256:5e8d93ca1b3d344c7ff5c4959e6d8ac2c6a0e794aef9d1606177647d537b7e99 \
+    --hash=sha256:5f6cfee9c3de4b8a3dd406abca9aabe2f28ccefc7b68f9b26c4f92ccc9b2fe4e \
+    --hash=sha256:6121b816c9026193256c3e66ff774669c0c30420420e62c270ae2ae3a9592d79 \
+    --hash=sha256:679f2daef2b88d6129845013403b32d184ecf90805fce247340469bd5f495943 \
+    --hash=sha256:74b8a6c22657740523f8d16e4d373925a408c7dc30dfd4935ea21939c042510c \
+    --hash=sha256:788861134ac1794d44a03970fc817896b4bb35247353eeb13c363e238f7d4474 \
+    --hash=sha256:78fe0dd5dbdaaf281d32d4e609f99cdc7eac3872f9ca805d27d30b3f53d893b3 \
+    --hash=sha256:79b842eb42f439fabd47db9deb7846d849933eb864fc53373d355c63f850eaa6 \
+    --hash=sha256:7c66b094e96c221b877ccd6627bc3b9d808ac8317a8f6adc1cb2a0223e7d64e2 \
+    --hash=sha256:90da44436de6f5773637216159b7f0c5b53aa357c54c38593b12ff3ed3a4e649 \
+    --hash=sha256:93615c23d5766c796ce1835bf76d5c20b3908e087e7ffb1da3aa7ac99f2446f8 \
+    --hash=sha256:9945f15b3cff4857a82498ee933f5c56aa949afe3bcbdf62e4c7c670e7ac7ec3 \
+    --hash=sha256:9a17cd5e062ebfa48f996b4aa5db7202eb8e2df9ad5be36bf39198422e6457b8 \
+    --hash=sha256:a0d506adfcbd5451e23ec2b645437ccf419e9ed7ad1f6f82b622d2a292fd23e5 \
+    --hash=sha256:a4a5dddc04b1ade5eb7650d791e2f6fb7c1334595593473914e78a2526ecddda \
+    --hash=sha256:aa260884e2df72d584ffec2d5d2f90ea0d624db8326ff0bea33b59f8998a09f2 \
+    --hash=sha256:ba81e8455b9b893dc6ce31535049b938835beea8c20e85e181fc23e46f0bed12 \
+    --hash=sha256:bcc1514888cbb82533777f3855e06135e5e8526ca6d7f75687b8b1fcf140ce33 \
+    --hash=sha256:c0ca312d8643f1f358f9fd96d2ccaf8dccd01d0c14c08c20e3f1686aa198231d \
+    --hash=sha256:cc171f8b0728626eba19ac5893cbf1a5a813120e6fd0440168ba013f941abeb8 \
+    --hash=sha256:d01ae4246b3b503b529be3f4ad3660d92687b5d0f085683d2ef48ec3247d5133 \
+    --hash=sha256:d828828f879c0536981c1eaf2d4c6fa65fd30354cecb1e16a158a9cda36a827c \
+    --hash=sha256:da7835ccc6e8cb2b54516558097156da6dbf6636c27033b427135bad693317fb \
+    --hash=sha256:dbe4982d86e93fe285c695c0808601e7187f01501df77c2342d4132c11bcac17 \
+    --hash=sha256:ddf103405d0fe9b0c764d3ce8d59e557bed1d68aff7d3b16f6eab94bf6f85d91 \
+    --hash=sha256:e5a0742c9c2bdae7599d1fff06a609cc7cf19d4a84bf7e6e2cea1d086d1ecc0b \
+    --hash=sha256:e5b07944dce15b734f6d0e80a54f66909de6fca0671fdf12ed512758721ba4bb \
+    --hash=sha256:e6f32672a446284b0d381349c91f6602356a4c017c1604fccbcc02347496be92 \
+    --hash=sha256:ec7e32787f43ddd637da4b46576e288deb0148c19253ac5a3cf5a69e8dacbe08 \
+    --hash=sha256:f0c3d3f153fbcdaae27409afe7ac42654ed768c8de2da35aa929ba4143935455 \
+    --hash=sha256:f22ac2df864dd0532f3d797f21118341e7520d6b36ac68a327eac6291624fb2b \
+    --hash=sha256:f4a47be94f369cca2308645345df8a0949e9139f9b0f6e64fbd11945924b13b7 \
+    --hash=sha256:fc04ca465f9d9847aa4273efe85da8fed82988004f1002b833df788f48fc0ecd \
+    --hash=sha256:fc5845602cd734e01bcee84fc2ff08642987d95d42edb434d048103905d3173f \
+    --hash=sha256:ff55fddbc7567cb39f10b5d7e9bed1f2b19c88fc1d18c86fa67ca06becfe8fe7
+pyobjc-core==13.0 ; sys_platform == "darwin" \
+    --hash=sha256:1e8752b3950ceec603bf36f57083151abed15e0c2e7c5b8c3efded9c81dc732c \
+    --hash=sha256:292462e0947a09aca3737a06c44457cb2aa58f267cfc581c16fca036fc073b45 \
+    --hash=sha256:4627348cb31c8deb2bb94702d9bcaa74869f4fef9559fd134416a6a4ca42006e \
+    --hash=sha256:5818e3d8cc2677a1e767968ebfe3bc0cb7f80c1f7c19c653ee25ef1cc1b3e188 \
+    --hash=sha256:c497a23077ba0a42b59b879d81049eebfb0b7b67a8ca80c68b6d3683bbbd6d6f \
+    --hash=sha256:d65d383efed5a803e43f6c67ccc9f4c94754842b2268da24319bb57a852b016f \
+    --hash=sha256:f29f7cdb3969268716017ada9516b94f6dd1c66c2e415274b5ac1169440da1a4 \
+    --hash=sha256:fe470bd7b8163b4b8d216b1ebe5b227f01c0fa1c4e0085d7ccade269dec02bb0 \
+    --hash=sha256:ffe154462d14aa4852f424e9116f17b5f8d44f78fc0f6c4727e721a5fa7177da
+pyobjc-framework-cocoa==13.0 ; sys_platform == "darwin" \
+    --hash=sha256:16dd1e8890ed695ce12bcd367ed0ac9f3e70dd1f7a8098b6398427c162591b83 \
+    --hash=sha256:1a6b9f9e0ab123e51fa7df43bbc6c0414a444facd2225ad4f221a0d842c49ad6 \
+    --hash=sha256:88be6d452e7531f695ce6d41428aa74bcaade9ddbc50af592419b9f2fbb7c879 \
+    --hash=sha256:9282ebad57784ec18f4b7ea2e6b65bac0a6f56cc21a5c63e061fa48a9b49dd26 \
+    --hash=sha256:bb0bcba2e4e9d05af875306e0e055cfc2f152fd602d5f2f1a54490adebebcd34 \
+    --hash=sha256:bb7a23941fc8d7866578dbc84e56140efd343a1d28510f530dd1dbf80807daf4 \
+    --hash=sha256:d6fa11ea29d85d46e65ed1c9fdba3a5131ad26971bf24bb7d16aa55f06bcdc1e \
+    --hash=sha256:e1618d315939c9fae57cb858d4db496ec61f82495ce6a877398131ee494fc19d \
+    --hash=sha256:f1e26ad2225d1c84973cce725f2f4aeeb4d5f653a36c8a9f0b691c5529dc7780
+pyobjc-framework-corebluetooth==13.0 ; sys_platform == "darwin" \
+    --hash=sha256:06c11f81d25286665460facd0b53562faff30d92d3c4a15517042b878c295443 \
+    --hash=sha256:27ffcd87cb3f953b38e2c95333af7f4a314623e4c162293600967c5aea06c2f2 \
+    --hash=sha256:2803bb9a03a0adb5a77df9995e116b6f3773480e9195dbdb6d20ee8385d0bfb2 \
+    --hash=sha256:4260f8a3b175ec5b25bda30dad37ef53732d6204c13724c90094351f47a48cf1 \
+    --hash=sha256:49e453a30b706e3e15e5afdd536d10bee11b848c918bcb99adbba8c3cb298291 \
+    --hash=sha256:5ac715fa799d90f32cc192c71bd628fcbd621f32ba63ecea6c02ae24af5a6764 \
+    --hash=sha256:73508b21b324678a9a1f1ed69fb7adf0d8a6d4ac4d9bec1144ea8a2ea9a167b7 \
+    --hash=sha256:a998fc0fa7df5b7f631c8cced62c400c25eb28d1ada9538e1e127185cb0c2adb \
+    --hash=sha256:be976ca6217393a5a771fbb7c3d7fd71c0a1a2ab25f30cf5328b0ecd908a0e84
+pyobjc-framework-libdispatch==13.0 ; sys_platform == "darwin" \
+    --hash=sha256:17ddbf1895d231f031d0e47f598ffa6b65bbc0a6edc16ceda9474577d683ecfa \
+    --hash=sha256:4434236926360d27dbe0e0ac450153539622c37aabe87247502f44a359775fdc \
+    --hash=sha256:75d29e94aa56c505cc1da0763c69a6c93ba3dda8ad297948d4e491fe1d3c337c \
+    --hash=sha256:840f8f719984b1128ce69e3a586cd10f89a394795885a54be8c1769158cf8555 \
+    --hash=sha256:8b6e56d1be07ee39533ea528fd7a76010776bab88a7170d87fbfe69f1cb07a89 \
+    --hash=sha256:b41a078c5c6268baba39bc2b6580a2f4112709ab9146663b72eb67523ac99d72 \
+    --hash=sha256:b725e5ea9a881258d94646a3e09287c3608d560539abe04c75ba8b95847fe999 \
+    --hash=sha256:d0f070fc479b14eb6da96cf7cb4f8034eaa254a3f78d0fd3962bb2eded6f3a4e \
+    --hash=sha256:e0607c241ffb17b380c25ff30eeaf64008ff4f7749c39604da82570400f582dc
+winrt-runtime==4.1.0 ; sys_platform == "win32" \
+    --hash=sha256:01571f68755750d17518009c00ba21c799b4eddac805bf38cb869da08d38a73f \
+    --hash=sha256:281a6085d07dd941873ef16b7bc236f37ad45bd166435e8cabdeff00c67d2830 \
+    --hash=sha256:2d48b68e36db5822fd040bd3667c178626752649fa6e82c84262aa01bd7eb314 \
+    --hash=sha256:41ff9980d992e9d54124b8f346891974c3b61d7dad1ce921bfe22e2e6046026f \
+    --hash=sha256:453b6d6f8568d639038fe313b37661acf372a8173040f41a36305be95dbf14f0 \
+    --hash=sha256:4fd0f5779c793235aa10d09dfe851c2e7830739b4f41766cc865d4218d2a403f \
+    --hash=sha256:708e176f518d6a1beb81640e6038abf0068b25e624dd11fced10c488934769c8 \
+    --hash=sha256:77b79a83e8af56ea98ae8644d1e9e753376c8d97586986eb05068d49d653389f \
+    --hash=sha256:9d120ebb16b3dbc8aec8b6011f399cc1f0bacfb4bf8ea6cf3b157275e046f288 \
+    --hash=sha256:a1418ed9c3592c48fa74f30004abf10d7e96df33f84e782aa61387af16013375 \
+    --hash=sha256:a2bd0d3018f3c2add91f961305e000e56ef9ec222359d069f91cc2e0d4078ace \
+    --hash=sha256:af422bbcffa7249770ab118bc5b9aa1f8fcd401566abca478f91cf7bd9a8b7dd \
+    --hash=sha256:c299e9b991b623413c5c8773dfaa3f72d039128bdce6ff0b9815c3cb07ba793e \
+    --hash=sha256:c51f2d9c0835e3628b3281eac1d5ef2f7cc772302d6a038f5d2bce9e5591d179 \
+    --hash=sha256:cf9f050cc3565163ec512eda2f834d7c201a2ece54232d7dda770bd9d232d352 \
+    --hash=sha256:d1a9b4b609bece607051b55fa234043150e233a169cd004fd9dae30331562186 \
+    --hash=sha256:d345452652ce7243ce3d97ebf63067f848717a8328cca8c4e851c2d0a53ef577 \
+    --hash=sha256:d8c4654ec0f214a29354b22039d8bd9728968f3195c4cafcded8bfe57cb6fd36 \
+    --hash=sha256:db36eeae93d36d41e6e7e67b529de122b2798ad687d661e63b287169624f6d44 \
+    --hash=sha256:e18810477ee5a23ed67abdbff3c51efd648aaa3938d5f6ce1f5a42d5fb764a56 \
+    --hash=sha256:e22c7dab4e8e6064b440661efaab9aa576cdbf7f72e6f61b79ee28535230b546 \
+    --hash=sha256:f86b52d8c82bfda0a96620a17d6b5362a15d1dc6c0fdf9a80b65c254f39adbaf
+winrt-windows-devices-bluetooth==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:50fda25dcca0c4bada5acdf39e24f8da8a2ed85c5b98b3aba301815ca5181315 \
+    --hash=sha256:e39bcddf747396e2da78cb8c3d00c3e51214e5f1a9dc213fc009434c5264bbea
+winrt-windows-devices-bluetooth-advertisement==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:0123ebd97b37c5cfacc7b67cb348b9be839e645c8ea07df40e58db989eca676d \
+    --hash=sha256:ddf2b1bd17e92a63c892273fceb2a4aba3263123cba7be979b51e93ff7d7e32c
+winrt-windows-devices-bluetooth-genericattributeprofile==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:3e95b316a941106fd8193dead1a31e6abf9f118efceb58da2388e943fcf5f6d8 \
+    --hash=sha256:f9b20277d127ac2dd307f3fdb51e218b55158ba0963c52d555de5a1f8856a599
+winrt-windows-devices-enumeration==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:0d76f1961bede3dfaf92939ca16edb882daa97bf6481e2dadc8174fec64e7a7e \
+    --hash=sha256:a25e63b02f2d79e451e6a1a3418bfac527ca7525a4473758bb958ab7b6b8313f
+winrt-windows-foundation==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:0669de7ce480806a0f9a46d005837799e37f1738911b54c4bc04788b37974e69 \
+    --hash=sha256:6f7d8e932e283991cd931741f84dc7c2e8bc595b4df09de73d16c1d580fc678a
+winrt-windows-foundation-collections==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:0401c1b6ed512d1fdad8ba1571698e9000ebee6a69781db9a01994ffcc54a503 \
+    --hash=sha256:38989873bbdace2346d24168ceb66359800b7429128ea2ef1a36da55b255af1e
+winrt-windows-storage-streams==4!10.0.28000.2957 ; sys_platform == "win32" \
+    --hash=sha256:6284341b4b01ab872007def0b8d29bf30d84d46f6922f6e42be1d738d6bf2ff7 \
+    --hash=sha256:e113832320f2e7f8b09cedfb400cb7eaf0ac769ad1f2038ddbe88801497916c4

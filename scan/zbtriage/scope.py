@@ -14,15 +14,139 @@ def scope_arguments(parser):
                         help="local file, directory, drive or browser profile (repeatable; requires targeted)")
     parser.add_argument("--preview", action="store_true", help="show scope and phone artifact availability as JSON, without scanning")
     parser.add_argument("--collect-android", metavar="DIR", help="separate guided acquisition: download and verify a pinned official AndroidQF release, collect with owner consent, then check the plaintext collection")
+    parser.add_argument("--make-iphone-backup", metavar="DIR",
+                        help="Linux: make an encrypted iPhone backup into DIR (asks first; downloads a verified helper), "
+                             "then check it. On Windows and Mac use Apple's app, or the window's backup button")
     parser.add_argument("--age-recipient-file", metavar="PATH", help="public age1 recipients for --collect-android; encrypted acquisitions are saved for separate analysis")
     parser.add_argument("--phone-guide", choices=("android", "ios"), help="print local-backup preparation instructions and exit")
     parser.add_argument("--backup-password", action="store_true", help="prompt privately for an encrypted phone backup password; never pass the password on the command line")
     parser.add_argument("--ios-input", choices=("backup", "filesystem", "sysdiagnose"), default="",
                         help="explicit iPhone input format for --phone; filesystem is an extracted tree, sysdiagnose is a directory or TAR/TAR.GZ")
+    parser.add_argument("--dns-log", action="append", default=[], metavar="FILE",
+                        help="check a DNS log from a router, Pi-hole, AdGuard Home or DNS server instead of this computer "
+                             "(repeatable): every device on the network, offline")
+    parser.add_argument("--home-network", action="store_true",
+                        help="separate check of the devices on your own local network: who is there and which risky "
+                             "doors are open (asks first; contacts only local devices; never logs in)")
+    parser.add_argument("--wifi-nearby", action="store_true",
+                        help="separate check: the Wi-Fi networks this computer hears, and what a hidden one probably "
+                             "is (who made it, whether it is part of your own router, how close); reads only what "
+                             "is already heard, joins nothing")
+    parser.add_argument("--trackers", nargs="?", const=3, type=int, metavar="MINUTES",
+                        help="separate check: listen for Bluetooth location trackers (AirTag, SmartTag, Tile, Find Hub) "
+                             "near you for MINUTES (default 3); receives only; needs the optional bleak library")
+    parser.add_argument("--check-link", action="append", default=[], metavar="TEXT",
+                        help="separate check: is this link (or text containing links) dangerous? Offline: nothing is "
+                             "opened or looked up. Repeatable; defanged links (hxxp, [.]) work too")
+    parser.add_argument("--check-message", metavar="TEXT|FILE",
+                        help="separate check: every link and lure in a message (SMS, WhatsApp, email body): the "
+                             "message itself in quotes, a saved file, or - to paste it")
+    # default None, not []: "not given at all" must be told apart from "given with no file", or an ordinary scan
+    # would start this check by itself.
+    parser.add_argument("--was-extracted", metavar="FOLDER",
+                        help="separate check: was a phone plugged into a forensics tool? Reads an AndroidQF "
+                             "collection or an iPhone backup folder and says what each sign does and does not "
+                             "prove. An extraction can leave no trace, so finding nothing is not proof")
+    parser.add_argument("--check-email", metavar="FILE",
+                        help="separate check: a saved email (.eml, or the 'Show original' text). Says who really "
+                             "sent it, what the receiving server decided about it, and checks its links and "
+                             "attachments. Nothing is opened")
+    parser.add_argument("--check-qr", metavar="IMAGE",
+                        help="separate check: a picture of a QR code (PNG, GIF, BMP, PPM). Reads what the code "
+                             "says without following it, then checks it like a pasted link")
+    parser.add_argument("--fix-it", nargs="?", const="list", metavar="WHAT",
+                        help="separate step: close the doors the scan found open. On its own it lists what can "
+                             "be done and what is better done by you, changing nothing; with a name (for "
+                             "example windows:firewall) it does that one, after asking, saving a way back first")
+    parser.add_argument("--undo-fix", metavar="RECORD",
+                        help="put back a setting --fix-it changed, by the record name it printed")
+    parser.add_argument("--hunt-windows", action="append", default=None, nargs="?", const="",
+                        metavar="FILE",
+                        help="separate check: look through Windows' own records for commands whose text was "
+                             "hidden, downloads, protection switched off, services installed from personal "
+                             "folders, cleared logs and remote sessions. With no FILE it reads this computer; "
+                             "give one or more .evtx files to read logs from elsewhere (works on any system)")
+    parser.add_argument("--with-security", action="store_true",
+                        help="with --hunt-windows: also read the Security log (needs administrator rights)")
+    parser.add_argument("--hunt-all", action="store_true",
+                        help="with --hunt-windows: also print the records kept back as context")
+    parser.add_argument("--check-file", metavar="PATH",
+                        help="separate check: a first look at one suspicious file without running it - fingerprints, "
+                             "what it really is, signature, spyware addresses inside, packing, Android app "
+                             "permissions, document macros. Offline; the file is never moved or changed")
+    parser.add_argument("--seal-copy", metavar="PATH",
+                        help="with --check-file: also save a sealed copy (a ZIP with the password 'infected') to PATH "
+                             "(a folder or a new .zip), ready to send to an expert. Never replaces a file")
+    parser.add_argument("--accounts", action="store_true",
+                        help="separate check: a guided checklist of your online accounts (linked devices, forwarding "
+                             "rules, location sharing, recovery details). You look and answer; nothing is signed in "
+                             "to, opened or sent")
+    parser.add_argument("--threat-warning", action="store_true",
+                        help="print what to do after Apple, Google, WhatsApp or another service warns that you may "
+                             "be targeted, and exit")
+    parser.add_argument("--hash-lookup", action="append", default=[], metavar="PATH",
+                        help="separate check: fingerprint files (SHA-256, SHA-1, MD5; imphash and signer for Windows "
+                             "programs) and compare them with the indicator lists. Offline unless --online is given")
+    parser.add_argument("--online", metavar="SERVICES",
+                        help="with --hash-lookup: also send the FINGERPRINTS (never files or names) of unsigned "
+                             "programs, scripts, documents and archives to these services, comma-separated: circl, "
+                             "malwarebazaar, threatfox, virustotal, hybrid, or all")
+    parser.add_argument("--lookup-all", action="store_true",
+                        help="with --hash-lookup --online: look up every file, signed or not, beyond the free limits")
+    parser.add_argument("--set-lookup-key", choices=("abusech", "virustotal", "hybrid"),
+                        help="save your own key for an online look-up service (asked for privately, not on the "
+                             "command line)")
+    parser.add_argument("--package-for-helper", metavar="FOLDER",
+                        help="separate step: put the files given with --add into one package for a helper, sealed "
+                             "with their age key (--helper-key age1...) and signed with your own sender key; written "
+                             "to FOLDER. Nothing is uploaded")
+    parser.add_argument("--add", action="append", default=[], metavar="PATH",
+                        help="with --package-for-helper: a file or folder to include (repeat for more)")
+    parser.add_argument("--helper-key", metavar="AGE1KEY",
+                        help="with --package-for-helper: the helper's age public key (starts with age1)")
+    parser.add_argument("--no-encryption", action="store_true",
+                        help="with --package-for-helper: do not encrypt (only if your helper asked for that)")
+    parser.add_argument("--verify-package", metavar="PATH",
+                        help="separate step for a helper: check a decrypted package's signature and fingerprints")
+    parser.add_argument("--startup", action="store_true",
+                        help="separate check: list every program set to start automatically (Run keys, Startup "
+                             "folders, scheduled tasks, services; launch agents and app permissions on a Mac) with "
+                             "its signature, and mark what is worth a look. Read only")
+    parser.add_argument("--startup-all", action="store_true",
+                        help="with --startup: also list signed Windows / system components")
+    parser.add_argument("--check-traffic", metavar="FILE",
+                        help="separate check: a network recording (.pcap / .pcapng, e.g. from the PCAPdroid app on "
+                             "Android): which servers were contacted, and which app contacted them. Offline")
+    parser.add_argument("--combine", nargs="+", default=None, metavar="REPORT",
+                        help="household report: one summary of several saved JSON reports (computers, phones, the "
+                             "phone-check page, DNS logs, the home network); name one with LABEL=FILE. Reads only")
+    parser.add_argument("--html", metavar="PATH",
+                        help="with --combine: also save the household report as a page to print or keep")
+    parser.add_argument("--no-camera-check", action="store_true",
+                        help="with --home-network: do not ask cameras whether their video needs a password")
+    parser.add_argument("--no-router-lookups", action="store_true",
+                        help="with --home-network: skip asking the router to look up test names (the only part of "
+                             "that check whose questions leave your network)")
+    parser.add_argument("--yes-my-network", action="store_true",
+                        help="with --home-network: confirm without the question (for scripts on your own network)")
     parser.add_argument("--extended-windows", action="store_true", help="opt-in additional existing Windows event records; does not elevate or enable logging")
 
 
+def scope_message_is_text(value) -> bool:
+    """--check-message "Your parcel is held: http://..." is the message itself, not a file name."""
+    return bool(value) and value != "-" and not os.path.isfile(value) and (
+        " " in value.strip() or "\n" in value or "://" in value)
+
+
 def scope_validate(parser, args):
+    # An option given an empty value ("--check-file ''", a shell variable that was not set) must stop here: an
+    # empty value reads as "not given", and the program would start an ordinary full scan instead.
+    bare = {a.dest for a in parser._actions if a.const == ""}   # "--hunt-windows" alone means "this computer"
+    for dest, value in sorted(vars(args).items()):
+        if parser.get_default(dest) == value or dest in bare:   # not typed (some options default to "")
+            continue
+        if value == "" or (isinstance(value, list) and "" in value and dest != "check_link"):
+            parser.error("--{} was given an empty value - nothing was checked".format(dest.replace("_", "-")))
     # A mistyped phone folder must stop here: scanning nothing and printing an
     # ordinary "no known indicator" report reads like an all-clear.
     # Only a local path is tested: asking Windows whether a network path exists
@@ -30,6 +154,131 @@ def scope_validate(parser, args):
     if (args.phone and not path_problem(os.path.abspath(args.phone))
             and not os.path.exists(args.phone)):
         parser.error("phone evidence not found: " + args.phone + " - nothing was checked")
+    for path in args.dns_log:
+        if not path_problem(os.path.abspath(path)) and not os.path.isfile(path):
+            parser.error("DNS log not found: " + path + " - nothing was checked")
+    if args.dns_log and (args.phone or args.target or args.collect_android or args.update):
+        parser.error("--dns-log is checked on its own: not with --phone, --target, --collect-android or --update")
+    if args.home_network and (args.phone or args.target or args.dns_log or args.collect_android or args.update):
+        parser.error("--home-network is a separate check: not with --phone, --target, --dns-log, --collect-android or --update")
+    if args.trackers is not None and (args.home_network or args.phone or args.target or args.dns_log or args.update):
+        parser.error("--trackers is a separate check")
+    if args.make_iphone_backup and (args.phone or args.target or args.dns_log or args.collect_android or args.update
+                                    or args.home_network or args.combine or args.trackers is not None):
+        parser.error("--make-iphone-backup makes a backup and checks it: not with another input")
+    if args.combine and (args.phone or args.target or args.dns_log or args.home_network or args.update
+                         or args.collect_android or args.trackers is not None):
+        parser.error("--combine reads saved reports on its own: not with a check")
+    if (args.check_link or args.check_message) and (args.phone or args.target or args.dns_log or args.home_network
+                                                     or args.update or args.collect_android or args.combine
+                                                     or args.trackers is not None or args.make_iphone_backup):
+        parser.error("--check-link / --check-message check what you received on their own: not with another check")
+    if args.check_message and args.check_message != "-" and not scope_message_is_text(args.check_message) \
+            and not path_problem(os.path.abspath(args.check_message)) and not os.path.isfile(args.check_message):
+        parser.error("message file not found: " + args.check_message + " - nothing was checked")
+    if args.check_traffic and (args.phone or args.target or args.dns_log or args.home_network or args.update
+                               or args.collect_android or args.combine or args.trackers is not None
+                               or args.make_iphone_backup or args.check_link or args.check_message):
+        parser.error("--check-traffic reads a recording on its own: not with another check")
+    if args.check_traffic and not path_problem(os.path.abspath(args.check_traffic)) \
+            and not os.path.isfile(args.check_traffic):
+        parser.error("recording not found: " + args.check_traffic + " - nothing was checked")
+    if args.seal_copy and not args.check_file:
+        parser.error("--seal-copy goes with --check-file")
+    separate = [flag for flag, on in (("--check-file", args.check_file), ("--accounts", args.accounts),
+                                      ("--threat-warning", args.threat_warning),
+                                      ("--wifi-nearby", getattr(args, "wifi_nearby", False))) if on]
+    others = (args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+              or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+              or args.check_message or args.check_traffic or args.check_email or args.check_qr or args.hash_lookup
+              or args.was_extracted or args.startup or args.hunt_windows is not None or args.fix_it
+              or args.describe or args.preview or args.phone_guide or getattr(args, "verify_package", None)
+              or getattr(args, "package_for_helper", None) or getattr(args, "undo_fix", None)
+              or getattr(args, "training", None))
+    if len(separate) > 1 or (separate and others):
+        parser.error("{} is a separate check: run it on its own".format(separate[0]))
+    if args.startup_all:
+        args.startup = True
+    if args.hunt_windows is not None:
+        args.hunt_windows = [p for p in args.hunt_windows if p]
+    for flag, value in (("--check-email", args.check_email), ("--check-qr", args.check_qr)):
+        if value and not path_problem(os.path.abspath(value)) and not os.path.isfile(value):
+            parser.error("not found: " + value + " - nothing was checked")
+    if args.was_extracted and not path_problem(os.path.abspath(args.was_extracted)) \
+            and not os.path.isdir(args.was_extracted):
+        parser.error("not a folder: " + args.was_extracted + " - give the folder of a phone collection or an "
+                     "iPhone backup")
+    if args.was_extracted and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup or args.package_for_helper
+            or args.verify_package or args.hash_lookup or args.set_lookup_key or args.hunt_windows is not None
+            or args.fix_it is not None or args.undo_fix or args.check_email or args.check_qr):
+        parser.error("the extraction check is a check on its own: not with another check")
+    if (args.check_email or args.check_qr) and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup or args.package_for_helper
+            or args.verify_package or args.hash_lookup or args.set_lookup_key or args.hunt_windows is not None
+            or args.fix_it is not None or args.undo_fix or (args.check_email and args.check_qr)):
+        parser.error("checking a saved email or a QR code is a check on its own: not with another check")
+    if args.fix_it is not None and args.undo_fix:
+        parser.error("choose either --fix-it or --undo-fix")
+    if (args.fix_it is not None or args.undo_fix) and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup or args.package_for_helper
+            or args.verify_package or args.hash_lookup or args.set_lookup_key or args.hunt_windows is not None):
+        parser.error("closing a door is a step on its own: not with another check")
+    if (args.with_security or args.hunt_all) and args.hunt_windows is None:
+        parser.error("--with-security and --hunt-all go with --hunt-windows")
+    for chosen in (args.hunt_windows or []):
+        if not path_problem(os.path.abspath(chosen)) and not os.path.isfile(chosen):
+            parser.error("log file not found: " + chosen + " - nothing was checked")
+    if args.hunt_windows is not None and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup or args.package_for_helper
+            or args.verify_package or args.hash_lookup or args.set_lookup_key):
+        parser.error("looking through Windows' records is a check on its own: not with another check")
+    if (args.online or args.lookup_all) and not args.hash_lookup:
+        parser.error("--online and --lookup-all go with --hash-lookup PATH")
+    for chosen in args.hash_lookup:
+        if not path_problem(os.path.abspath(chosen)) and not os.path.exists(chosen):
+            parser.error("not found: " + chosen + " - nothing was checked")
+    if (args.hash_lookup or args.set_lookup_key) and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup or args.package_for_helper
+            or args.verify_package or (args.hash_lookup and args.set_lookup_key)):
+        parser.error("the hash look-up is a check on its own: not with another check")
+    if (args.add or args.helper_key or args.no_encryption) and not args.package_for_helper:
+        parser.error("--add, --helper-key and --no-encryption go with --package-for-helper")
+    if args.package_for_helper and not args.add:
+        parser.error("--package-for-helper needs at least one --add PATH (a file or folder to include)")
+    if args.helper_key and args.no_encryption:
+        parser.error("choose either --helper-key or --no-encryption")
+    for chosen in args.add:
+        if not path_problem(os.path.abspath(chosen)) and not os.path.exists(chosen):
+            parser.error("not found: " + chosen + " - nothing was packaged")
+    if (args.package_for_helper or args.verify_package) and (
+            args.phone or args.target or args.dns_log or args.home_network or args.update or args.collect_android
+            or args.combine or args.trackers is not None or args.make_iphone_backup or args.check_link
+            or args.check_message or args.check_traffic or args.startup
+            or (args.package_for_helper and args.verify_package)):
+        parser.error("making or checking a helper package is a step on its own: not with another check")
+    if args.startup and (args.phone or args.target or args.dns_log or args.home_network or args.update
+                         or args.collect_android or args.combine or args.trackers is not None
+                         or args.make_iphone_backup or args.check_link or args.check_message or args.check_traffic):
+        parser.error("--startup lists this computer's start-up programs on its own: not with another check")
+    if args.html and not args.combine:
+        parser.error("--html goes with --combine")
+    if args.no_camera_check and not args.home_network:
+        parser.error("--no-camera-check goes with --home-network")
+    if args.no_router_lookups and not args.home_network:
+        parser.error("--no-router-lookups goes with --home-network")
+    if args.yes_my_network and not args.home_network:
+        parser.error("--yes-my-network goes with --home-network")
     if args.ios_input and not args.phone:
         parser.error("--ios-input requires --phone")
     if args.backup_password and args.ios_input in ("filesystem", "sysdiagnose"):
@@ -60,7 +309,7 @@ def scope_validate(parser, args):
 
 def scope_record(args):
     result = {"scan_type": args.scan_type, "targets": [sanitize_untrusted(os.path.abspath(p)) for p in args.target],
-              "phone": bool(args.phone), "scanned": False,
+              "phone": bool(args.phone), "dns_logs": len(getattr(args, "dns_log", []) or []), "scanned": False,
               "ios_input": getattr(args, "ios_input", ""),
               "host_platform": sys.platform,
               "limits": ["Read-only local evidence; no infection-free guarantee.",
@@ -110,6 +359,53 @@ def scope_preview(args):
     if not args.phone and sys.platform != "win32":
         result["limits"].append("Linux/macOS host checks cover selected startup configuration only, not Windows DNS, registry or event sources.")
     return result
+
+
+# Kept apart from the guide above (which is translated as one block) so that adding it changed none of them.
+SCOPE_BUGREPORT_GUIDE = """No USB debugging? Use a bug report the phone makes itself
+
+ 1. Turn on Developer options as in step 1 above (USB debugging is NOT needed).
+ 2. Settings > System > Developer options > "Take bug report" (or "Bug report").
+    Choose "Full report" if it asks. After a few minutes a notification says it
+    is ready.
+ 3. Tap the notification and choose Share > save it to the phone's Files (for
+    example Downloads) - Android keeps bug reports in a place a cable cannot reach.
+    Then copy it to this computer the way you copy photos: a USB cable with the
+    phone set to "File transfer" (that is not USB debugging), or a memory card.
+    If your accounts may be watched, do not email it to yourself or put it in a
+    cloud folder - it holds private details about your phone.
+ 4. Check the .zip itself - do not unzip it:
+      python -X utf8 scan/zero-breach-toolkit.py --phone "PATH TO THE BUG REPORT .zip"
+    Or in the window: A phone > What is it? > Android bug report, then Choose...
+
+A bug report holds the phone's system state, settings, logs and recently removed
+apps, but not the apps' files, the file list or text messages - those parts are
+listed as not checked. It also holds private information: keep it on this computer.
+"""
+
+def scope_bugreport_window_guide():
+    """The bug report steps for the double-click program: the window's own steps, every button named with the
+    label the person sees in their language (as scope_window_guide does)."""
+    labels = {"phone": T("A phone"), "kind": T("What is it?"), "choose": T("Choose..."),
+              "start": T("Start check"),
+              "bugreport": T("Android bug report (made on the phone, no USB debugging needed)")}
+    steps = [
+        T("Turn on Developer options as in step 1 above (USB debugging is NOT needed)."),
+        T("Settings > System > Developer options > \"Take bug report\" (or \"Bug report\"). Choose \"Full report\" "
+          "if it asks. After a few minutes a notification says it is ready."),
+        T("Tap the notification and choose Share > save it to the phone's Files (for example Downloads) - Android "
+          "keeps bug reports in a place a cable cannot reach. Then copy it to this computer the way you copy "
+          "photos: a USB cable with the phone set to \"File transfer\" (that is not USB debugging), or a memory "
+          "card. If your accounts may be watched, do not email it to yourself or put it in a cloud folder - it "
+          "holds private details about your phone."),
+        T("In this window, choose \"{phone}\", set \"{kind}\" to \"{bugreport}\", click \"{choose}\" and pick the "
+          ".zip itself (do not unzip it), then click \"{start}\".", **labels),
+    ]
+    return (T("No USB debugging? Use a bug report the phone makes itself") + "\n\n" +
+            "\n\n".join("{}. {}".format(i, s) for i, s in enumerate(steps, 1)) + "\n\n" +
+            T("A bug report holds the phone's system state, settings, logs and recently removed apps, but not the "
+              "apps' files, the file list or text messages - those parts are listed as not checked. It also holds "
+              "private information: keep it on this computer."))
 
 
 def scope_guide(platform):

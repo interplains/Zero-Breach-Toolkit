@@ -26,3 +26,24 @@ def _offline_open(self, fullurl, *args, **kwargs):
 @pytest.fixture(autouse=True)
 def _no_internet(monkeypatch):
     monkeypatch.setattr(urllib.request.OpenerDirector, "open", _offline_open)
+
+
+@pytest.fixture(autouse=True)
+def _own_program_folder(monkeypatch, tmp_path_factory):
+    """The window's small memory files (first-open question shown, an unfinished iPhone backup) go to a temporary
+    folder, never the real user's, and the first-open question is already 'asked' so it never pops up in a test."""
+    try:
+        from zbtriage import resume
+    except ImportError:
+        return
+    folder = tmp_path_factory.mktemp("program-folder")      # never the test's own folder: some tests need it empty
+    flags = str(folder / "window-choices.json")
+    step = str(folder / "unfinished-step.json")
+    open(flags, "w").write('{"asked-what-happened": true}')
+    monkeypatch.setattr(resume, "_flags_path", lambda: flags)
+    monkeypatch.setattr(resume, "resume_path", lambda: step)
+    from zbtriage import accounts
+    answers = str(folder / "account-checklist-answers.json")
+    real_load, real_save = accounts.ac_load_answers, accounts.ac_save_answers
+    monkeypatch.setattr(accounts, "ac_load_answers", lambda path="": real_load(path or answers))
+    monkeypatch.setattr(accounts, "ac_save_answers", lambda a, path="": real_save(a, path or answers))

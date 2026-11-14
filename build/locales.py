@@ -32,7 +32,13 @@ SHOWN = ("gui.py", "report.py", "training.py", "scope.py", "contract.py")
 MESSAGES = ("result.py", "context.py", "workflow.py", "feeds.py", "heuristics.py", "iocs.py", "evidence.py",
             "devicetraces.py", "ios_artifacts.py", "ios_messages.py", "ios_sources.py",
             "winrecords.py", "netconns.py", "shelllinks.py", "security_products.py",
-            "backupcrypto.py", "localpaths.py")
+            "backupcrypto.py", "localpaths.py",
+            # the window translates these tools' text (T() in the tool, or T(label) in gui.py)
+            "wifinearby.py", "household.py", "accounts.py", "ncinfo.py",
+            # the smaller tools' results (translated when shown; saved JSON stays English)
+            "filecheck.py", "sevenzip.py", "hashlook.py", "startup.py", "homenet.py", "fixit.py",
+            "linkcheck.py", "mailcheck.py", "qrcheck.py", "netcapture.py", "huntwin.py", "huntrules.py",
+            "extracted.py", "trackers.py", "helperpack.py")
 _WORDS = re.compile(r"[A-Za-z]{2,}")
 _FIELD = re.compile(r"\{[^{}]*\}")
 

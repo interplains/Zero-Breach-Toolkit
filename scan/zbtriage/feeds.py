@@ -21,15 +21,29 @@ Safety rules, each enforced in code and pinned by tests/test_feeds.py:
     someone able to edit both the file and the manifest. A file from a pinned
     download is also compared with the hash recorded in the release itself;
   - an indicator is never resolved or contacted: these are text files.
+
+Two additions (v3):
+  - the files hosted in mvt-project/mvt-indicators (MIT-licensed) are also built
+    in (mvtdata.py), as the exact bytes this release pins: a scan with no
+    downloaded copy of one of them uses the built-in copy, checked against the
+    same SHA-256 first;
+  - KNOWN_GOOD_SOURCES are MISP warninglists (empty-file
+    hashes, reserved addresses, revocation hosts ...), downloaded with the rest
+    and pinned the same way. An upstream indicator that EXACTLY equals one of
+    their entries (or, for a few fixed address lists, falls inside one) is set
+    aside and counted, never matched. Exact, so that listing "duckdns.org" can
+    only drop a bad indicator "duckdns.org", never a real "evil.duckdns.org".
 """
 
 from __future__ import annotations
 
+import base64
 import csv
 import dataclasses
 import datetime
 import hashlib
 import io
+import ipaddress
 import json
 import os
 import re
@@ -40,9 +54,11 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from typing import Callable, Dict, List, Optional, Tuple
 
 from . import __version__
+from .mvtdata import MVT_BUILTIN, MVT_BUILTIN_DATE
 from .iocs import (SHARED_SERVICE_HOSTS, SHARED_SERVICE_REASON, TYPE_DOMAIN, TYPE_IP,
                    TYPE_SHA1, TYPE_SHA256, Indicator, IocError, IocSet, infer_type, load_any,
                    shared_service_domain)
@@ -52,7 +68,8 @@ from .stix import TIER_INFRA, TIER_INFRA_IP, TIER_SAMPLE, _normalise
 
 RAW = "https://raw.githubusercontent.com/"
 ALLOWED_OWNERS = ("mvt-project/mvt-indicators/", "AmnestyTech/investigations/",
-                  "AssoEchap/stalkerware-indicators/", "citizenlab/malware-indicators/")
+                  "AssoEchap/stalkerware-indicators/", "citizenlab/malware-indicators/",
+                  "MISP/misp-warninglists/")
 ALLOWED_PREFIXES = tuple(RAW + o for o in ALLOWED_OWNERS)
 MAX_DOWNLOAD = 64 * 1024 * 1024
 TIMEOUT_S = 60
@@ -72,6 +89,7 @@ def _src(sid, name, owner_repo_branch, path, fmt, cite, category="mercenary",
 FEED_PINS = {
     "AmnestyTech/investigations": "3d8f248a0d015f183724ae7d096a5c46a8bb5fc7",
     "AssoEchap/stalkerware-indicators": "426156175adc84af7fbdd41486c046f9ecb40436",
+    "MISP/misp-warninglists": "40e2b570fda2e5443a2d6fa1d1db16c37ab0a956",
     "citizenlab/malware-indicators": "7a7ae9278fa2c0252e9e40faed9b498d6a8d5248",
     "mvt-project/mvt-indicators": "b22ddf05e1a31e7732b8895676987c5c3482ef65",
 }
@@ -100,6 +118,33 @@ FEED_FILE_SHA256 = {
     "citizenlab-nso-mexico-exploit-2017": "b260da1f4e1dd15cfc804be734431c602bb6abee00bf8c5cc4c4e41d3638280a",
     "citizenlab-nso-mexico-redux-2017": "62d614e4f11a1652ef8020676269b9cfc85b6b0db36e45b43a4d397776387c5d",
     "echap-stalkerware": "60307b49256d726a55e5b29e5243113021b26f2c91b492da4bcd2eb579739a98",
+    "kg-apple-domains": "76a5bccc5d847a8e59e7cf39459e07d3b5b2fdbcc97134063e0ddc71a3bed222",
+    "kg-captive-portals": "2caec46db1b853d2b087fb78c2e782029c3f514d5a974510edbbfed6d831e7ab",
+    "kg-common-ioc-false-positive": "e6cd190993ebdea443cdac71adfd99a88bdfac53c41af6e228c0c601e3155e73",
+    "kg-crl-hostname": "f70c6f75ea3d6e128a3d623d796b33c3ba566b9d36376f86007b8a7c0734341d",
+    "kg-crl-ip": "6c4eae4599b23c2e52a6fb5964a8056d05c4b95f38bbae59c1961728075fdaf7",
+    "kg-dynamic-dns": "505a54f47e207fc435f17a545d344cd4dfaa17c30936ac214f483bd721303e4b",
+    "kg-empty-hashes": "449a1c0a24d447ecc3a4a6c4cb53a004e4d3cc39efa39ab583b3c6850ec5e6c6",
+    "kg-google": "48d37729d8adab458848eb59bcea52ed78249f5e90537403a0b8e94c7f2c5742",
+    "kg-ipv6-linklocal": "3d77b4c07ebb933724672d8f70a6534c14b7338af35256fca55e3ca762cc082f",
+    "kg-microsoft": "f52c1cbe26258265f7f96dfb16a4126d400df769a3b276bb589c7a1e137c6679",
+    "kg-microsoft-win10-connection-endpoints": "e347f5e6b4c75bbc8ced213e00ee07596e4726c9fe1da648bf29227e0f2d9c82",
+    "kg-microsoft-win11-connection-endpoints": "1d0941f59df2ea68b02ac323828b1d0862c5d5bea545c853df40ce0331b97e7b",
+    "kg-multicast": "4828edf98cd5fb053394988d4f824c6369de980aca17a81f0cbd07bd4930f53d",
+    "kg-rfc1918": "ef1374626d6d98ddac70e6bcdc533e4f76eee744c46ba99e3e6eddbc14e169a3",
+    "kg-rfc3849": "54a82c687e3efa5ab64cd33dd719bcd8f01c0f41f6bce43a1f82dbf10612b7d0",
+    "kg-rfc5735": "a1708cad2ebb809d6c10932a87042b78f5679662f73e7a3fa6c73bcbf12a3b2c",
+    "kg-rfc6598": "5f384ea12b562bd5ed683cec78ca76e41b22e4174581026eb8fb55007248e820",
+    "kg-rfc6761": "d1a1d87ab67a2e08bd040bfa17270338effde7477e9e1b5cfb3ad3fa880f8b56",
+    "kg-security-provider-blogpost": "0874106b22e325b01041c782be94cc51ff6dab96d4b8c722938cb484c6c3ad4f",
+    "kg-sinkholes": "de791ba3fcbf7fe087ba6c55103212d781a538e574282716df60d8609d1b3c7f",
+    "kg-ti-falsepositives": "0ce200662c09a1770fe4e371f29d4a46d8c2e4b0ef4da1fc7faebeae3dd12b78",
+    "kg-umbrella-blockpage-hostname": "ce5f07060faaf8eb75b9ec56c2fa21aa6e1c84aba138465fa23d56aaaec58cf0",
+    "kg-umbrella-blockpage-v4": "a9f6fe5f3bfe74d2e8dd90ca3fc03ebca57140864967507bb3615a98a215640d",
+    "kg-umbrella-blockpage-v6": "b5e2c91d41aa88aa3c8d23001bdcf31b5f9575e5a94c35edc40d9b0226d338e1",
+    "kg-url-shortener": "b3507004dfaf9bb15f8947990ba1a51526b685ad9e97dda94f9a210968bc640d",
+    "kg-whats-my-ip": "403e9f70197c7ce360a0919162068c57594ccfbce50428682641a1884463b7c6",
+    "kg-wikimedia": "03a1015c26965f170258211cfbdfae1fb0b3c4646367b09230a936ecdc3cd901",
     "mvt-btmob": "6bada3d46e6ac53019d80ccea991611125e8eefdd00b5bd0ea23ac48f2dca15a",
     "mvt-candiru": "684f9e60da472ec938c7cd003adb3e3b97d29a0a43fed7565c9ef29c19bedb86",
     "mvt-cellebrite": "054436c35a1e715ff2ea55a9516364108239cde238afdd096b21c3da90f97d2a",
@@ -136,7 +181,7 @@ SOURCES: List[Dict[str, str]] = [
          "Meta, Amnesty International, Citizen Lab, Cisco, Inside Story, iVerify"),
     _src("mvt-rcs-lab", "RCS Lab", "mvt-project/mvt-indicators/main/",
          "2022-06-23_rcs_lab/rcs.stix2", "stix2", "Google, Lookout"),
-    _src("echap-stalkerware", "Stalkerware (154 apps)", "AssoEchap/stalkerware-indicators/master/",
+    _src("echap-stalkerware", "Stalkerware (176 apps)", "AssoEchap/stalkerware-indicators/master/",
          "generated/stalkerware.stix2", "stix2", "ECHAP", category="stalkerware"),
     _src("amnesty-android-campaign-2023", "Mercenary spyware campaign (Android)",
          "AmnestyTech/investigations/master/", "2023-03-29_android_campaign/malware.stix2",
@@ -215,9 +260,160 @@ SOURCES: List[Dict[str, str]] = [
          "language news sites' (2017-07)"),
 ]
 
+
+# Known-good lists (MISP warninglists; the repository states CC0 1.0 in its README but has no licence file, so
+# they are downloaded at --update like the other unlicensed sources, never shipped). Only lists of specific,
+# factual values that are never attacker-controlled were chosen; ranking lists ("top sites") and cloud, VPN, Tor
+# and scanner address ranges were left out on purpose - real spyware servers live in cloud ranges.
+def _kg(name, title, cidr=False):
+    src = _src("kg-" + name, title, "MISP/misp-warninglists/main/", "lists/{}/list.json".format(name),
+               "misp-warninglist", "MISP warninglists", category="known-good")
+    src["cidr_ok"] = cidr        # whether address RANGES in this list may set an indicator aside
+    return src
+
+
+KNOWN_GOOD_SOURCES: List[Dict[str, str]] = [
+    _kg("empty-hashes", "Fingerprints of empty files"),
+    _kg("common-ioc-false-positive", "Fingerprints often listed by mistake"),
+    _kg("ti-falsepositives", "Known threat-intelligence false positives"),
+    # Not the public-DNS lists: ~97,000 addresses scraped from the internet (and whole ranges for v4/v6). A
+    # spyware server that also answers DNS would be set aside by them.
+    _kg("crl-hostname", "Certificate revocation hosts"),
+    _kg("crl-ip", "Certificate revocation addresses", cidr=True),
+    _kg("captive-portals", "Connectivity-check hosts"),
+    _kg("whats-my-ip", "What-is-my-IP services"),
+    _kg("sinkholes", "Researcher sinkhole addresses", cidr=True),
+    _kg("umbrella-blockpage-v4", "Cisco Umbrella block page (IPv4)", cidr=True),
+    _kg("umbrella-blockpage-v6", "Cisco Umbrella block page (IPv6)", cidr=True),
+    _kg("umbrella-blockpage-hostname", "Cisco Umbrella block page (names)"),
+    _kg("security-provider-blogpost", "Security researchers' blogs"),
+    _kg("url-shortener", "Link shorteners (the service itself)"),
+    _kg("dynamic-dns", "Dynamic-DNS providers (the provider itself)"),
+    _kg("rfc1918", "Private network addresses", cidr=True),
+    _kg("rfc5735", "Special-use IPv4 addresses", cidr=True),
+    _kg("rfc6598", "Carrier-grade NAT addresses", cidr=True),
+    _kg("rfc3849", "IPv6 documentation addresses", cidr=True),
+    _kg("rfc6761", "Special-use domain names"),
+    _kg("ipv6-linklocal", "IPv6 link-local addresses", cidr=True),
+    _kg("multicast", "Multicast addresses", cidr=True),
+    _kg("wikimedia", "Wikimedia addresses", cidr=True),
+    _kg("google", "Google's own hosts"),
+    _kg("microsoft", "Microsoft's own hosts"),
+    _kg("apple-domains", "Apple's own domains"),
+    _kg("microsoft-win10-connection-endpoints", "Windows 10 system endpoints"),
+    _kg("microsoft-win11-connection-endpoints", "Windows 11 system endpoints"),
+]
+
+# Everything --update downloads and the cache verifies: indicator sources, then known-good lists. Built at
+# call time, so a caller that replaces SOURCES (tests, a custom build) is followed.
+def all_sources() -> List[Dict[str, str]]:
+    return list(SOURCES) + list(KNOWN_GOOD_SOURCES)
+KNOWN_GOOD_REASON = "on a known-good list (MISP warninglists)"
+
 MANIFEST = "manifest.json"
 _EXT = {"stix2": ".stix2", "csv-domain-ip": ".csv", "domains-txt": ".txt",
-        "misp-csv": ".misp.csv"}
+        "misp-csv": ".misp.csv", "misp-warninglist": ".warninglist.json"}
+
+
+class KnownGood:
+    """Values that can never be a spyware indicator. covers(indicator) -> the list's title, or ""."""
+
+    def __init__(self):
+        self.values: Dict[str, str] = {}            # exact value -> list title
+        self.networks: List[Tuple[object, str]] = []  # (ip_network, list title), fixed-range lists only
+        self.lists: List[Dict[str, object]] = []
+
+    def __len__(self):
+        return len(self.values) + len(self.networks)
+
+    def merge(self, other: "KnownGood") -> None:
+        for value, title in other.values.items():
+            self.values.setdefault(value, title)
+        self.networks.extend(other.networks)
+        self.lists.extend(other.lists)
+
+    def covers(self, ind: Indicator) -> str:
+        value = (ind.value or "").lower().rstrip(".")
+        if value in self.values:
+            return self.values[value]
+        if ind.type == TYPE_IP and self.networks:
+            try:
+                addr = ipaddress.ip_address(value)
+            except ValueError:
+                return ""
+            for net, title in self.networks:
+                if addr.version == net.version and addr in net:
+                    return title
+        return ""
+
+
+def load_warninglist(path: str, title: str, cidr_ok: bool) -> KnownGood:
+    """A MISP warninglist file -> KnownGood. 'string' and 'hostname' entries are kept as exact values (a
+    leading '.' wildcard is dropped, so only the bare name is covered); 'cidr' entries become exact addresses,
+    and wider ranges only for lists marked cidr_ok; 'substring' and 'regex' lists are not used."""
+    with open(path, "rb") as fh:
+        doc = json.loads(fh.read(MAX_DOWNLOAD + 1).decode("utf-8"))
+    if not isinstance(doc, dict) or not isinstance(doc.get("list"), list):
+        raise IocError("{}: not a warninglist".format(path))
+    kind = str(doc.get("type") or "").lower()
+    kg = KnownGood()
+    skipped = 0
+    for raw in doc["list"]:
+        if not isinstance(raw, str):
+            skipped += 1
+            continue
+        text = raw.strip().lower().lstrip(".").rstrip(".")
+        if not text or len(text) > 256:
+            skipped += 1
+            continue
+        if kind in ("string", "hostname"):
+            kg.values.setdefault(text, title)
+        elif kind == "cidr":
+            try:
+                net = ipaddress.ip_network(text, strict=False)
+            except ValueError:
+                skipped += 1
+                continue
+            if net.num_addresses == 1:
+                kg.values.setdefault(str(net.network_address), title)
+            elif cidr_ok:
+                kg.networks.append((net, title))
+            else:
+                skipped += 1
+        else:
+            skipped += 1
+    if not len(kg):
+        raise IocError("{}: no usable entry in this warninglist".format(path))
+    kg.lists.append({"title": title, "entries": len(kg), "skipped": skipped, "type": kind})
+    return kg
+
+
+def apply_known_good(sets: List[IocSet], known: KnownGood) -> int:
+    """Set aside every indicator a known-good list covers, in place of each set; returns how many."""
+    total = 0
+    if not len(known):
+        return 0
+    for index, s in enumerate(sets):
+        keep, dropped = [], 0
+        for ind in s.indicators:
+            if known.covers(ind):
+                dropped += 1
+            else:
+                keep.append(ind)
+        if not dropped:
+            continue
+        total += dropped
+        rebuilt = IocSet(keep, s.source_path, s.source_mtime)
+        rebuilt.asof = s.asof
+        rebuilt.sets = [dict(meta) for meta in getattr(s, "sets", [])]
+        if rebuilt.sets:
+            na = dict(rebuilt.sets[0].get("not_applicable_to_this_scan") or {})
+            na[KNOWN_GOOD_REASON] = na.get(KNOWN_GOOD_REASON, 0) + dropped
+            rebuilt.sets[0]["not_applicable_to_this_scan"] = na
+        if getattr(s, "verified_at", None) is not None:
+            rebuilt.verified_at = s.verified_at
+        sets[index] = rebuilt
+    return total
 
 # MISP attribute types -> our kinds. URLs contribute their host name. MD5 sample
 # hashes are counted as not applicable: the file checks compute SHA-256 and SHA-1.
@@ -372,7 +568,10 @@ def _mark_contexts(ind, kind, ios):
     return tuple(records)
 
 
-def _load_source_file(src: Dict[str, str], path: str) -> IocSet:
+def _load_source_file(src: Dict[str, str], path: str):
+    """An IocSet, or a KnownGood for a known-good list (both have len())."""
+    if src["format"] == "misp-warninglist":
+        return load_warninglist(path, src["name"], bool(src.get("cidr_ok")))
     cite = "{} ({})".format(src["cite"], src["name"])
     if src["format"] == "stix2":
         loaded = load_any(path, source=cite, family=src.get("family", ""), allow_empty=False)
@@ -538,7 +737,7 @@ def update(cache: Optional[str] = None, sources: Optional[List[Dict[str, str]]] 
     os.makedirs(cache, exist_ok=True)
     manifest = read_manifest(cache)
     results = []
-    for src in (sources if sources is not None else SOURCES):
+    for src in (sources if sources is not None else all_sources()):
         name = src["id"] + _EXT[src["format"]]
         pinned = None if latest else _pinned_url(src)
         url = pinned or src["url"]
@@ -638,20 +837,31 @@ def cached_sets(cache: Optional[str] = None,
 
     A file that is not the copy pinned for this release is refused too, unless
     the scan itself was started with `latest` (--latest). The manifest cannot
-    grant that: whoever could edit the file could also edit the manifest."""
+    grant that: whoever could edit the file could also edit the manifest.
+
+    Then: an mvt-indicators source with no usable downloaded copy (missing or
+    refused) is loaded from the copy built into this release, and every
+    indicator a downloaded known-good list covers is set aside."""
     cache = cache or default_cache_dir()
     sets: List[IocSet] = []
+    known = KnownGood()
     status = {"cache": cache, "downloaded": False, "loaded": [],
-              "refused": [], "missing": []}
-    by_id = {s["id"]: s for s in SOURCES}
+              "refused": [], "missing": [], "known_good": {"lists": [], "missing": [], "set_aside": 0}}
+    by_id = {s["id"]: s for s in all_sources()}
+    indicator_ids = {s["id"] for s in SOURCES}
     try:
         manifest = read_manifest(cache)
     except IocError as exc:
         status["refused"].append({"id": "manifest", "reason": str(exc)})
-        status["missing"] = sorted(by_id)
-        return sets, status
-    status["downloaded"] = bool(manifest)
-    status["missing"] = sorted(set(by_id) - set(manifest))
+        manifest = None
+    if manifest is None:
+        status["missing"] = sorted(indicator_ids)
+        status["known_good"]["missing"] = sorted(set(by_id) - indicator_ids)
+        manifest = {}
+    else:
+        status["downloaded"] = bool(manifest)
+        status["missing"] = sorted(indicator_ids - set(manifest))
+        status["known_good"]["missing"] = sorted(set(by_id) - indicator_ids - set(manifest))
     for sid, meta in sorted(manifest.items()):
         src = by_id.get(sid)
         if src is None:
@@ -686,6 +896,11 @@ def cached_sets(cache: Optional[str] = None,
             continue
         try:
             loaded = _load_source_file(src, path)
+            if isinstance(loaded, KnownGood):
+                known.merge(loaded)
+                status["known_good"]["lists"].append({"id": sid, "entries": len(loaded),
+                                                      "pinned_for_this_release": pinned_here})
+                continue
             refreshed = meta.get("checked_utc") or meta.get("fetched_utc")
             try:
                 when = datetime.datetime.strptime(refreshed, "%Y-%m-%dT%H:%M:%SZ")
@@ -705,10 +920,74 @@ def cached_sets(cache: Optional[str] = None,
                                      "indicators": len(loaded)})
         except Exception as exc:
             status["refused"].append({"id": sid, "reason": str(exc)[:200]})
+    # A known-good list (false-alarm filter) that was refused is reported, but it is not missing indicator
+    # coverage: tagged so the "checks were missing" verdict does not count it.
+    for entry in status["refused"]:
+        if entry.get("id") in by_id and entry.get("id") not in indicator_ids:
+            entry["known_good"] = True
+    _built_in_sets(sets, status, by_id)
+    status["known_good"]["set_aside"] = apply_known_good(sets, known)
     return sets, status
 
 
-RELEASE_API = "https://api.github.com/repos/interplains/Zero-Breach-Toolkit/releases/latest"
+def builtin_bytes(sid: str) -> Optional[bytes]:
+    """The built-in copy of an mvt-indicators file, only if it is exactly the file this release pins."""
+    entry = MVT_BUILTIN.get(sid)
+    if not entry:
+        return None
+    digest, packed = entry[0], "".join(entry[1:])
+    try:
+        data = zlib.decompress(base64.b64decode(packed))
+    except (ValueError, zlib.error):
+        return None
+    if _feed_sha256(data) != digest or FEED_FILE_SHA256.get(sid) != digest:
+        return None
+    return data
+
+
+def builtin_sets() -> Tuple[List[IocSet], Dict[str, object]]:
+    """Only the indicator lists built into this release (the pinned mvt-indicators copies) - for --no-feeds, which
+    ignores downloaded sets but must still scan with everything the release itself carries."""
+    sets: List[IocSet] = []
+    status = {"loaded": [], "refused": [], "missing": []}
+    _built_in_sets(sets, status, {s["id"]: s for s in all_sources()})
+    return sets, status
+
+
+def _built_in_sets(sets: List[IocSet], status: Dict[str, object], by_id) -> None:
+    loaded_ids = {e["id"] for e in status["loaded"]}
+    for sid in sorted(MVT_BUILTIN):
+        if sid in loaded_ids or sid not in by_id:
+            continue
+        data = builtin_bytes(sid)
+        if data is None:
+            status["refused"].append({"id": sid, "reason": "built-in copy does not match this release's pin"})
+            continue
+        src = by_id[sid]
+        fd, tmp = tempfile.mkstemp(prefix=".zb-builtin.", suffix=_EXT[src["format"]])
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+            loaded = _load_source_file(src, tmp)
+        except Exception as exc:  # noqa: BLE001 - a broken copy must not stop the scan
+            status["refused"].append({"id": sid, "reason": "built-in copy: " + str(exc)[:160]})
+            continue
+        finally:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        loaded.verified_at = datetime.datetime.strptime(MVT_BUILTIN_DATE, "%Y-%m-%d")
+        sets.append(loaded)
+        if sid in status["missing"]:
+            status["missing"].remove(sid)
+        status["loaded"].append({"id": sid, "fetched_utc": None, "revision": "built into this release",
+                                 "built_in": True, "pinned_for_this_release": True, "checked_utc": None,
+                                 "age_days": loaded.age_days(), "freshness_unknown": loaded.has_unknown_age(),
+                                 "stale": loaded.is_stale(), "indicators": len(loaded)})
+
+
+RELEASE_API ="https://api.github.com/repos/interplains/Zero-Breach-Toolkit/releases/latest"
 RELEASE_PAGE = "https://github.com/interplains/Zero-Breach-Toolkit/releases/tag/"
 # The newest-version line of the last update in this process (the window shows it).
 LAST_VERSION_NOTICE = ""
@@ -761,7 +1040,7 @@ def update_command(cache: Optional[str], json_path: Optional[str],
     try:
         if json_path and path_problem(os.path.abspath(json_path)):
             raise IocError("--json must be a path on a local disk")
-        unknown = sorted(set(accept_shrink or ()) - {src["id"] for src in SOURCES} - {"kev"})
+        unknown = sorted(set(accept_shrink or ()) - {src["id"] for src in all_sources()} - {"kev"})
         if unknown:
             raise IocError("--accept-shrink: unknown source id {}; the ids are listed in "
                            "manifest.json in the indicator cache".format(", ".join(unknown)))
@@ -799,6 +1078,14 @@ def update_command(cache: Optional[str], json_path: Optional[str],
     except (KevError, OSError, ValueError) as exc:
         _report_console("  Actively exploited software list not updated: {} (the indicator lists above "
                         "are unaffected)".format(exc), sys.stdout)
+    # The device manufacturer list (IEEE public listing), used only by the home network check to name devices.
+    from .kevdata import oui_update
+    try:
+        count = oui_update(summary["cache"])
+        _report_console("Device manufacturer list (IEEE): {:,} makers.".format(count), sys.stdout)
+    except (KevError, OSError, ValueError, urllib.error.URLError) as exc:
+        _report_console("  Device manufacturer list not updated: {} (everything else is unaffected)".format(
+            str(exc)[:200]), sys.stdout)
     global LAST_VERSION_NOTICE
     LAST_VERSION_NOTICE = version_notice() if version_check else ""
     if LAST_VERSION_NOTICE:

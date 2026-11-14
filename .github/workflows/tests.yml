@@ -77,3 +77,8 @@ jobs:
           python build/bundle.py . second.py
           cmp first.py second.py
           python -c "import hashlib; print('single file sha256', hashlib.sha256(open('first.py','rb').read()).hexdigest())"
+
+      # Information only: how many sentences each language still shows in English (the run's summary page).
+      - name: Translation report
+        if: matrix.os == 'ubuntu-latest'
+        run: python tools/translation_report.py

@@ -28,6 +28,9 @@ IOCS = IocSet([Indicator("spy-c2.test", "cc", "primary", "domain", "fixture", "F
 UNREAD_TITLE = "This phone could not be checked"
 TITLES = {
     "Something needs a closer look": "found",
+    "Spyware found on this device": "found",
+    "A phone-monitoring (stalkerware) app was found": "found",
+    "Contact with a spyware address - not proof of infection": "found",
     "This phone was unlocked with a phone-forensics tool": "found",
     "Advertising-network traces found": "found",
     "Only a withdrawn indicator matched": "withdrawn",

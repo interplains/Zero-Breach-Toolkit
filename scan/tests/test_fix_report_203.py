@@ -83,7 +83,8 @@ def test_a_normal_android_collection_is_read_not_unread():
     doc = _phone_doc(android.run(_ctx(collection(spy=False))))
     assert not report.phone_source_unread(doc)
     assert gui.gui_headline(doc)[1] in ("No known spyware traces found",
-                                        "Nothing found in what could be checked")
+                                        "Nothing found in what could be checked",
+                                        "1 thing worth a look")       # its own headline since team test F1
 
 
 def test_a_normal_iphone_backup_is_read_not_unread(tmp_path):

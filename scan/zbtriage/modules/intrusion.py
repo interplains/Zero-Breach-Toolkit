@@ -19,6 +19,7 @@ import time
 import zipfile
 import zlib
 
+from ..bugreport import br_is_bugreport
 from ..iocs import ios_only
 from ..localpaths import path_problem
 from ..result import EV_DEVICE_LOG, EV_DNS, Hit, ModuleResult
@@ -299,6 +300,11 @@ def run(ctx) -> ModuleResult:
         if not supplied:
             raise ValueError("no local phone collection selected")
         root = os.path.abspath(supplied)
+        if not path_problem(root) and os.path.isfile(root) and br_is_bugreport(root):
+            reason = "A bug report does not contain Intrusion Logging; no intrusion events were examined."
+            r.note(reason)
+            r.inapplicable_reason = reason
+            return r
         if path_problem(root) or not os.path.isdir(root):
             raise ValueError("collection path unavailable or refused")
         roots = [root] if os.path.basename(root).lower() in ("intrusion_logs", "intrusion-logs") else [

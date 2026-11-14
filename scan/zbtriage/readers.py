@@ -162,6 +162,84 @@ READER_SPECS = (
                         "Where a CVE record gives no comparable fixed version, only update advice is given.",
                         "Linux is not checked: distributions patch these programs through their own updates."]
     }),
+    ReaderSpec('wifi-settings', 'wifi', 'wifi', ('win32', 'darwin', 'linux'), ('desktop',), {
+        "platforms": ["Windows", "macOS", "Linux"],
+        "reads": "The computer's saved Wi-Fi settings: security type, automatic joining and hidden-network setting "
+                 "(Windows: profiles exported without keys; Linux: NetworkManager; macOS: the network in use). "
+                 "No network is joined, scanned or contacted and no Wi-Fi password is read.",
+        "check_kinds": {"wifi-settings": "saved Wi-Fi networks that weaken the computer: open networks it joins by "
+                                         "itself, WEP, original WPA/TKIP, hidden networks it calls out for "
+                                         "(prevention advice, never a finding)",
+                        "wifi-lookalike": "a network nearby, in the system's last scan, using the name of a saved "
+                                          "protected network but open or with WEP (an \"evil twin\" sign)"},
+        "blind_spots": ["macOS: only the network in use; the saved list needs administrator rights.",
+                        "Look-alike networks are seen only if they were in range during the system's last scan; "
+                        "no scan is started.",
+                        "Linux: only NetworkManager; other network managers are not read.",
+                        "The router's own settings (WPS, remote administration, firmware) are not checked: "
+                        "that would mean contacting it."]
+    }),
+    ReaderSpec('dns-logs', 'dnslogs', 'dnslogs', ('all',), ('dnslog',), {
+        "platforms": ["any (DNS logs given with --dns-log)"],
+        "reads": "DNS logs from a router, Pi-hole, AdGuard Home or DNS server: dnsmasq/Pi-hole text logs, the "
+                 "Pi-hole FTL database, AdGuard Home querylog.json, BIND and Unbound query logs, Windows DNS Server "
+                 "debug logs and Zeek dns.log. Every name looked up, and every address in a logged answer, is "
+                 "compared with the indicators offline; this covers every device that used that DNS server.",
+        "check_kinds": {"dns-log:<file>": "one DNS log; a lookup is dns-record evidence, a lookup the filter "
+                                          "blocked is attempted"},
+        "blind_spots": ["Only the period the log covers; many routers keep hours or days.",
+                        "Devices using their own DNS (DNS-over-HTTPS in browsers, VPNs, mobile data) do not appear.",
+                        "A lookup is not proof of contact."]
+    }),
+    ReaderSpec('trust-settings', 'trust', 'trust', ('win32', 'darwin', 'linux'), ('desktop',), {
+        "platforms": ["Windows", "macOS", "Linux"],
+        "reads": "Who this computer trusts on the network: trusted root certificates (compared with the roots the "
+                 "major trust programs distribute, from the CCADB), the system proxy, DNS servers, and the router's "
+                 "hardware address in the neighbour table. Local settings only; nothing is contacted.",
+        "check_kinds": {"root-certificates": "trusted root certificates no major trust program distributes "
+                                             "(possible HTTPS interception)",
+                        "proxy-settings": "a system proxy or automatic proxy script",
+                        "dns-settings": "DNS servers set by hand or in known DNS-hijacking ranges",
+                        "gateway": "another address claiming the router's hardware address (ARP spoofing sign)"},
+        "blind_spots": ["Browser-specific certificate stores (e.g. Firefox's own) and per-app proxies are not read.",
+                        "macOS lists only certificates with admin or user trust settings; Linux only the standard "
+                        "local anchor folders.",
+                        "The router itself is not contacted, so its own DNS and settings are not seen."]
+    }),
+    ReaderSpec('doors', 'doors', 'doors', ('win32', 'darwin', 'linux'), ('desktop',), {
+        "platforms": ["Windows", "macOS", "Linux"],
+        "reads": "Doors to close: settings and programs that make spying easier - remote-access and monitoring "
+                 "software, remote sign-in (Remote Desktop, SSH, Screen Sharing), automatic sign-in, disk "
+                 "encryption, firewall, Secure Boot / System Integrity Protection / Gatekeeper, extra administrator "
+                 "accounts, browser extensions that can read every site or are known to be malicious, and which "
+                 "account each browser is signed in to (shown masked). Prevention advice, never findings. Read "
+                 "only; nothing is changed or contacted; no password is ever read.",
+        "check_kinds": {"remote-access-software": "installed remote-access or monitoring programs (our own list, "
+                                                  "plus additions hand-picked from LOLRMM, Apache-2.0)",
+                        "remote-access-downloads": "remote-access programs downloaded but never installed, by file "
+                                                   "name, in Downloads (two levels), Desktop and Documents",
+                        "remote-access-downloads-complete": "a gap: some of Downloads, Desktop or Documents could "
+                                                            "not be opened, or a very large folder was read in part",
+                        "windows-drivers": "Windows: installed drivers fingerprinted against LOLDrivers' verified "
+                                           "vulnerable and malicious drivers (Apache-2.0); Microsoft's vulnerable "
+                                           "driver blocklist; memory integrity configured and running",
+                        "windows-drivers-complete": "a gap: some installed drivers could not be read, or the drivers "
+                                                    "folder or list of driver services could not be read",
+                        "system-settings": "remote sign-in, automatic sign-in, disk encryption, firewall and "
+                                           "platform protections",
+                        "windows-settings": "Windows: Remote Desktop, automatic sign-in, password on wake, "
+                                            "firewall, BitLocker/device encryption, Secure Boot, SMB1, administrators",
+                        "macos-settings": "macOS: FileVault, firewall, System Integrity Protection, Gatekeeper, "
+                                          "Remote Login, Screen Sharing, automatic login",
+                        "linux-settings": "Linux: disk encryption, SSH server, automatic login",
+                        "browser-extensions": "extensions that can read every site, known malicious extensions "
+                                              "(chrome-mal-ids, CC BY 4.0), and signed-in browser accounts"},
+        "blind_spots": ["Programs installed under another name, portable programs renamed or kept outside "
+                        "Downloads, Desktop and Documents, and browser-based remote access are not recognised.",
+                        "Some settings need administrator rights to read and are then reported as could not check.",
+                        "Router, phone and online-account settings are outside this computer (see the phone check, "
+                        "the home network check and the account checklist)."]
+    }),
     ReaderSpec('unix-host', 'posix', 'posix', ('linux', 'darwin'), ('desktop',), {
         "platforms": ["Linux", "macOS"],
         "reads": "Linux autostart entries, systemd units and one-level overrides, cron files/scripts; macOS launchd property lists and the record of downloaded files; both platforms' standard shell profiles, saved shell history and current readable text logs. No commands are executed.",
@@ -200,6 +278,8 @@ READER_SPECS = (
                   "talks to the phone itself."),
         "check_kinds": {
             "android": "the folder as a whole (not an AndroidQF collection)",
+            "android:bug-report-size": "a gap: the bug report was larger than the size read, so records after that "
+                                       "point were not checked",
             "android:packages": "installed apps vs app ids, APK fingerprints, signing certs; "
                                 "sideloaded apps with what they can do and when installed",
             "android:app-fingerprints": "user-installed app files that had no valid SHA-256 (or, for SHA-1 samples, SHA-1) fingerprint in the collection",
@@ -316,7 +396,7 @@ def reader_validate(specs=None):
             raise ValueError("invalid reader module or bundle suffix")
         if not spec.name or spec.name in _READER_META:
             raise ValueError("invalid reader name")
-        if not spec.modes or not set(spec.modes) <= {"desktop", "targeted", "android", "ios"}:
+        if not spec.modes or not set(spec.modes) <= {"desktop", "targeted", "android", "ios", "dnslog"}:
             raise ValueError("invalid reader mode")
         if not spec.platforms or not set(spec.platforms) <= {"all", "win32", "linux", "darwin"}:
             raise ValueError("invalid reader platforms")
@@ -345,15 +425,35 @@ def reader_describe():
              "optional": spec.optional} for spec in READER_SPECS]
 
 
+def _reader_is_ios_backup(folder, path_problem):
+    """An iPhone backup folder: Manifest.plist, or - in a partial copy that lost
+    it - a Manifest.db that is already readable SQLite (only an unencrypted
+    backup's is). The iPhone reader handles both; sending the second to the
+    Android reader meant such a backup was never checked at all."""
+    root = os.path.abspath(folder)
+    plist = os.path.join(root, "Manifest.plist")
+    if not path_problem(plist) and os.path.isfile(plist):
+        return True
+    database = os.path.join(root, "Manifest.db")
+    if path_problem(database) or not os.path.isfile(database):
+        return False
+    try:
+        with open(database, "rb") as fh:
+            return fh.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
+
+
 def reader_select(ctx, platform=None):
     """Select only applicable built-ins; explicit artifacts are host-independent."""
     from .localpaths import path_problem
     reader_validate()
     platform = sys.platform if platform is None else platform
     platform = "linux" if platform.startswith("linux") else platform
-    if ctx.phone_path:
-        marker = os.path.join(os.path.abspath(ctx.phone_path), "Manifest.plist")
-        mode = "ios" if getattr(ctx, "ios_input", "") or (not path_problem(marker) and os.path.isfile(marker)) else "android"
+    if getattr(ctx, "dns_logs", ()):
+        mode = "dnslog"
+    elif ctx.phone_path:
+        mode = "ios" if getattr(ctx, "ios_input", "") or _reader_is_ios_backup(ctx.phone_path, path_problem) else "android"
     else:
         mode = "targeted" if ctx.targets else "desktop"
     browser_only = mode == "desktop" and getattr(ctx, "browser_only", False)

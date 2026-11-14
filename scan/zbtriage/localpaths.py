@@ -174,7 +174,7 @@ def cloud_placeholder(info):
 # (decrypted iPhone databases, browser databases with cookie values, indicator
 # files) and are removed when a scan ends, but a crash, a hard kill or a power
 # cut leaves them behind.
-STALE_TEMP_PREFIXES = ("zbt_ios_", "bscan_", "adint_ioc_", "zbt_ioc2_")
+STALE_TEMP_PREFIXES = ("zbt_ios_", "bscan_", "adint_ioc_", "zbt_ioc2_", "zb-bugreport-")
 STALE_TEMP_AGE = 12 * 3600
 
 

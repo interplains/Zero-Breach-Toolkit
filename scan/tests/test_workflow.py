@@ -54,13 +54,21 @@ def test_menu_default_invalid_input_and_back_do_not_change_scope(tmp_path, bundl
         assert args.scan_type == "default" and not args.target
 
 
+def _menu_number(api, args, label):
+    """The menu number of an entry, found by name so new entries never shift the tests."""
+    session = api._MnSession(args, None, None, None, False)
+    shown = [i.label for i in api._MN_ITEMS if i.available(session)]
+    return shown.index(label) + 1
+
+
 def test_menu_update_requires_confirmation_and_only_calls_mock(bundle):
     for api in (menu, bundle):
         calls = []
         args = cli._parse([])
-        api.choose_scan(args, lambda: calls.append("update"), stdin=Terminal("8\nn\n0\n"), stderr=Terminal())
+        n = _menu_number(api, args, "Update the indicator lists")
+        api.choose_scan(args, lambda: calls.append("update"), stdin=Terminal("%d\nn\n0\n" % n), stderr=Terminal())
         assert not calls
-        api.choose_scan(args, lambda: calls.append("update"), stdin=Terminal("8\ny\n\n0\n"), stderr=Terminal())
+        api.choose_scan(args, lambda: calls.append("update"), stdin=Terminal("%d\ny\n\n0\n" % n), stderr=Terminal())
         assert calls == ["update"]
 
 

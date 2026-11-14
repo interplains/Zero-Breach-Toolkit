@@ -25,13 +25,38 @@ PKG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "zbtriage")
 
 
+def _pure_data(text):
+    """True when a module is nothing but a docstring and assignments of literal values (no imports, calls,
+    functions or classes): generated lists such as extensiondata.py, whose random extension IDs can spell a
+    forbidden word by chance. Nothing executable can hide in such a file, so it is not text-searched."""
+    import ast
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+    for node in tree.body:
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            continue
+        if isinstance(node, ast.Assign):
+            try:
+                ast.literal_eval(node.value)
+            except ValueError:
+                return False
+            continue
+        return False
+    return True
+
+
 def source_files():
     for root, _dirs, files in os.walk(PKG):
         for fn in files:
             if fn.endswith(".py"):
                 path = os.path.join(root, fn)
                 with open(path, encoding="utf-8") as fh:
-                    yield os.path.relpath(path, PKG), fh.read()
+                    text = fh.read()
+                if fn.endswith("data.py") and _pure_data(text):
+                    continue
+                yield os.path.relpath(path, PKG), text
 
 
 class TestNeverDecryptsSecrets(unittest.TestCase):

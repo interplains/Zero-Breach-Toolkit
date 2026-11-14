@@ -60,12 +60,20 @@ def _ia_profile_lead(doc):
     return what, observed
 
 _IA_ARTIFACT_LIMIT = 2048
+# Apple's own system and app locations: processes here routinely appear in shutdown records.
+_IA_SYSTEM_PREFIXES = ("/System/", "/usr/", "/sbin/", "/bin/", "/Applications/", "/private/var/containers/Bundle/",
+                       "/Developer/", "/AppleInternal/")
 # When a cap is reached, what was already read should be what matters most:
 # per-app caches and crash reports, which a phone has hundreds of, come last.
 _IA_KIND_ORDER = {"url-cache": 3, "crashes": 2, "app-metadata": 1, "webkit-statistics": 1}
 # Per-report caps; reaching one is always a reported gap, never a silent cut.
 _IA_RECORD_LIMIT = 5000
 _IA_LINE_LIMIT = 200000
+# A text field is searched in windows of _IA_FIELD_WINDOW characters that overlap by more than any
+# indicator is long, so nothing spanning a boundary is missed. Only a field over _IA_FIELD_MAX bytes is a gap.
+_IA_FIELD_WINDOW = 65536
+_IA_FIELD_OVERLAP = 4096
+_IA_FIELD_MAX = 8 * 1024 * 1024
 # Report types that always name the processes they describe: crash (109 legacy,
 # 309), Jetsam memory-pressure event (298) and stackshot (288).
 _IA_IDENTITY_REPORTS = ("109", "309", "298", "288")
@@ -377,14 +385,29 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
             r.skipped += 1
             gap(check, "undecodable text field was not searched")
             return
-        if size > 65536:
+        if size > _IA_FIELD_MAX:
             r.skipped += 1
             gap(check, "artifact text field exceeds the limit")
             return
-        for ind in ctx.iocs.search(text.lower()):
-            emit(ind, key, check, record_id, detail, grade, observed, raw_time)
+        # Issue #47: three Shortcuts definitions on an iOS 27 backup were over the old 64 KB limit and were
+        # skipped whole. A long field is now searched in overlapping windows instead of not at all.
+        if len(text) <= _IA_FIELD_WINDOW:
+            windows = [text]
+        else:
+            step = _IA_FIELD_WINDOW - _IA_FIELD_OVERLAP
+            windows = [text[i:i + _IA_FIELD_WINDOW] for i in range(0, len(text) - _IA_FIELD_OVERLAP, step)]
+        reported = set()
+        for window in windows:
+            for ind in ctx.iocs.search(window.lower()):
+                if (ind.value, ind.type) not in reported:
+                    reported.add((ind.value, ind.type))
+                    emit(ind, key, check, record_id, detail, grade, observed, raw_time)
         for ind in ctx.iocs.of_type("email"):
-            if re.search(r"(?<![\w.+-])" + re.escape(ind.value) + r"(?![\w.-])", text, re.I):
+            if (ind.value, ind.type) in reported:
+                continue
+            pattern = re.compile(r"(?<![\w.+-])" + re.escape(ind.value) + r"(?![\w.-])", re.I)
+            if any(pattern.search(window) for window in windows):
+                reported.add((ind.value, ind.type))
                 emit(ind, key, check, record_id, detail, grade, observed, raw_time)
 
     def typed(value, types, key, check, record_id, detail, grade, observed="", raw_time=""):
@@ -782,6 +805,7 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                 recognized += 1
                 r.note("Backup records Lockdown Mode as " + ("enabled" if value else "disabled")
                        + "; backup-time metadata does not establish current protection.")
+                r.lockdown_mode = bool(value)
             elif kind == "webkit-session" and isinstance(value, str) and name.lower() in ("url", "requesturl", "resourceurl"):
                 recognized += 1
             r.checked += 1
@@ -835,10 +859,20 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         depends on bug_type (crash, Jetsam memory event, stackshot, CPU use...)."""
         forensic_strings(text, key, check, "diagnostic report")
         decoder = json.JSONDecoder()
-        meta, pos = decoder.raw_decode(text, len(text) - len(text.lstrip()))
-        if not isinstance(meta, dict):
-            raise ValueError("unsupported IPS root")
-        rest = text[pos:].strip()
+        # Issue #47: seven reports on an iOS 27 backup failed with "Expecting value: line 1 column 1",
+        # i.e. the first character was not JSON. A byte-order mark is not whitespace to lstrip(), and a
+        # report in the older plain-text layout can carry an .ips name; both are readable, so neither
+        # should cost the check. Only a report with nothing in it at all is a gap.
+        body_text = text.lstrip("﻿ \t\r\n")
+        if not body_text:
+            raise ValueError("diagnostic report is empty")
+        if body_text[:1] == "{":
+            meta, pos = decoder.raw_decode(body_text)
+            if not isinstance(meta, dict):
+                raise ValueError("unsupported IPS root")
+            rest = body_text[pos:].strip()
+        else:
+            meta, rest = {}, body_text            # plain-text report: searched line by line below
         when = meta.get("timestamp", "")
         bug_type = str(meta.get("bug_type", ""))
         found = 0
@@ -1003,6 +1037,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
             return
         recognized, heuristic = 0, False
         pending_shutdown_hits = []
+        # Kaspersky's iShutdown method (MIT): a process that is still running at several separate restarts -
+        # "sticky", delaying each one - is worth a look. Counted per restart (between flush lines).
+        sticky, this_restart = {}, set()
         for index, line in enumerate(text.splitlines()):
             if index >= 200000 or time.monotonic() > deadline:
                 raise ValueError("diagnostic log record/time limit reached")
@@ -1029,6 +1066,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                         item.observed = when
                         item.provenance["raw_timestamp"] = flush.group(1)
                     pending_shutdown_hits.clear()
+                    for path in this_restart:
+                        sticky[path] = sticky.get(path, 0) + 1
+                    this_restart.clear()
                 client = re.fullmatch(r"\s*(?:-\s*)?remaining client pid:\s*\d+\s+\((/[^\r\n]+)/[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}\)\s*", line)
                 if client:
                     recognized += 1
@@ -1039,6 +1079,8 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
                           "process basename in a shutdown client record; executable contents unverified", EV_DEVICE_LOG)
                     pending_shutdown_hits.extend(r.hits[before:])
                     heuristic = heuristic or value.startswith(("/private/var/db/", "/private/var/tmp/"))
+                    if len(this_restart) < 200:
+                        this_restart.add(value[:300])
                 elif "remaining client pid:" in line:
                     gap(check, "unsupported shutdown client record; it was not searched")
             r.checked += 1
@@ -1049,6 +1091,13 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
         if heuristic:
             r.add_lead(Lead(check, key[1], "Shutdown records contain a process path under a research-relevant temporary/database directory.",
                            "Legitimate services also use these directories. A shutdown delay or path alone does not establish spyware."))
+        for path, count in sorted(sticky.items()):
+            # Apple's own system processes routinely appear; only processes outside the system folders count.
+            if count >= 3 and not path.startswith(_IA_SYSTEM_PREFIXES):
+                r.add_lead(Lead(check, key[1], "A process outside Apple's system folders was still running at {} "
+                                "separate restarts, delaying each one: {}".format(count, path),
+                                "Some apps keep a helper running this way. Spyware has done the same (Kaspersky's "
+                                "iShutdown research): a process you don't recognise here is worth expert attention."))
 
     ordered = []
     for key in source.entries:
@@ -1081,6 +1130,9 @@ def ios_additional_artifacts(source, ctx, r, gap, query, tables, columns, record
             elif kind in ("analytics", "profiles", "profile-events", "profile-settings", "location-clients",
                           "preferences", "app-metadata", "webkit-session", "id-status-cache"):
                 plist_artifact(key, kind, check)
+                if kind == "preferences" and getattr(r, "lockdown_mode", None) is None:
+                    # The global preferences were read and hold no Lockdown Mode key: it was never turned on.
+                    r.lockdown_mode = False
             else:
                 if sql_artifact(key, kind, check) is False:
                     continue
