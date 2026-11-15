@@ -44,6 +44,7 @@ ONE_HASH_PER_SOURCE = {
     "eset-vajraspy-2024-01": "c547fc04afad7538be1c638019867145dabf630afc2eba1ece7f972892598a65",
     "eset-exoticvisit-2024-03": "47d6d9b52bfed7481c9db51712e4a81c6f773efa1d96ac2c0d71dc0f6f6ddd6a",
     "eset-gravityrat-2023-06": "caf0a39318cfc1e65eae773a28de62ce08b7cf1b9d4264e843576165411e2a84",
+    "eset-badbazaar-2023-08": "52ff338f0f85c32678e7f614f0ce9ceeeea9e7d9cf4ddc3abb4446a2935949f2",
     "eset-dazzlespy-2022-01": "bbbfe62cf15006014e356885fbc7447e3fd37c3743e0522b1f8320ad5c3791c9",
     "amnesty-donot-togo-2021-10": "000ddbb75d10a939b54a7ceea5f12563b855daec971a9da0f2b4d5f935e195a3",
     "amnesty-oceanlotus-vietnam-2021-02": "952c16674bde3c16aa3935b3e01f3f0fb4cbac7ffa130143cbf6ccaa72733068",
@@ -76,6 +77,7 @@ EXPECTED_COUNTS = {
     ("eset-vajraspy-2024-01", TYPE_SHA256): 13, ("eset-exoticvisit-2024-03", TYPE_SHA256): 20,
     ("eset-gravityrat-2023-06", TYPE_SHA256): 3, ("eset-gravityrat-2023-06", TYPE_APP_ID): 2,
     ("eset-dazzlespy-2022-01", TYPE_SHA256): 3,
+    ("eset-badbazaar-2023-08", TYPE_SHA256): 2, ("eset-badbazaar-2023-08", TYPE_APP_ID): 2,
     ("eset-scarcruft-dolphin-2022-11", TYPE_SHA256): 5,
     ("eset-scarcruft-birdcall-2026-05", TYPE_SHA256): 9,
     ("amnesty-donot-togo-2021-10", TYPE_SHA256): 228,
@@ -129,7 +131,7 @@ class TestCuratedTargeted(unittest.TestCase):
         self.assertEqual(io.open(out, encoding="utf-8").read(), self.text)
 
     def test_has_an_as_of_date(self):
-        self.assertEqual(self.set.asof, "2026-11-02")
+        self.assertEqual(self.set.asof, "2026-11-15")
 
     def test_every_row_is_cited_and_has_a_family(self):
         documented = set(re.findall(r"^#\s{3}([a-z][a-z0-9-]+)\s{2}", self.text, re.M))
@@ -144,7 +146,7 @@ class TestCuratedTargeted(unittest.TestCase):
         for ind in self.set.indicators:
             got[(ind.source, ind.type)] = got.get((ind.source, ind.type), 0) + 1
         self.assertEqual(got, EXPECTED_COUNTS)
-        self.assertEqual(len(self.set.indicators), 1044)
+        self.assertEqual(len(self.set.indicators), 1048)
 
     def test_only_fingerprints_and_package_names(self):
         for ind in self.set.indicators:

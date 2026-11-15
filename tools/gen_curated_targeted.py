@@ -14,7 +14,7 @@ import sys
 OUT = sys.argv[1]
 
 header = """# Spyware used against journalists, activists, human-rights defenders and minorities
-# as-of: 2026-11-02
+# as-of: 2026-11-15
 # ^ Curated date; the staleness reference for this file.
 # Licence: the selection is CC0 1.0 (as iocs/LICENSE.md). The values are facts published by
 #   the researchers named below. Where a publisher's repository carries a licence, its notice
@@ -89,6 +89,11 @@ header = """# Spyware used against journalists, activists, human-rights defender
 #       https://www.welivesecurity.com/en/eset-research/exotic-visit-campaign-tracing-footprints-virtual-invaders/
 #   eset-gravityrat-2023-06  ESET, 'Android GravityRAT goes after WhatsApp backups' (2023-06-15).
 #       https://www.welivesecurity.com/2023/06/15/android-gravityrat-goes-after-whatsapp-backups/
+#   eset-badbazaar-2023-08  ESET, 'BadBazaar espionage tool targets Android users via patched Signal
+#       and Telegram apps' (2023-08-30).
+#       https://www.welivesecurity.com/en/eset-research/badbazaar-espionage-tool-targets-android-users-trojanized-signal-telegram-apps/
+#       Fingerprints from github.com/eset/malware-ioc (gref/samples.sha256); package names from
+#       gref/README.adoc.
 #   eset-dazzlespy-2022-01  ESET, 'Watering hole deploys new macOS malware, DazzleSpy, in Asia'
 #       (2022-01-25). https://www.welivesecurity.com/2022/01/25/watering-hole-deploys-new-macos-malware-dazzlespy-asia/
 #   eset-scarcruft-dolphin-2022-11  ESET, 'Who's swimming in South Korean waters? Meet ScarCruft's
