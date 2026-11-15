@@ -687,6 +687,16 @@ bbbfe62cf15006014e356885fbc7447e3fd37c3743e0522b1f8320ad5c3791c9	sample	primary	
 7965c61a4581f4b2f199595a6b3f0a416fe49bd8eaac0538e37e050d893f9e3c	sample	primary	eset-dazzlespy-2022-01	DazzleSpy
 f9ad42a9bd9ade188e997845cae1b0587bf496a35c3bffacd20fefe07860a348	sample	primary	eset-dazzlespy-2022-01	DazzleSpy
 #
+# ESET gref/samples.sha256: BadBazaar in Signal Plus Messenger and FlyGram. The other three
+# fingerprints in that file are already listed above under volexity-evilbamboo-2023-09.
+52ff338f0f85c32678e7f614f0ce9ceeeea9e7d9cf4ddc3abb4446a2935949f2	sample	primary	eset-badbazaar-2023-08	BadBazaar
+4b524358dc37e7ffda77573bcee1c8ef9d3183f5cb67e5b19ae7e172bd60163f	sample	primary	eset-badbazaar-2023-08	BadBazaar
+#
+# ESET gref/README.adoc, 'Package name' column. Both names belong to the trojanised apps
+# themselves; the real Signal and Telegram use other names.
+org.thoughtcrime.securesmsplus	artifact	primary	eset-badbazaar-2023-08	BadBazaar	app-id
+org.telegram.FlyGram	artifact	primary	eset-badbazaar-2023-08	BadBazaar	app-id
+#
 # ESET kamran/README.adoc and gravityrat/README.adoc, 'Package name' column.
 com.kamran.hunzanews	artifact	primary	eset-kamran-2023-11	Kamran	app-id
 eu.siacs.bingechat	artifact	primary	eset-gravityrat-2023-06	GravityRAT	app-id
