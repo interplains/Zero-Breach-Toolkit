@@ -72,11 +72,18 @@ _AN_STORES = {
     "com.amazon.venezia",
     "com.sec.android.app.samsungapps",
     "com.huawei.appmarket",
-    "com.hihonor.appmarket",           # Honor App Market, since the 2020 split from Huawei
+    "com.hihonor.appmarket",           # Honor App Market, since the 2020 split from Huawei (issue #43)
     "com.xiaomi.market", "com.xiaomi.mipicks",
     "com.heytap.market", "com.oppo.market",
     "com.vivo.appstore", "com.bbk.appstore",
-    "com.hihonor.appmarket",          # Honor AppGallery (issue #43)
+    # F-Droid clients other than the official one.
+    "com.looker.droidify",            # Droid-ify
+    "com.machiav3lli.fdroid",         # Neo Store
+    "dev.imranr.obtainium",           # Obtainium (updates from the project's own releases)
+    # Samsung's own update paths: the preinstalled app updater (Clock, Calendar ...)
+    # and the Galaxy Buds plugin installer. Both are system apps.
+    "com.samsung.android.app.updatecenter",
+    "com.samsung.accessory.budsunitemgr",
 }
 # Apps copied from the old phone when moving to a new one: not installed by hand.
 _AN_TRANSFER_INSTALLERS = {

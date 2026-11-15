@@ -124,6 +124,22 @@ class TestWorthALook(unittest.TestCase):
         self.assertIn("com.example.launcher", whats[0])
         self.assertFalse(any("honorapp" in w for w in whats))
 
+    def test_other_store_clients_and_samsung_updaters_are_not_sideloads(self):
+        # F-Droid clients, Obtainium and Samsung's own updaters install apps on
+        # purpose; seen on a Galaxy Tab S9 Ultra (Clock via updatecenter).
+        d = collection(spy=False)
+        path = os.path.join(d, "packages.json")
+        pkgs = json.load(open(path, encoding="utf-8"))
+        for i, inst in enumerate(["com.looker.droidify", "com.machiav3lli.fdroid", "dev.imranr.obtainium",
+                                  "com.samsung.android.app.updatecenter", "com.samsung.accessory.budsunitemgr"]):
+            pkgs.append({"name": "com.example.store%d" % i, "installer": inst,
+                         "third_party": True, "system": False, "disabled": False,
+                         "uid": 20 + i, "files": []})
+        json.dump(pkgs, open(path, "w"))
+        whats = [l.what for l in check(d).leads]
+        self.assertEqual(len(whats), 1, whats)
+        self.assertIn("com.example.launcher", whats[0])
+
     def test_accessibility_verification_and_old_patch(self):
         d = collection(spy=False, enabled_accessibility_services="com.x/.Svc:com.y/.Svc",
                        package_verifier_enable="0", patch="2020-01-05")
