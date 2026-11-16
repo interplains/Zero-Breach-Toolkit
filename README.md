@@ -5,6 +5,12 @@
 > network. A double-click app for Windows, Mac and Linux, in 27 languages.
 > [Download it from the latest release](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest).
 
+> **Your antivirus may delete the program without asking.** Microsoft Defender and other antivirus
+> products sometimes wrongly remove new programs that are not code-signed yet. If the download vanishes,
+> will not open, or you see "Threat found", it is a false alarm when the file came from the official
+> release page. See [If your antivirus removes it](#if-your-antivirus-removes-it) for safe ways round it. Checking a phone?
+> [The browser check](#phone-backup-check-it-in-your-browser) needs no download at all.
+
 A free, open-source check for traces of known mercenary spyware (Pegasus, Predator,
 Graphite, Candiru and others) on computers, Android phones and iPhone backups.
 
@@ -60,13 +66,15 @@ traces it looks for, in the places it could read. It cannot find spyware nobody 
 traces of, and it does not prove a device is safe. If you think you are being targeted, ask a
 digital-security helpline even if the result is green.
 
-**Your antivirus may flag these programs.** Antivirus products often wrongly flag new programs that are not code-signed yet, and some flag these. If you downloaded the file from [the official release page](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest), this is a false alarm and you can ignore it: the code is public, and each program has a public build record you can check. We have applied for free code signing and will report these false alarms to the antivirus companies. **If the file came from anywhere else, do not run it and trust the warning.**
+**Your antivirus may flag or delete these programs.** It is a false alarm if the file came from [the official release page](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest); see [If your antivirus removes it](#if-your-antivirus-removes-it). **If the file came from anywhere else, do not run it and trust the warning.**
 
 ### Windows
 
 1. Download `zero-breach-toolkit-windows-x64.exe`.
 2. Double-click it in your Downloads folder.
 3. Windows may say it "protected your PC". Click **More info**, then **Run anyway**.
+4. If the file disappears, or Windows Security says it found a threat, see
+   [If your antivirus removes it](#if-your-antivirus-removes-it).
 
 ### Mac
 
@@ -94,12 +102,48 @@ version in the guide below; it is the same check.
 To let the check read Safari on a Mac, give **Zero Breach Toolkit** (or Terminal, for the Python
 version) **Full Disk Access** in System Settings → Privacy & Security.
 
+### If your antivirus removes it
+
+New programs that are not code-signed yet are often flagged by mistake, and some antivirus products
+delete them straight away without asking. If you downloaded the program from
+[the official release page](https://github.com/interplains/Zero-Breach-Toolkit/releases/latest), it is a false alarm: the code is public and each program has a
+public build record. We report these false alarms to the antivirus companies, and code signing, which
+should stop most of them, is on its way.
+
+**First, make sure it is the real file.** Only restore a file you downloaded yourself from the official
+release page. To be sure, compare its fingerprint with the one published there: open **PowerShell** and run
+
+```
+Get-FileHash "$HOME\Downloads\zero-breach-toolkit-windows-x64.exe"
+```
+
+and check that the long number matches the line for that file in `SHA256SUMS-programs.txt` on the release
+page (capital letters do not matter). If the file came from anywhere else, or the numbers differ, delete it
+and trust the warning.
+
+Then choose one way round it:
+
+1. **Restore it.** In Microsoft Defender, open **Windows Security → Virus & threat protection →
+   Protection history**, click the entry that names `zero-breach-toolkit`, then **Actions → Restore**
+   (or **Allow on device**), and open the program again. If there is no entry, download the file again
+   and it will appear when the file is removed. Other antivirus products keep removed files under
+   **Quarantine**: restore the file there, or add an exception for that one file.
+2. **Use the Python version instead.** It runs the same check from the published source, with no `.exe`
+   for antivirus to object to. Follow the [step-by-step guide](#step-by-step-guide-no-technical-experience-needed).
+3. **Checking a phone?** Use [the browser check](#phone-backup-check-it-in-your-browser): there is
+   nothing to download.
+
+Do not turn your antivirus off to run the program: restoring the one file is enough. If Microsoft
+Defender removed it, you can help get the flag lifted by reporting the file as a false alarm at
+[microsoft.com/wdsi/filesubmission](https://www.microsoft.com/en-us/wdsi/filesubmission).
+
 ---
 
 ## Step-by-step guide (no technical experience needed)
 
 You do not need a GitHub account or any technical knowledge. You need a Windows or Mac
 computer and about 20 minutes. Phones are checked by connecting them to the computer.
+If your antivirus removes a file from the download, see [If your antivirus removes it](#if-your-antivirus-removes-it).
 
 **What do you want to check?**
 [This Windows computer](#windows) ·
@@ -279,6 +323,7 @@ up to a computer and the backup is checked there.
 
 | What you see | What to do |
 |---|---|
+| The program disappears after downloading, or Windows Security says "Threat found" | A false alarm if it came from the official release page. See [If your antivirus removes it](#if-your-antivirus-removes-it). |
 | `'python' is not recognized` or nothing happens on Windows | Run the Python installer again, choose **Modify**, and make sure **Add Python to environment variables** is ticked. Restart the computer. |
 | `No such file or directory` on a Mac | Type `python3 -X utf8 ` (with a space at the end) in Terminal, then drag the file `zero-breach-toolkit.py` from the toolkit's `scan` folder into Terminal and press Enter. This works from any folder. |
 | `Bad CPU type in executable`, or trying to run it on an iPad or iPhone | The check cannot run on an iPad or iPhone. Back the device up to a Windows PC or Mac (the iPhone steps above work for an iPad too) and check the backup on that computer. |
