@@ -1129,6 +1129,11 @@ after a command-line scan. The report is shown before those choices. The Windows
 keeps prompts visible and saves both readable and JSON reports.
 
 `--report PATH` saves the readable report, independently of `--json` and `--share-json`.
+`--export-blocklist PATH` also saves the website names the check matched as a DNS block list:
+a hosts file by default, or one name per line with `--blocklist-format domains` for Pi-hole,
+AdGuard or NextDNS. It holds only what was found on this device, not the full indicator list.
+References (a saved page about a name), IP addresses and names that may have changed owner are
+left out, and the tool says how many.
 Reports never replace an existing file inside a selected evidence folder, a selected input
 file, or the app data and app cache folders where desktop apps keep the records the scan
 reads. Choose a new filename. No baseline snapshots are kept.

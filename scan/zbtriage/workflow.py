@@ -201,7 +201,7 @@ def workflow_before_scan(args, iocs):
 
 
 def workflow_check_outputs(args, document=None):
-    for key in ("json", "share_json", "report", "evidence_bundle"):
+    for key in ("json", "share_json", "report", "evidence_bundle", "export_blocklist"):
         path = getattr(args, key, None)
         if path:
             workflow_output_guard(args, path, document)

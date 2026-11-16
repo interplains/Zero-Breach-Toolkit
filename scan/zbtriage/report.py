@@ -427,6 +427,17 @@ def finalize_report(iocs, results, started, args, cancelled=False):
         except (OSError, ValueError, TypeError) as exc:
             failed = True
             _report_console("[could not write {}: {}]".format(label, exc), sys.stderr)
+    if getattr(args, "export_blocklist", None):
+        try:
+            from .export import bl_summary, bl_write
+            workflow_output_guard(args, args.export_blocklist, document)
+            written, left_out = attempt(lambda: bl_write(
+                document, args.export_blocklist, getattr(args, "blocklist_format", None) or "hosts",
+                __version__))
+            _report_console(bl_summary(args.export_blocklist, written, left_out), sys.stderr)
+        except (OSError, ValueError, TypeError) as exc:
+            failed = True
+            _report_console("[could not write DNS block list: {}]".format(exc), sys.stderr)
     rendered = None
     try:
         rendered = attempt(lambda: render_human(document))

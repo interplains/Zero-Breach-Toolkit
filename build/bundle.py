@@ -327,6 +327,7 @@ for label, fname in (("result", "result.py"),
                      ("evidence", "evidence.py"),
                      ("report", "report.py"),
                      ("workflow", "workflow.py"),
+                     ("export", "export.py"),
                      ("handoff", "handoff.py"),
                      ("shelllinks", "shelllinks.py"),
                      ("netconns", "netconns.py"),
@@ -436,6 +437,17 @@ def _bundle_parser():
                    help="also write a machine-readable report to PATH")
     p.add_argument("--share-json", metavar="PATH",
                    help="write a minimal sharing summary without artifact text or indicator values")
+    p.add_argument("--export-blocklist", metavar="PATH",
+                   help="also write the website names this scan matched as a DNS "
+                        "block list, for a hosts file, Pi-hole, AdGuard or NextDNS. "
+                        "Only names found on this device are written, not the full "
+                        "indicator list; references (a saved page about a name), "
+                        "IP addresses and names that may have changed owner are "
+                        "left out.")
+    p.add_argument("--blocklist-format", choices=["hosts", "domains"],
+                   help="format for --export-blocklist: hosts (default; "
+                        "'0.0.0.0 name' lines) or domains (one name per line, for "
+                        "Pi-hole, AdGuard and NextDNS)")
     p.add_argument("--iocs", metavar="PATH", action="append", default=None,
                    help="use external indicator file(s) instead of the embedded "
                         "one; repeat to combine. Accepts the curated format and "
@@ -506,6 +518,17 @@ def _bundle_parse(raw):
         p.error("--share-json is for scan summaries, not --update")
     if args.share_json and args.json and os.path.normcase(os.path.abspath(args.share_json)) == os.path.normcase(os.path.abspath(args.json)):
         p.error("--share-json and --json must name different files")
+    if args.blocklist_format and not args.export_blocklist:
+        p.error("--blocklist-format requires --export-blocklist")
+    if args.export_blocklist and args.update:
+        p.error("--export-blocklist is for scans, not --update")
+    if args.export_blocklist:
+        mine = os.path.normcase(os.path.abspath(args.export_blocklist))
+        for flag, other in (("--json", args.json), ("--share-json", args.share_json),
+                            ("--report", getattr(args, "report", None))):
+            if other and other != "-" and mine == os.path.normcase(os.path.abspath(other)):
+                p.error("--export-blocklist and {} must name different files".format(flag))
+        args.blocklist_format = args.blocklist_format or "hosts"
     return args
 
 
@@ -649,7 +672,8 @@ def _bundle_main(argv=None):
     # path_problem refuses relative paths and "--json report.json" is the
     # documented usage.
     for label, value in ([("--iocs", v) for v in (args.iocs or [])]
-                         + [("--json", args.json), ("--share-json", args.share_json), ("--phone", args.phone)]):
+                         + [("--json", args.json), ("--share-json", args.share_json),
+                            ("--export-blocklist", args.export_blocklist), ("--phone", args.phone)]):
         if value:
             problem = path_problem(os.path.abspath(value))
             if problem:
