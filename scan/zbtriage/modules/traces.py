@@ -60,13 +60,42 @@ from ..result import (EV_ATTEMPTED, EV_COMMAND, EV_CONTACTED, EV_ON_DISK, Hit, L
 
 NAME = "traces"
 
+
+def _tr_system32():
+    """The real system folder, asked of Windows itself - never %SystemRoot%.
+
+    HKCU\\Environment is writable by the account being examined and its values
+    override the machine ones in every new process, so malware can point
+    %SystemRoot% at a folder it controls. Building the PowerShell path from that
+    variable would hand it this module's launch. GetSystemDirectoryW cannot be
+    redirected that way. The variable stays only as a last-resort fallback for
+    an API that could not be called: a wrong folder there loses records, while a
+    bare name would be looked up in the current folder."""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(260)
+        length = ctypes.windll.kernel32.GetSystemDirectoryW(buf, len(buf))
+        if 0 < length < len(buf):
+            return buf.value
+    except (ImportError, AttributeError, OSError):
+        pass
+    return os.path.join(os.environ.get("SystemRoot") or r"C:\Windows", "System32")
+
+
+# The system folder and the Windows folder above it, resolved once. This covers
+# the PowerShell launch only. The record paths this module READS still come from
+# %SystemRoot%, which is how the tests place a simulated Windows layout; see the
+# note in _tr_system32 about making that consistent across the package.
+_TR_SYSTEM32 = _tr_system32()
+_TR_WINDOWS = os.path.dirname(_TR_SYSTEM32) or (os.environ.get("SystemRoot")
+                                                or r"C:\Windows")
+
 # PowerShell by its ABSOLUTE path, from a working folder the tool does not
 # control - never the bare name, which Windows would first look up in the
 # tool's own folder and the current folder (e.g. Downloads), so a planted
 # powershell.exe there would run instead. The same fix as host.py.
-_TR_PS_EXE = os.path.join(os.environ.get("SystemRoot") or r"C:\Windows",
-                          "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-_TR_PS_CWD = os.environ.get("SystemRoot") or r"C:\Windows"
+_TR_PS_EXE = os.path.join(_TR_SYSTEM32, "WindowsPowerShell", "v1.0", "powershell.exe")
+_TR_PS_CWD = _TR_WINDOWS
 _TR_PS = [_TR_PS_EXE, "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
           "Bypass", "-Command"]
 _TR_MAX_FILES = 300000          # Mark-of-the-Web: files examined before stopping
@@ -177,20 +206,61 @@ class _TrLeads:
 
 # --- 1. Mark of the Web -----------------------------------------------------
 
+# Explorer's own record of where Desktop, Documents and Downloads really are.
+# Documents is stored under its old name, Downloads under its folder id.
+_TR_SHELL_NAMES = ("Desktop", "Personal", "{374DE290-123F-4565-9164-39C4925E467B}")
+_TR_SHELL_KEYS = (r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+                  r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+
+
+def _tr_shell_folders():
+    """Where those three folders actually are, as Explorer records them.
+
+    Users and group policy move them (a second drive, a redirected Documents on
+    a file server). The literal names under %USERPROFILE% then point at folders
+    that do not exist, so the check examined nothing and still reported no gap -
+    coverage that reads as a clean result."""
+    out = []
+    try:
+        import winreg
+    except ImportError:
+        return out
+    for key_path in _TR_SHELL_KEYS:
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                for name in _TR_SHELL_NAMES:
+                    try:
+                        value, typ = winreg.QueryValueEx(key, name)
+                    except OSError:
+                        continue          # this folder is not recorded here
+                    if typ in (winreg.REG_SZ, winreg.REG_EXPAND_SZ) and value:
+                        out.append(os.path.expandvars(str(value)))
+        except OSError:
+            continue                      # that key is absent or unreadable
+    return out
+
+
 def _tr_motw_roots():
     roots, seen = [], set()
     bases = [os.environ.get("USERPROFILE", "")]
     for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
         bases.append(os.environ.get(var, ""))
+    # The recorded locations first, the literal names after them as the fallback
+    # for a machine whose registry could not be read. Both are deduplicated, so
+    # a folder that is in its default place is still walked once.
+    candidates = list(_tr_shell_folders())
     for base in bases:
         if not base:
             continue
         for sub in ("Downloads", "Desktop", "Documents"):
-            p = os.path.join(base, sub)
-            key = os.path.normcase(p)
-            if key not in seen and os.path.isdir(p) and not path_problem(p):
-                seen.add(key)
-                roots.append(p)
+            candidates.append(os.path.join(base, sub))
+    for p in candidates:
+        key = os.path.normcase(os.path.abspath(p))
+        # path_problem first: a recorded folder can be a network location, and
+        # that is refused rather than reached out to.
+        if key not in seen and not path_problem(p) and os.path.isdir(p):
+            seen.add(key)
+            roots.append(p)
     return roots
 
 
@@ -228,7 +298,8 @@ def _tr_check_motw(r, ctx):
         r.could_not_run("mark-of-the-web", "no Downloads, Desktop or Documents folder found")
         return
     examined, stamped, stopped, oversize = 0, 0, False, 0
-    unreadable = {"files": 0, "folders": 0, "deep": 0, "cloud": 0}
+    unreadable = {"files": 0, "folders": 0, "deep": 0, "cloud": 0,
+                  "build": 0, "malformed": 0}
 
     def onerror(exc):
         if getattr(exc, "strerror", None) in (WALK_LINK_REFUSED, WALK_SPECIAL_REFUSED):
@@ -243,6 +314,10 @@ def _tr_check_motw(r, ctx):
         base_depth = root.rstrip("\\/").count(os.sep)
         for dirpath, dirs, files in walk_local(root, onerror=onerror):
             kept = [d for d in dirs if d.lower() not in _TR_SKIP_DIRS]
+            # Build and version-control folders are skipped on purpose, but a
+            # skipped subtree is still one nobody looked at: count it, so the
+            # report states the gap instead of reading as full coverage.
+            unreadable["build"] += len(dirs) - len(kept)
             if dirpath.count(os.sep) - base_depth >= _TR_MAX_DEPTH:
                 unreadable["deep"] += len(kept)
                 kept = []
@@ -284,6 +359,7 @@ def _tr_check_motw(r, ctx):
                         # URL, so no host is guessed from it; it is counted.
                         host = ""
                         r.skipped += 1
+                        unreadable["malformed"] += 1
                     if host:
                         _tr_hit(r, ctx, host, path,
                                 "this file was {} {{ioc}} (Mark of the Web: {})".format(
@@ -306,6 +382,16 @@ def _tr_check_motw(r, ctx):
     if unreadable["deep"]:
         r.could_not_run("mark-of-the-web: deep folders", "{} folder(s) more than {} levels down were not "
                         "examined".format(unreadable["deep"], _TR_MAX_DEPTH))
+    if unreadable["build"]:
+        r.could_not_run("mark-of-the-web: build folders",
+                        "{} folder(s) named {} were not examined, so where files inside "
+                        "them came from was not checked".format(
+                            unreadable["build"], ", ".join(sorted(_TR_SKIP_DIRS))))
+    if unreadable["malformed"]:
+        r.could_not_run("mark-of-the-web: unusable origin",
+                        "{} download record(s) hold a web address that cannot be read, so "
+                        "where those files came from was not checked".format(
+                            unreadable["malformed"]))
     r.checked += examined
     r.submetrics["motw_files_examined"] = examined
     r.submetrics["motw_files_with_origin"] = stamped
@@ -349,13 +435,9 @@ def _tr_read_runmru():
             values[name] = data
             i += 1
         last_write = winreg.QueryInfoKey(key)[2]
-    newest = ""
-    if last_write:
-        newest = (datetime.datetime(1601, 1, 1) + datetime.timedelta(
-            microseconds=last_write // 10)).replace(tzinfo=datetime.timezone.utc
-                                                    ).astimezone().replace(
-            tzinfo=None).isoformat(timespec="seconds")
-    return values, newest, ""
+    # The shared guarded converter, not an inline copy of it: a damaged
+    # FILETIME raises OverflowError, which used to end the whole check.
+    return values, _tr_filetime_local(last_write), ""
 
 
 def _tr_check_runbox(r, ctx, leads):
@@ -364,8 +446,14 @@ def _tr_check_runbox(r, ctx, leads):
         r.could_not_run("run-history", err)
         return
     order = str(values.get("MRUList", ""))
-    entries = [(n, str(v)) for n, v in values.items()
-               if len(n) == 1 and n.isalpha() and isinstance(v, str)]
+    entries, unusable = [], 0
+    for name, value in values.items():
+        if len(name) != 1 or not name.isalpha():
+            continue                      # MRUList and other bookkeeping values
+        if isinstance(value, str):
+            entries.append((name, value))
+        else:
+            unusable += 1                 # a non-text entry is unread, not absent
     for name, command in entries:
         command = command[:-2] if command.endswith("\\1") else command
         observed = newest if order[:1] == name else ""
@@ -380,6 +468,10 @@ def _tr_check_runbox(r, ctx, leads):
                                           _TR_WHY_RUNBOX, observed))
     r.checked += len(entries)
     r.submetrics["run_history_entries"] = len(entries)
+    if unusable:
+        r.could_not_run("run-history: unreadable entries",
+                        "{} history entry(ies) are not stored as text and were not "
+                        "read".format(unusable))
     r.ran("run-history")
 
 
@@ -461,9 +553,16 @@ def _tr_check_defender(r, ctx, leads, protection=None):
                 _TR_WHY_RTP, when))
             continue
         threat = str(data.get("Threat Name") or "unnamed threat")
-        entry = threats.setdefault(threat, {"count": 0, "when": when, "action": "",
-                                            "path": str(data.get("Path") or "")})
-        entry["count"] += 1
+        entry = threats.setdefault(threat, {"detected": 0, "actioned": 0, "when": when,
+                                            "action": ""})
+        # 1116 is the detection and 1117 the action taken on that same
+        # detection, so Defender writes both for one find. Counting each record
+        # reported one detection as two, and nine as eighteen.
+        if eid == 1117:
+            entry["actioned"] += 1
+        else:
+            entry["detected"] += 1
+        # Either record can carry the action: 1116 names it too.
         if not entry["action"] and data.get("Action Name"):
             entry["action"] = str(data.get("Action Name"))
     exclusions, seen_exclusions = [], set()
@@ -490,6 +589,11 @@ def _tr_check_defender(r, ctx, leads, protection=None):
     # At most THREE items, most telling first. A long list of separate Defender
     # items goes unread. Each
     # item keeps the time of its newest record (records arrive newest first).
+    def detections_of(entry):
+        """Detections, not log records: a threat present only as an action
+        record still counts once."""
+        return entry["detected"] or entry["actioned"]
+
     def listing(items, limit=12):
         more = len(items) - limit
         return "; ".join(items[:limit]) + (" ... and {} more".format(more) if more > 0 else "")
@@ -517,16 +621,17 @@ def _tr_check_defender(r, ctx, leads, protection=None):
                 "Defender history records {} protection-off event(s); current protection is not established by this log".format(len(protection_off)),
                 _TR_WHY_RTP + " Check Windows Security and your antivirus application for their current status.", protection_off[0].observed))
     if threats:
-        ranked = sorted(threats.items(), key=lambda kv: -kv[1]["count"])
+        ranked = sorted(threats.items(), key=lambda kv: -detections_of(kv[1]))
         newest = max(e["when"] for e in threats.values())
         actions = sorted({e["action"] for e in threats.values() if e["action"]})
         leads.add("defender-history", Lead(
             "defender-history", log + " (events 1116/1117)",
             "Defender detected {} different threat(s): {}{}".format(
-                len(threats), listing(["'{}' x{}".format(t, e["count"]) for t, e in ranked]),
+                len(threats), listing(["'{}' x{}".format(t, detections_of(e))
+                                       for t, e in ranked]),
                 " (actions taken: {})".format(", ".join(actions)) if actions else ""),
             _TR_WHY_DETECT, newest))
-    exclusions = len(exclusions)
+    exclusion_count = len(exclusions)
     for rows, cap, what in ((detections, _TR_DEF_DETECT_CAP, "detection"),
                             (settings, _TR_DEF_SETTINGS_CAP, "settings-change")):
         if len(rows) >= cap:
@@ -535,7 +640,7 @@ def _tr_check_defender(r, ctx, leads, protection=None):
     r.checked += len(detections) + len(settings)
     r.submetrics["defender_events_read"] = len(detections) + len(settings)
     r.submetrics["defender_threats"] = len(threats)
-    r.submetrics["defender_exclusions_added"] = exclusions
+    r.submetrics["defender_exclusions_added"] = exclusion_count
     r.ran("defender-history")
 
 
@@ -547,7 +652,7 @@ _TR_PS_LOG = "Microsoft-Windows-PowerShell/Operational"
 def _tr_check_powershell(r, ctx, leads):
     # Properties of 4104: 0 MessageNumber, 1 MessageTotal, 2 ScriptBlockText,
     # 3 ScriptBlockId, 4 Path.
-    rows, err = _tr_events(_TR_PS_LOG, (4104,), _TR_PS_EVENTS, [2, 3, 4])
+    rows, err = _tr_events(_TR_PS_LOG, (4104,), _TR_PS_EVENTS, [0, 1, 2, 3, 4])
     if err:
         r.could_not_run("powershell-history", "PowerShell log not readable: {}".format(err))
         return
@@ -555,16 +660,36 @@ def _tr_check_powershell(r, ctx, leads):
         r.note("powershell-history: no script blocks are logged. PowerShell records "
                "them only when script-block logging is on (it is off by default, "
                "apart from scripts Windows itself considers suspicious).")
+    def whole_number(value):
+        try:
+            return int(str(value or "0"))
+        except ValueError:
+            return 0
+
     blocks = {}
     for ev in rows:
         data = ev.get("Data") or {}
         block_id = str(data.get("p3") or "")
         when = str(ev.get("Time") or "")
-        entry = blocks.setdefault(block_id or id(ev), {"text": [], "when": when,
-                                                         "path": str(data.get("p4") or "")})
-        entry["text"].append(str(data.get("p2") or ""))
+        entry = blocks.setdefault(block_id or id(ev), {"parts": [], "when": when,
+                                                       "path": str(data.get("p4") or ""),
+                                                       "total": 0})
+        entry["parts"].append((whole_number(data.get("p0")), str(data.get("p2") or "")))
+        entry["total"] = max(entry["total"], whole_number(data.get("p1")))
+    partial = 0
     for entry in blocks.values():
-        text = "\n".join(reversed(entry["text"]))     # events arrive newest first
+        # Reassembled on the part number Windows records, not on arrival order:
+        # stitching a split script together from the order Get-WinEvent happens
+        # to return silently produces mangled text, and that text feeds both the
+        # indicator search and the download-and-run lead.
+        parts = entry["parts"]
+        if any(number for number, _piece in parts):
+            ordered = [piece for _number, piece in sorted(parts, key=lambda part: part[0])]
+        else:
+            ordered = [piece for _number, piece in reversed(parts)]   # no numbers: newest first
+        if entry["total"] > len(parts):
+            partial += 1
+        text = "\n".join(ordered)
         where = entry["path"] or "interactive or generated script"
         location = "PowerShell log (script: {})".format(where[:300])
         _tr_hit(r, ctx, text, location,
@@ -577,6 +702,12 @@ def _tr_check_powershell(r, ctx, leads):
                 re.sub(r"\s+", " ", text)[:240], _TR_WHY_CRADLE, entry["when"]))
     r.checked += len(blocks)
     r.submetrics["powershell_script_blocks_read"] = len(blocks)
+    r.submetrics["powershell_script_blocks_partial"] = partial
+    if partial:
+        r.could_not_run("powershell-history: partial scripts",
+                        "{} script(s) were logged in numbered parts and not all of those "
+                        "parts are still in the log, so those scripts were checked "
+                        "incomplete".format(partial))
     if len(rows) >= _TR_PS_EVENTS:
         r.could_not_run("powershell-history", "only the newest {:,} log records were read; older records were not checked".format(
             _TR_PS_EVENTS))
