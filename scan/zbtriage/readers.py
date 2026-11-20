@@ -122,12 +122,16 @@ READER_SPECS = (
             "mark-of-the-web: unreadable": "files and folders whose download origin could not be read",
             "mark-of-the-web: deep folders": "folders below the depth limit",
             "mark-of-the-web: not downloaded": "files stored only in iCloud or OneDrive, not downloaded",
+            "mark-of-the-web: build folders": "folders of build or version-control contents, skipped by name",
+            "mark-of-the-web: unusable origin": "download records whose web address could not be read",
             "run-history": "commands typed into Win+R (where fake 'verify you are "
                            "human' pages tell people to paste)",
             "antivirus-status": "current registered antivirus product and update status reported by Windows Security Center; not an independent protection test",
             "defender-history": "Defender detections, historical protection-off events, "
                                 "exclusions added",
             "powershell-history": "PowerShell script blocks, when that log is on",
+            "powershell-history: partial scripts": "script blocks logged in numbered parts, with parts no longer in the log",
+            "run-history: unreadable entries": "Win+R history entries not stored as text",
             "ran-programs": "fingerprints of files in compatibility and launch records "
                             "(shim cache, Windows 11 launch list), wherever they are",
             "ran-programs: shim cache": "the shim cache could not be read",
