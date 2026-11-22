@@ -321,6 +321,16 @@ _AN_DECLARATION_LINES = re.compile(
     rb"^[ \t]*(?:queries(?:Packages|Providers|Intents)|uses(?:Optional|Static|Sdk)?Libraries)="
     rb"[^\n]*", re.M)
 
+# Lists of app names a phone maker builds into a system service. Samsung's window
+# service prints the apps exempt from its background-activity-start notifier
+# (mExemptPackageBySCA), MMGuardian among them, on phones where none of them was
+# ever installed. The list is the service's own state, not a record of an app, so
+# app ids are not searched in its entries. Only the header and the lines that hold
+# nothing but a package name are left out; whatever follows is still searched.
+_AN_VENDOR_APP_LISTS = re.compile(
+    rb"^[ \t]*mExemptPackageBySCA packages:[ \t]*\r?\n"
+    rb"(?:[ \t]+[A-Za-z0-9_.]+[ \t]*(?:\r?\n|\Z))+", re.M)
+
 
 def _an_sections(text):
     """dumpsys output split into {service name: body}."""
@@ -1252,7 +1262,12 @@ def _an_device_logs(r, ctx, folder, already):
             _an_hit(r, ind, _an_log_place(name, low, ind.value),
                     "the phone's own system log names it", evidence=EV_DEVICE_LOG)
         if app_set is not None:
-            app_low = _AN_DECLARATION_LINES.sub(b"", data).lower() if name == "dumpsys.txt" else low
+            app_low = low
+            if name == "dumpsys.txt":
+                # Line count kept, so a line number still points into the file.
+                app_low = _AN_VENDOR_APP_LISTS.sub(
+                    lambda m: b"\n" * m.group(0).count(b"\n"),
+                    _AN_DECLARATION_LINES.sub(b"", data)).lower()
             for shadow in app_set.search_bytes(app_low):
                 if shadow.value in already:
                     continue
