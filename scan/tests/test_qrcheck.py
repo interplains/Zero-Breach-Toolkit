@@ -138,10 +138,16 @@ def test_the_maths_helpers():
 
 # --- against the independent library --------------------------------------------------------------------------
 
-qrcode = pytest.importorskip("qrcode")
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 
 def make_png(text, level="M", box=6, border=4):
+    # Only the tests that draw a code with the independent library skip without it; the rest of this file runs.
+    if qrcode is None:
+        pytest.skip("the independent qrcode library (and Pillow) is not installed")
     levels = {"L": qrcode.constants.ERROR_CORRECT_L, "M": qrcode.constants.ERROR_CORRECT_M,
               "Q": qrcode.constants.ERROR_CORRECT_Q, "H": qrcode.constants.ERROR_CORRECT_H}
     image = qrcode.make(text, error_correction=levels[level], box_size=box, border=border)
