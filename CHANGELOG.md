@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.0.3
+
+- New: `--export-blocklist` writes the website names a check matched as a block list for a DNS filter (hosts or
+  plain-domain format). Only valid names are written; addresses, reference-only matches and names that can be
+  re-registered are left out.
+- Android: ESET's published BadBazaar fingerprints and package names are now known indicators.
+- Android: an app installed through Obtainium, Droid-ify or Neo Store is raised when it can read the screen,
+  read all notifications, record the screen, resist uninstalling or hold a similar power. These installers fetch apps from any link or
+  repository they are given, so no store checked the app. Ordinary apps they installed stay quiet.
+- Android: Honor's app market and Samsung's own app updaters count as stores.
+- "Fix it for me": the undo step only ever writes back 0 or 1 for automatic sign-in, and every value placed in a
+  PowerShell command has its quote characters doubled, including typographic quotes.
+- README: if antivirus removes the program, how to restore it safely, now including the signature check for
+  people who may be targets. The code-signing notes say the same thing everywhere.
+
 ## 3.0.2
 
 From the first testers' reports:
