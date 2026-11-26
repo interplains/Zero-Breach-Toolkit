@@ -121,6 +121,11 @@ and check that the long number matches the line for that file in `SHA256SUMS-pro
 page (capital letters do not matter). If the file came from anywhere else, or the numbers differ, delete it
 and trust the warning.
 
+**If you may be a target, check the signature too.** Someone able to swap the program on the release page could
+swap that list as well. The list is signed with the project's key, and GitHub keeps a public record of the build;
+[docs/VERIFYING.md](docs/VERIFYING.md#checking-the-downloadable-programs) shows both checks. Allow the file only
+when they pass.
+
 Then choose one way round it:
 
 1. **Restore it.** In Microsoft Defender, open **Windows Security → Virus & threat protection →

@@ -41,20 +41,14 @@ merely different.
 Running from source is the other half of the same idea: nothing is compiled, and every line
 the tool executes can be read in the clone.
 
-## Why there is no code signature
+## Code signing
 
-There is no signed Windows release, and none is planned while the project stays anonymous.
-Code-signing certificates require a verifiable legal identity, and every signing route,
-including [SignPath Foundation](https://signpath.org/), expects named, publicly identified
-maintainers and approvers. This project does not have them, by choice. It claims no
-certificate, signing service or signed binary, and asks nobody to trust it because of one.
-Rebuild it and compare instead.
-
-A signed Windows release would need a named maintainer willing to hold the certificate and
-be publicly identified. Before any signed distribution, the project would publish its build
-workflow, name the release roles, require manual approval of signing requests and document
-how to verify the executable. That decision has not been made, and the project's anonymity
-is the reason.
+The programs are not code-signed yet. The Windows program is being set up for signing through
+the [SignPath Foundation](https://signpath.org/), whose certificate is issued to the Foundation
+rather than to a person, so the project stays anonymous; see [CODE-SIGNING.md](CODE-SIGNING.md).
+Until that is in place, no release claims a certificate or a signed binary, and nobody is asked
+to trust one. Check the GPG signature and the build attestation below, or rebuild the single
+file and compare.
 
 ## Checking the downloadable programs
 
