@@ -261,3 +261,29 @@ def test_bundle_lists_fixes_without_changing_anything(bundle, capsys, monkeypatc
                         raising=False)
     assert bundle._bundle_main(["--no-menu", "--no-banner", "--no-feeds", "--fix-it", "list"]) == 0
     assert "CLOSE THE DOORS FOUND OPEN" in capsys.readouterr().out
+
+
+# --- values written into an elevated PowerShell command ---------------------------------------------------------
+
+@pytest.mark.parametrize("hostile", ["0'; Remove-Item C:\\x; '", "0\u2019; calc; \u2018", "a\u201ab\u201bc"])
+def test_a_string_value_cannot_end_its_quotes_early(hostile):
+    command = fx._fx_reg_write(fx._FX_WINLOGON, "AutoAdminLogon", hostile, kind="String")
+    literal = command.split("-Value ", 1)[1].rsplit(" -Type ", 1)[0]
+    assert literal[0] == "'" and literal[-1] == "'"
+    inner = literal[1:-1]
+    for quote in fx._FX_PS_QUOTES:
+        # every quote character inside is doubled, so none of them closes the string
+        assert inner.replace(quote * 2, "").count(quote) == 0
+
+
+def test_a_dword_value_is_written_as_a_number_only():
+    assert "-Value 1 -Type DWord" in fx._fx_reg_write(fx._FX_TS, "fDenyTSConnections", "1")
+    with pytest.raises(ValueError):
+        fx._fx_reg_write(fx._FX_TS, "fDenyTSConnections", "1; calc")
+
+
+@pytest.mark.parametrize("before, written", [("1", "'1'"), ("0", "'0'"), (" 1 ", "'1'"),
+                                             ("1'; calc; '", "'0'"), ("yes", "'0'")])
+def test_undoing_automatic_sign_in_writes_back_only_0_or_1(before, written):
+    command = fx._fx_autologon_undo({"found": True, "value": before})
+    assert "-Value " + written + " -Type String" in command

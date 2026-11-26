@@ -145,10 +145,24 @@ def _fx_reg_read(path: str, name: str) -> Tuple[bool, object]:
     return False, None
 
 
+# PowerShell ends a single-quoted string at ' and also at the typographic quotes U+2018 U+2019 U+201A U+201B.
+# Inside such a string each of them is written twice.
+_FX_PS_QUOTES = ("'", "‘", "’", "‚", "‛")
+
+
+def _fx_ps_literal(value) -> str:
+    """A value as a PowerShell single-quoted string that cannot end early."""
+    text = str(value)
+    for quote in _FX_PS_QUOTES:
+        text = text.replace(quote, quote + quote)
+    return "'" + text + "'"
+
+
 def _fx_reg_write(path: str, name: str, value, kind="DWord") -> str:
+    shown = int(value) if kind == "DWord" else _fx_ps_literal(value)
     return ("New-Item -Path '{p}' -Force | Out-Null; "
             "Set-ItemProperty -Path '{p}' -Name '{n}' -Value {v} -Type {t} -Force".format(
-                p=path, n=name, v=value if kind == "DWord" else "'{}'".format(value), t=kind))
+                p=path, n=name, v=shown, t=kind))
 
 
 def _fx_reg_delete(path: str, name: str) -> str:
@@ -191,7 +205,10 @@ def _fx_autologon_apply(state):
 def _fx_autologon_undo(state):
     if not state.get("found"):
         return _fx_reg_delete(_FX_WINLOGON, "AutoAdminLogon")
-    return _fx_reg_write(_FX_WINLOGON, "AutoAdminLogon", str(state["value"]).strip(), kind="String")
+    # Windows only knows "0" and "1" here. Anything else read earlier is not written back into an elevated
+    # command; automatic sign-in stays off instead.
+    before = str(state["value"]).strip()
+    return _fx_reg_write(_FX_WINLOGON, "AutoAdminLogon", before if before in ("0", "1") else "0", kind="String")
 
 
 def _fx_autologon_ok():
