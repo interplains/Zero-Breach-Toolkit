@@ -76,14 +76,18 @@ _AN_STORES = {
     "com.xiaomi.market", "com.xiaomi.mipicks",
     "com.heytap.market", "com.oppo.market",
     "com.vivo.appstore", "com.bbk.appstore",
-    # F-Droid clients other than the official one.
-    "com.looker.droidify",            # Droid-ify
-    "com.machiav3lli.fdroid",         # Neo Store
-    "dev.imranr.obtainium",           # Obtainium (updates from the project's own releases)
     # Samsung's own update paths: the preinstalled app updater (Clock, Calendar ...)
     # and the Galaxy Buds plugin installer. Both are system apps.
     "com.samsung.android.app.updatecenter",
     "com.samsung.accessory.budsunitemgr",
+}
+# Installers that fetch an app from whatever link or repository the person holding the phone adds: F-Droid
+# clients other than the official one, and Obtainium. Many people get open-source apps this way, so an app they
+# installed is only raised when it also holds a power stalkerware relies on; nobody's store checked it.
+_AN_USER_DIRECTED_INSTALLERS = {
+    "com.looker.droidify": "Droid-ify",
+    "com.machiav3lli.fdroid": "Neo Store",
+    "dev.imranr.obtainium": "Obtainium",
 }
 # Apps copied from the old phone when moving to a new one: not installed by hand.
 _AN_TRANSFER_INSTALLERS = {
@@ -199,6 +203,10 @@ _AN_LISTENED = {"android.provider.Telephony.SMS_RECEIVED": "listens for incoming
 _AN_WHY_SIDELOAD = ("People install apps directly for ordinary reasons (alternative launchers, "
                     "beta versions, apps not offered in their country). Stalkerware is "
                     "installed the same way. Check you recognise this app and installed it.")
+_AN_WHY_USER_DIRECTED = ("This installer fetches apps from any link or repository it is given, so no app store "
+                         "checked this app. Many people install open-source apps this way. Stalkerware can be put "
+                         "on a phone the same way by someone who has it in their hands. Check you recognise this "
+                         "app and installed it.")
 _AN_WHY_ACCESS = ("Screen readers, password managers and automation apps use accessibility "
                   "access. Stalkerware relies on it to read the screen. Check you recognise "
                   "every app listed.")
@@ -818,8 +826,17 @@ def _an_app_audit(r, name, where, installer, info):
     age = " - installed {} day{} before this check".format(days, "" if days == 1 else "s") \
         if days is not None and days <= 60 else ""
     restricted = "ACCESS_RESTRICTED_SETTINGS" in info["appops"].get(name, ())
-    sideloaded = installer not in _AN_STORES and installer not in _AN_TRANSFER_INSTALLERS
-    if sideloaded:
+    directed = _AN_USER_DIRECTED_INSTALLERS.get(installer)
+    sideloaded = installer not in _AN_STORES and installer not in _AN_TRANSFER_INSTALLERS and not directed
+    if directed and spy:
+        text = "app installed through {} (installs from any link or repository it is given): {}{}; it can: {}".format(
+            directed, name, age, ", ".join(powers))
+        why = _AN_WHY_USER_DIRECTED
+        if restricted:
+            text += "; Android's protection against exactly this was switched off for it"
+            why = _AN_WHY_RESTRICTED + " " + why
+        r.add_lead(Lead("android:packages", where, text, why + _AN_SAFETY, when))
+    elif sideloaded:
         text = "app installed outside an app store: {} (installed by: {}){}".format(name, installer or "unknown", age)
         if powers:
             text += "; it can: " + ", ".join(powers)
@@ -830,7 +847,7 @@ def _an_app_audit(r, name, where, installer, info):
         if spy:
             why += _AN_SAFETY
         r.add_lead(Lead("android:packages", where, text, why, when))
-    elif len(spy) >= 2:
+    elif len(spy) >= 2 and not directed:
         source = "copied from the old phone" if installer in _AN_TRANSFER_INSTALLERS else "from an app store"
         text = "app with the powers stalkerware needs: {} ({}){}; it can: {}".format(name, source, age,
                                                                                     ", ".join(powers))

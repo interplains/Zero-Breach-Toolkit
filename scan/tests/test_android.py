@@ -140,6 +140,20 @@ class TestWorthALook(unittest.TestCase):
         self.assertEqual(len(whats), 1, whats)
         self.assertIn("com.example.launcher", whats[0])
 
+    def test_a_user_directed_install_with_a_spy_power_is_raised(self):
+        # Obtainium and F-Droid clients install from any link or repository: quiet for ordinary apps (above),
+        # but an app they installed that can read the screen is worth a look, explained as such.
+        d = collection(spy=False, enabled_accessibility_services="com.example.fromobtainium/.Svc")
+        path = os.path.join(d, "packages.json")
+        pkgs = json.load(open(path, encoding="utf-8"))
+        pkgs.append({"name": "com.example.fromobtainium", "installer": "dev.imranr.obtainium",
+                     "third_party": True, "system": False, "disabled": False, "uid": 31, "files": []})
+        json.dump(pkgs, open(path, "w"))
+        leads = [l for l in check(d).leads if "com.example.fromobtainium" in l.what and "installed through" in l.what]
+        self.assertEqual(len(leads), 1, [l.what for l in check(d).leads])
+        self.assertIn("Obtainium", leads[0].what)
+        self.assertIn("any link or repository", leads[0].usual_reason)
+
     def test_accessibility_verification_and_old_patch(self):
         d = collection(spy=False, enabled_accessibility_services="com.x/.Svc:com.y/.Svc",
                        package_verifier_enable="0", patch="2020-01-05")
