@@ -338,7 +338,7 @@ def mc_check(raw: bytes, iocs=None) -> Dict[str, object]:
             "attachments": attachments, "link_count": len(links)}
 
 
-_MC_TRICK_CHARS = "‪‫‬‭‮‎‏⁦⁧⁨⁩​­"
+_MC_TRICK_CHARS = "\u202a\u202b\u202c\u202d\u202e\u200e\u200f\u2066\u2067\u2068\u2069\u200b\u00ad"
 
 
 def _mc_unicode_trick(text: str) -> bool:

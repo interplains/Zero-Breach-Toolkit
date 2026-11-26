@@ -697,7 +697,7 @@ _FC_SCRIPT_SIGNS = (
 # --- names built to deceive ------------------------------------------------------------------------------------------
 
 # Characters that change the direction text is shown in: one placed before "fdp.exe" makes it display as "exe.pdf".
-_FC_BIDI = "‪‫‬‭‮⁦⁧⁨⁩‎‏؜"
+_FC_BIDI = "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\u200e\u200f\u061c"
 _FC_RUN_EXT = (".exe", ".scr", ".com", ".pif", ".bat", ".cmd", ".js", ".jse", ".vbs", ".vbe", ".wsf", ".wsh", ".hta",
                ".ps1", ".lnk", ".url", ".msi", ".cpl", ".jar", ".iso", ".img", ".vhd", ".vhdx", ".one", ".chm",
                ".reg", ".dll", ".apk")
@@ -988,7 +988,7 @@ def fc_web_page(data: bytes) -> List[str]:
         out.append("has a password box{} - a page you open from a file should never ask you to sign in".format(
             "; what you type is sent to " + _fc_host(action.group(1)) if action else ""))
     # Only a file that IS an SVG picture: ordinary web pages carry small inline SVG icons next to their scripts.
-    start = low.lstrip("﻿ \t\r\n")[:4096]
+    start = low.lstrip("\ufeff \t\r\n")[:4096]
     is_svg = start.startswith("<svg") or (start.startswith("<?xml") and "<svg" in start and "<html" not in start)
     if is_svg and "<script" in low:
         out.append("is a picture (SVG) that contains a script")

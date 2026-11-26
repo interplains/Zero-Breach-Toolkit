@@ -8,9 +8,9 @@ import re
 
 # Control and direction-changing characters: terminal escape codes, and text that displays differently from what
 # it is. Line feed (\x0a) and tab (\x09) are deliberately NOT in this set.
-ST_CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‪-‮⁦-⁩]")
+ST_CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]")
 # Invisible formatting characters, removed outright.
-ST_INVISIBLE = re.compile("[\xad᠎​-‏⁠-⁤﻿]")
+ST_INVISIBLE = re.compile("[\xad᠎\u200b-\u200f⁠-⁤\ufeff]")
 
 
 def st_line(text) -> str:

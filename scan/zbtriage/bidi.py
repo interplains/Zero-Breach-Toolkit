@@ -15,8 +15,8 @@ Only the window uses this. Reports saved to a file keep the ordinary (logical)
 order, which every text editor lays out by itself.
 """
 
-_MARKS = "‎‏‪‫‬‭‮⁦⁧⁨⁩"
-_RLM = "‏"
+_MARKS = "\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+_RLM = "\u200f"
 _bidi_state = {"mode": "native"}
 
 
