@@ -102,3 +102,57 @@ def test_recipient_reaches_the_collector_on_linux_and_macos(tmp_path):
         assert code == 0 and folder is None, name
         work = next((tmp_path / name / "collected").iterdir())
         assert (work / "fixture.zip.age").exists(), name
+
+
+def _run_folder_layout(tmp_path, platform_name, recipient=None, nested=False):
+    """AndroidQF 1.8.3 without a recipient key: the collection is written as
+    plain files into the output folder, with the phone's own bugreport.zip
+    among them, and no acquisition archive is made."""
+    import zipfile
+
+    def download(asset, digest, path):
+        Path(path).write_bytes(b"fixture never executed")
+
+    def fake_run(argv, **kw):
+        if argv[-1] == "kill-server":
+            return types.SimpleNamespace(returncode=0)
+        out = Path(kw["cwd"])
+        if nested:
+            out = out / "acquisition-1"
+            out.mkdir()
+        (out / "packages.json").write_text("[]")
+        (out / "dumpsys.txt").write_text("DUMP OF SERVICE package:\n")
+        with zipfile.ZipFile(out / "bugreport.zip", "w") as zf:
+            zf.writestr("FS/data/x.txt", "x")
+        return types.SimpleNamespace(returncode=0)
+
+    err = io.StringIO()
+    with patch.object(phoneguide, "_phone_download", download), \
+         patch.object(phoneguide.subprocess, "run", fake_run), \
+         patch.object(phoneguide.sys, "platform", platform_name), \
+         patch.object(phoneguide.platform, "machine", return_value="amd64"), \
+         patch.object(phoneguide.sys.stdin, "isatty", return_value=True), \
+         patch("builtins.input", return_value="YES"), \
+         contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+        result = phoneguide.collect_android(str(tmp_path / "collected"), recipient)
+    return result, err.getvalue()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX collector layout")
+@pytest.mark.parametrize("nested", (False, True))
+def test_plain_folder_collection_is_checked(tmp_path, nested):
+    for name in ("linux", "darwin"):
+        (folder, code), err = _run_folder_layout(tmp_path / name, name, nested=nested)
+        assert code == 0 and folder, (name, err)
+        assert os.path.isfile(os.path.join(folder, "packages.json")), name
+        # The phone's own bug report is evidence, not the acquisition archive.
+        assert os.path.isfile(os.path.join(folder, "bugreport.zip")), name
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX collector layout")
+def test_plain_folder_is_refused_when_encryption_was_requested(tmp_path):
+    key = tmp_path / "recipient.txt"
+    key.write_text("age1" + "q" * 58)
+    (folder, code), err = _run_folder_layout(tmp_path, "linux", str(key))
+    assert folder is None and code == 1
+    assert "Encryption was requested" in err

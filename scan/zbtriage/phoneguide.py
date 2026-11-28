@@ -243,6 +243,25 @@ def _phone_finish_adb(environment, *folders):
             pass        # still in use: harmless tool files, never evidence
 
 
+def _phone_plain_collection(work):
+    """The folder AndroidQF wrote its collection into as plain files, or None.
+
+    Without a recipient key AndroidQF makes no archive: it writes packages.json
+    and the rest straight into its output folder (or one folder below it). The
+    phone's own bugreport.zip sits among those files and is not an acquisition
+    archive."""
+    found = [work] if os.path.isfile(os.path.join(work, "packages.json")) else []
+    with os.scandir(work) as entries:
+        for entry in entries:
+            if (entry.is_dir(follow_symlinks=False)
+                    and os.path.isfile(os.path.join(entry.path, "packages.json"))
+                    and not os.path.islink(os.path.join(entry.path, "packages.json"))):
+                found.append(entry.path)
+    if len(found) > 1:
+        raise ValueError("More than one AndroidQF collection; inspect " + work)
+    return found[0] if found else None
+
+
 def collect_android(destination, recipient_file=None):
     """Return (plaintext collection folder or None, command exit code)."""
     if not sys.stdin.isatty():
@@ -313,6 +332,13 @@ def collect_android(destination, recipient_file=None):
                 _phone_finish_adb(environment, work, binaries)
             if completed.returncode:
                 raise ValueError("AndroidQF did not complete successfully; any partial acquisition remains in " + work)
+        plain = _phone_plain_collection(work)
+        if plain:
+            if recipient:
+                raise ValueError("Encryption was requested but the collector returned plaintext. No extraction or scan was performed")
+            print("Collection ready for offline checking: " + plain)
+            print("After collection, disable USB debugging and revoke this computer's authorization if no longer needed.")
+            return plain, 0
         archives = [os.path.join(work, name) for name in os.listdir(work) if name.endswith((".zip", ".zip.age"))]
         if len(archives) != 1:
             raise ValueError("Expected one acquisition archive; inspect " + work)

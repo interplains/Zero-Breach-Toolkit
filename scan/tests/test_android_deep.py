@@ -355,3 +355,46 @@ class TestServerPushedFlagsAreNotTraces(unittest.TestCase):
         hits = self.hits_for(device_config="DeviceConfig flags:\na/b=android\n",
                              usagestats="  package={} totalTime=5\n".format(SPY))
         self.assertEqual([h.evidence for h in hits], [EV_DEVICE_LOG])
+
+
+class TestVendorAppListsAreNotTraces(unittest.TestCase):
+    """Samsung's window service prints a built-in list of apps exempt from its
+    background-activity-start notifier (mExemptPackageBySCA). It names a
+    family-safety app on every such phone. A name in that list is not a trace of
+    the app; a name anywhere else in the same service still is."""
+
+    BLOCK = ("BackgroundActivityStartNotifier state:\n"
+             "No packages in map\n"
+             "  mScaVersion: 1.1\n"
+             "  mExemptPackageBySCA size: 3\n"
+             "  mExemptPackageBySCA packages:\n"
+             "    com.inavimobility.taxi.driver\n"
+             "    {}\n"
+             "    com.truecaller\n"
+             "=====================================\n")
+
+    def hits_for(self, **sections):
+        d = collection(spy=False)
+        add_dumpsys(d, **sections)
+        return [h for h in check(d).hits if h.indicator == SPY]
+
+    def test_exempt_list_is_not_a_trace(self):
+        self.assertEqual(self.hits_for(window=self.BLOCK.format(SPY)), [])
+
+    def test_exempt_list_with_windows_line_endings_is_not_a_trace(self):
+        block = self.BLOCK.format(SPY).replace("\n", "\r\n")
+        self.assertEqual(self.hits_for(window=block), [])
+
+    def test_text_after_the_list_is_still_searched(self):
+        body = self.BLOCK.format("com.example.other") + "  mLastNotifyPackage: {}\n".format(SPY)
+        self.assertEqual([h.evidence for h in self.hits_for(window=body)], [EV_DEVICE_LOG])
+
+    def test_line_number_still_points_into_the_file(self):
+        body = self.BLOCK.format("com.example.other") + "  mLastNotifyPackage: {}\n".format(SPY)
+        d = collection(spy=False)
+        add_dumpsys(d, window=body)
+        hit = [h for h in check(d).hits if h.indicator == SPY][0]
+        with open(os.path.join(d, "dumpsys.txt"), encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+        number = int(hit.location.rsplit("line ", 1)[1])
+        self.assertIn(SPY, lines[number - 1])
